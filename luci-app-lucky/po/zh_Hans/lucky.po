@@ -242,4 +242,12 @@ msgid "Configure basic settings for the Lucky high-performance routing service, 
 msgstr "配置 Lucky 高性能分流与网络转发服务的核心基础参数，控制服务总开关、前台管理端口以及底层二进制运行策略。"
 
 msgid "Real-time query of the Lucky running logs to diagnose DDNS updates, port forwarding actions, and routing issues."
-msgstr "实时查看 Lucky 的系统运行日志，以快速排查动态域名 DDNS 更新状态、端口转发链路以及路由策略异常。"
+msgstr "实时查看 Lucky 的 system 运行日志，以快速排查动态域名 DDNS 更新状态、端口转发链路以及路由策略异常。"
+
+msgid "Running (Managed)"
+msgstr "运行中 (受控)"
+
+msgid "Running (Unmanaged)"
+msgstr "运行中 (不受控)"
+
+

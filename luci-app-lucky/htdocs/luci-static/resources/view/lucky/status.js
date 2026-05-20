@@ -52,18 +52,43 @@ return view.extend({
 		});
 	},
 
-	updateStatus: function(running) {
+	updateStatus: function(status) {
 		var statusEl = document.getElementById('_status');
+		var state = status ? status.state : 'stopped';
+		var pid = status ? status.pid : null;
+		var running = (state !== 'stopped');
 
 		if (statusEl) {
-			dom.content(statusEl, [
-				running ? E('b', { style: 'color:green' }, _('Running')) : E('b', { style: 'color:red' }, _('Stopped')),
-				running ? E('input', {
+			var statusText = _('Stopped');
+			var statusColor = 'red';
+			var isManaged = (state === 'managed');
+			var isUnmanaged = (state === 'unmanaged');
+
+			if (isManaged) {
+				statusText = _('Running (Managed)');
+				statusColor = 'green';
+			} else if (isUnmanaged) {
+				statusText = _('Running (Unmanaged)');
+				statusColor = 'orange';
+			}
+
+			if (pid) {
+				statusText += ' [PID: ' + pid + ']';
+			}
+
+			var statusNode = [
+				E('b', { style: 'color:' + statusColor }, statusText)
+			];
+
+			if (running) {
+				statusNode.push(E('input', {
 					type: 'button', id: '_btnRestart', class: 'btn cbi-button cbi-button-reload', value: _('Restart'),
 					style: 'margin-left: 20px;',
 					click: ui.createHandlerFn(this, 'handleServiceAction', 'restart')
-				}) : ''
-			]);
+				}));
+			}
+
+			dom.content(statusEl, statusNode);
 		}
 
 		var adminLinkEl = document.getElementById('_luckyAdminLink');
@@ -123,14 +148,7 @@ return view.extend({
 					E('table', { class: 'table' }, [
 						E('tr', { class: 'tr' }, [
 							E('td', { class: 'td left', width: '33%' }, _('Current Status')),
-							E('td', { class: 'td left', id: '_status' }, [
-								running ? E('b', { style: 'color:green' }, _('Running')) : E('b', { style: 'color:red' }, _('Stopped')),
-								running ? E('input', {
-									type: 'button', id: '_btnRestart', class: 'btn cbi-button cbi-button-reload', value: _('Restart'),
-									style: 'margin-left: 20px;',
-									click: ui.createHandlerFn(this, 'handleServiceAction', 'restart')
-								}) : ''
-							])
+							E('td', { class: 'td left', id: '_status' }, E('em', {}, _('Loading...')))
 						])
 					])
 				])
@@ -161,10 +179,12 @@ return view.extend({
 			])
 		]);
 		container.appendChild(infoSection);
+		this.updateStatus(info);
+
 		var self = this;
 		poll.add(function() {
 			return callGetStatus().then(function(res) {
-				self.updateStatus(res.running);
+				self.updateStatus(res);
 			});
 		}, 5);
 

@@ -1,5 +1,6 @@
 #!/usr/bin/ucode
 'use strict';
+import { connect } from 'ubus';
 import { popen, readfile, writefile, unlink } from 'fs';
 import { cursor } from 'uci';
 
@@ -20,12 +21,51 @@ function get_configdir() {
     return dir ? trim(dir) : '';
 }
 
-function get_pid() {
-    let fd = popen("pidof /usr/bin/lucky");
-    let pid = fd ? trim(fd.read('all')) : "";
-    if (fd) fd.close();
-    return pid;
+function get_procd_status() {
+    let u = connect();
+    if (!u)
+        return { running: false };
+
+    let res = u.call('service', 'list', { name: 'lucky' });
+    if (res && res['lucky'] && res['lucky'].instances) {
+        let instances = res['lucky'].instances;
+        for (let name in instances) {
+            let inst = instances[name];
+            if (inst && inst.running)
+                return { running: true, pid: inst.pid };
+        }
+    }
+
+    return { running: false };
 }
+
+function get_rogue_pid(managed_pid) {
+    let p = popen('pidof /usr/bin/lucky', 'r');
+    if (!p)
+        return null;
+
+    let pid_str = p.read('all');
+    p.close();
+
+    if (!pid_str)
+        return null;
+
+    let pids = split(trim(pid_str), /\s+/);
+    for (let i = 0; i < length(pids); i++) {
+        let pid = pids[i];
+        if (pid != '' && (managed_pid == null || pid != (managed_pid + '')))
+            return pid;
+    }
+
+    return null;
+}
+
+function get_pid() {
+    let procd_st = get_procd_status();
+    let rogue_pid = get_rogue_pid(procd_st.pid);
+    return (procd_st.pid || rogue_pid || "") + "";
+}
+
 
 const CACHE_FILE = '/tmp/lucky_info_cache';
 
@@ -64,8 +104,17 @@ const methods = {
             let configPath = get_configdir();
 
             // 1. 检测运行状态
-            let pid = get_pid();
-            let running = (pid !== "");
+            let procd_st = get_procd_status();
+            let rogue_pid = get_rogue_pid(procd_st.pid);
+
+            let state = 'stopped';
+            if (procd_st.running)
+                state = 'managed';
+            else if (rogue_pid)
+                state = 'unmanaged';
+
+            let running = (state !== 'stopped');
+            let pid = procd_st.pid || rogue_pid;
 
             // 2. 程序信息（从缓存或实时获取）
             let luckyInfo = "";
@@ -118,10 +167,10 @@ const methods = {
                 });
             }
 
-
-
             return {
                 running: running,
+                state: state,
+                pid: pid,
                 luckyInfo: luckyInfo,
                 luckyArch: luckyArch,
                 adminPort: adminPort,
@@ -130,12 +179,24 @@ const methods = {
             };
         }
     },
-    // 保留轻量 get_status 用于 poll 轮询
     get_status: {
         call: function() {
-            return { running: (get_pid() !== "") };
+            let procd_st = get_procd_status();
+            let rogue_pid = get_rogue_pid(procd_st.pid);
+
+            let state = 'stopped';
+            if (procd_st.running)
+                state = 'managed';
+            else if (rogue_pid)
+                state = 'unmanaged';
+
+            return {
+                state: state,
+                pid: procd_st.pid || rogue_pid
+            };
         }
     },
+
     get_log: {
         call: function() {
             let fd = popen("logread -e lucky | tail -n 100");
@@ -207,6 +268,11 @@ const methods = {
                 // 停止时清除缓存
                 if (action === "stop") {
                     clear_cache();
+                }
+                if (action === "restart") {
+                    // 重启前，强制强杀所有可能残留的 lucky 野进程，确保重新由 procd 唯一受控拉起
+                    let p = popen('killall -9 lucky', 'r');
+                    if (p) p.close();
                 }
                 let rc = system(`/etc/init.d/lucky ${action} >/dev/null 2>&1`);
                 applied = (rc === 0);
