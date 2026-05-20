@@ -120,3 +120,6 @@ msgstr "模式切换"
 
 msgid "Switch your system runtime configuration smoothly between standard Router and Access Point (AP) modes. Network interfaces and bridge rules will be adjusted automatically."
 msgstr "在标准路由器模式与 AP 桥接访问点模式之间平滑切换系统运行配置。切换后，网口物理桥接规则以及接口 DHCP 客户端行为将自动智能调整。"
+
+msgid "AP Switch Title"
+msgstr "AP 模式切换"

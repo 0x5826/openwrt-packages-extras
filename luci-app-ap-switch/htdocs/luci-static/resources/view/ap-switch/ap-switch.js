@@ -38,7 +38,7 @@ return L.view.extend({
 		var probed_ip = status.probed_ip || '';
 
 		var body = E('div', { 'class': 'cbi-map' }, [
-			E('h2', {}, _('AP Switch') + ' - ' + _('Switch Mode')),
+			E('h2', {}, _('AP Switch Title') + ' - ' + _('Switch Mode')),
 			E('div', { 'class': 'cbi-map-descr' }, _('Switch your system runtime configuration smoothly between standard Router and Access Point (AP) modes. Network interfaces and bridge rules will be adjusted automatically.')),
 			E('div', { 'class': 'cbi-section' }, [
 				E('h3', {}, _('Current Status')),
