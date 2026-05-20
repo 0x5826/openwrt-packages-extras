@@ -2,7 +2,7 @@ msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8"
 
 msgid "AP Switch"
-msgstr "AP 模式切换"
+msgstr "AP模式切换"
 
 msgid "Switch between Router and Access Point (AP) mode."
 msgstr "在路由器模式和访问点 (AP) 模式之间切换。"
@@ -114,3 +114,9 @@ msgstr "切换模式失败：%s"
 
 msgid "Error calling RPC: %s"
 msgstr "调用 RPC 错误：%s"
+
+msgid "Switch Mode"
+msgstr "模式切换"
+
+msgid "Switch your system runtime configuration smoothly between standard Router and Access Point (AP) modes. Network interfaces and bridge rules will be adjusted automatically."
+msgstr "在标准路由器模式与 AP 桥接访问点模式之间平滑切换系统运行配置。切换后，网口物理桥接规则以及接口 DHCP 客户端行为将自动智能调整。"
