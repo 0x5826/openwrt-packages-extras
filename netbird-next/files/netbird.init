@@ -95,14 +95,43 @@ EOF
 
 handle_routing() {
 	local action="$1"
-	# Remove our own custom ip rules (priority 50)
-	while ip rule show | grep -q "priority 50"; do
-		ip rule del priority 50
+	
+	# 1. Remove our own custom ip rules (priority 50) with retry limit to prevent infinite loops
+	local ip_rule_retry=0
+	while ip rule show | grep -q "priority 50" && [ $ip_rule_retry -lt 20 ]; do
+		ip rule del priority 50 2>/dev/null
+		ip_rule_retry=$((ip_rule_retry + 1))
 	done
 
-	if [ "$action" = "start" ] && [ "$_AUTO_ROUTE" -eq 1 ] && [ -n "$_STATIC_SUBNETS" ]; then
+	# 2. Cleanup custom routing entries in netbird table
+	if [ -n "$_STATIC_SUBNETS" ]; then
 		for subnet in $_STATIC_SUBNETS; do
-			ip rule add to "$subnet" lookup netbird priority 50
+			ip route del "$subnet" dev wt0 table netbird 2>/dev/null
+		done
+	fi
+
+	# 3. Add routing entries and policy rules on start
+	if [ "$action" = "start" ] && [ "$_AUTO_ROUTE" -eq 1 ] && [ -n "$_STATIC_SUBNETS" ]; then
+		# Ensure netbird routing table is registered in system
+		if ! grep -q -E "[[:space:]]netbird$" /etc/iproute2/rt_tables; then
+			echo "99 netbird" >> /etc/iproute2/rt_tables
+		fi
+
+		# Prevent timing race: wait up to 10s until wt0 interface becomes active and UP in kernel
+		local retry=0
+		while [ $retry -lt 10 ]; do
+			if [ -d "/sys/class/net/wt0" ] && ip link show wt0 2>/dev/null | grep -q -E "wt0:.*<.*UP.*>"; then
+				break
+			fi
+			sleep 1
+			retry=$((retry + 1))
+		done
+
+		for subnet in $_STATIC_SUBNETS; do
+			# Step A: Add link-scope interface route into netbird table
+			ip route replace "$subnet" dev wt0 table netbird 2>/dev/null
+			# Step B: Add policy rule to lookup netbird table
+			ip rule add to "$subnet" lookup netbird priority 50 2>/dev/null
 		done
 	fi
 }
@@ -155,6 +184,13 @@ start_service() {
 		return 1
 	fi
 
+	# Precise cleanup of stale daemon process only to avoid port/socket binding conflicts and crash loops
+	local daemon_pid=$(pgrep -f "netbird service run")
+	if [ -n "$daemon_pid" ]; then
+		kill -9 $daemon_pid >/dev/null 2>&1
+		sleep 1
+	fi
+
 	mkdir -p /root/.config/netbird
 	mkdir -p /var/lib/netbird
 
@@ -164,7 +200,6 @@ start_service() {
 	# Setup native interface, firewall and routing
 	setup_network_interface
 	handle_firewall_port start "$_WG_PORT"
-	handle_routing start
 
 	procd_open_instance
 	# Use sh -c to redirect stderr to stdout
@@ -187,14 +222,25 @@ start_service() {
 
 	# Registration and Connection logic
 	(
-		sleep 3
+		# Wait up to 10 seconds for the NetBird daemon socket to become available
+		local socket_retry=0
+		while [ ! -S "/var/run/netbird.sock" ] && [ $socket_retry -lt 10 ]; do
+			sleep 1
+			socket_retry=$((socket_retry + 1))
+		done
+
+		if [ ! -S "/var/run/netbird.sock" ]; then
+			logger -t netbird "Error: Daemon socket not found. NetBird service may have failed to start."
+			exit 1
+		fi
+
 		# Safety check: ensure service is still enabled
 		local current_enabled=$(uci -q get netbird.@netbird[0].enabled)
 		[ "$current_enabled" = "1" ] || exit 0
 
 		local last_key_file="/root/.config/netbird/last_setup_key"
 		local last_key=$(cat "$last_key_file" 2>/dev/null)
-		local up_args="--disable-dns --disable-routing --disable-firewall --wireguard-port $_WG_PORT"
+		local up_args="--disable-dns --disable-client-routes --disable-server-routes --disable-firewall --wireguard-port $_WG_PORT"
 		
 		[ -n "$_MANAGEMENT_URL" ] && up_args="$up_args --management-url $_MANAGEMENT_URL"
 		[ -n "$_ADMIN_URL" ] && up_args="$up_args --admin-url $_ADMIN_URL"
@@ -202,17 +248,30 @@ start_service() {
 		if [ -n "$_SETUP_KEY" ]; then
 			if [ "$_SETUP_KEY" != "$last_key" ]; then
 				/usr/bin/netbird deregister >/dev/null 2>&1
-				/usr/bin/netbird up $up_args --setup-key "$_SETUP_KEY" >/dev/null 2>&1
-				echo "$_SETUP_KEY" > "${last_key_file}.tmp" && mv "${last_key_file}.tmp" "$last_key_file"
+				# Only save setup key upon successful connection to prevent self-healing deadlocks
+				if /usr/bin/netbird up $up_args --setup-key "$_SETUP_KEY" >/dev/null 2>&1; then
+					echo "$_SETUP_KEY" > "${last_key_file}.tmp" && mv "${last_key_file}.tmp" "$last_key_file"
+				fi
 			else
-				/usr/bin/netbird up $up_args >/dev/null 2>&1
+				# If setup_key matches last_key, first try regular up without key
+				if ! /usr/bin/netbird up $up_args >/dev/null 2>&1; then
+					# If regular up fails, fallback to up with setup-key to recover from unexpected session loss or remote deletion
+					logger -t netbird "Regular connection failed. Retrying with setup-key..."
+					/usr/bin/netbird up $up_args --setup-key "$_SETUP_KEY" >/dev/null 2>&1
+				fi
 			fi
 		elif [ -f "/root/.config/netbird/default.json" ]; then
+			# Erase last key history if key is cleared in front-end, allowing seamless re-activation
+			rm -f "$last_key_file"
 			/usr/bin/netbird up $up_args >/dev/null 2>&1
 		else
+			rm -f "$last_key_file"
 			logger -t netbird "Installation key not configured and no local identity found. Skipping connection."
 			exit 0
 		fi
+
+		# Apply static routing policies after wt0 interface is fully created and connected
+		handle_routing start
 
 		# Post-Up Purge: Final sweep
 		sleep 5
@@ -225,11 +284,13 @@ stop_service() {
 	handle_firewall_port stop
 	cleanup_network_interface
 	
-	# 2. Force termination of all netbird-related processes
-	# This catches the main service run, background 'up' commands, and any forks
-	killall netbird 2>/dev/null
-	sleep 1
-	killall -9 netbird 2>/dev/null
+	# 2. Precise and complete termination of the daemon process only
+	local daemon_pid=$(pgrep -f "netbird service run")
+	if [ -n "$daemon_pid" ]; then
+		kill $daemon_pid 2>/dev/null
+		sleep 1
+		kill -9 $daemon_pid 2>/dev/null
+	fi
 }
 
 service_triggers() {
