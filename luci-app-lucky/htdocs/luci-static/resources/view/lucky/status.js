@@ -97,8 +97,8 @@ return view.extend({
 		var running = info.running;
 
 		var container = E('div', { class: 'cbi-map' }, [
-			E('h2', {}, _('Lucky Overview')),
-			E('div', { class: 'cbi-map-descr' }, _('Monitor and control the Lucky service.'))
+			E('h2', {}, _('Lucky') + ' - ' + _('Overview')),
+			E('div', { class: 'cbi-map-descr' }, _('Overview of your Lucky routing service status, real-time statistics, and control settings.'))
 		]);
 
 		// 解析程序信息

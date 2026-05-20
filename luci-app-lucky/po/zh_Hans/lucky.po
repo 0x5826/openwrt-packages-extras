@@ -234,3 +234,12 @@ msgstr "查看 Lucky 服务的实时执行日志。"
 
 msgid "Logs"
 msgstr "日志"
+
+msgid "Overview of your Lucky routing service status, real-time statistics, and control settings."
+msgstr "展示 Lucky 服务当前的后台运行状态、系统架构、接口监听端口以及便捷的管理面板快捷登录链接。"
+
+msgid "Configure basic settings for the Lucky high-performance routing service, including master enable switch and administrative ports."
+msgstr "配置 Lucky 高性能分流与网络转发服务的核心基础参数，控制服务总开关、前台管理端口以及底层二进制运行策略。"
+
+msgid "Real-time query of the Lucky running logs to diagnose DDNS updates, port forwarding actions, and routing issues."
+msgstr "实时查看 Lucky 的系统运行日志，以快速排查动态域名 DDNS 更新状态、端口转发链路以及路由策略异常。"

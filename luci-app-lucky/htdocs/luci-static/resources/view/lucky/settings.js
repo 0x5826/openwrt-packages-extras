@@ -48,7 +48,8 @@ return view.extend({
 		var m, s, o;
 		var self = this;
 
-		m = new form.Map('lucky', _('Lucky Settings'), _('Configure basic settings for the Lucky service.'));
+		m = new form.Map('lucky', _('Lucky') + ' - ' + _('Settings'),
+			_('Configure basic settings for the Lucky high-performance routing service, including master enable switch and administrative ports.'));
 
 		s = m.section(form.TypedSection, 'lucky', _('General Settings'));
 		s.anonymous = true;

@@ -16,8 +16,8 @@ return view.extend({
 		}, [ _('Loading logs...') ]);
 
 		var container = E('div', { class: 'cbi-map' }, [
-			E('h2', {}, _('Lucky Running Logs')),
-			E('div', { class: 'cbi-map-descr' }, _('View the real-time execution logs of the Lucky service.')),
+			E('h2', {}, _('Lucky') + ' - ' + _('Log')),
+			E('div', { class: 'cbi-map-descr' }, _('Real-time query of the Lucky running logs to diagnose DDNS updates, port forwarding actions, and routing issues.')),
 			E('fieldset', { class: 'cbi-section' }, [
 				E('legend', {}, _('Logs')),
 				E('div', { class: 'cbi-section-node' }, logView)
