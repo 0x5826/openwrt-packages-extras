@@ -28,7 +28,7 @@
 				"frpc"
 			],
 			"file": {
-				"/etc/frp/frpc.toml": [ "read", "write" ],
+				"/etc/config/frpc.toml": [ "read", "write" ],
 				"/var/etc/frpc.toml": [ "read" ],
 				"/var/log/frpc.log": [ "read" ]
 			}

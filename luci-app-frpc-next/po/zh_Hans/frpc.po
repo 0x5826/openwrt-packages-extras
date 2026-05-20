@@ -174,8 +174,8 @@ msgstr "代理数量"
 msgid "Frp Client Settings"
 msgstr "Frp客户端设置"
 
-msgid "Edit frpc TOML directly. Changes are validated before writing to /etc/frp/frpc.toml."
-msgstr "直接编辑 frpc TOML。写入 /etc/frp/frpc.toml 前会先做语法校验。"
+msgid "Edit frpc TOML directly. Changes are validated before writing to /etc/config/frpc.toml."
+msgstr "直接编辑 frpc TOML。写入 /etc/config/frpc.toml 前会先做语法校验。"
 
 msgid "Configuration saved successfully."
 msgstr "配置保存成功。"
@@ -189,8 +189,8 @@ msgstr "未知错误"
 msgid "Log"
 msgstr "日志"
 
-msgid "General and proxies are edited in separate TOML boxes. Save will merge them into /etc/frp/frpc.toml."
-msgstr "一般配置和 proxies 分别在两个 TOML 框编辑，保存时会合并写入 /etc/frp/frpc.toml。"
+msgid "General and proxies are edited in separate TOML boxes. Save will merge them into /etc/config/frpc.toml."
+msgstr "一般配置和 proxies 分别在两个 TOML 框编辑，保存时会合并写入 /etc/config/frpc.toml。"
 
 msgid "General TOML"
 msgstr "一般配置 TOML"

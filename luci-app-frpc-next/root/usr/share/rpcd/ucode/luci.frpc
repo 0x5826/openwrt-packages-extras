@@ -4,8 +4,8 @@ import { connect } from 'ubus';
 import * as fs from 'fs';
 
 const PROCD_SERVICE_NAME = 'frpc';
-const CONFIG_FILE = '/etc/frp/frpc.toml';
-const RUNTIME_CONFIG_FILE = '/etc/frp/frpc.toml';
+const CONFIG_FILE = '/etc/config/frpc.toml';
+const RUNTIME_CONFIG_FILE = '/etc/config/frpc.toml';
 
 function get_procd_status() {
 	let u = connect();
@@ -267,9 +267,8 @@ const methods = {
 			if (!vr.success)
 				return vr;
 
-			system('/bin/mkdir -p /etc/frp');
 			if (!fs.writefile(CONFIG_FILE, config))
-				return { success: false, error: 'unable to write config file (/etc/frp/frpc.toml)' };
+				return { success: false, error: 'unable to write config file (/etc/config/frpc.toml)' };
 
 			let rc = system('/etc/init.d/frpc reload >/dev/null 2>&1');
 			return {

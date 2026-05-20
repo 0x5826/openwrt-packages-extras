@@ -5,7 +5,7 @@ STOP=10
 USE_PROCD=1
 
 PROG=/usr/bin/frpc
-CONF_FILE=/etc/frp/frpc.toml
+CONF_FILE=/etc/config/frpc.toml
 
 is_enabled() {
 	local enabled
