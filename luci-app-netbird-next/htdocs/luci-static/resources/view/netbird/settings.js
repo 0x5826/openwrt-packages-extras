@@ -18,7 +18,8 @@ return view.extend({
         let m, s, o;
         const identityExists = data?.config?.identity_exists || false;
 
-        m = new form.Map('netbird', _('NetBird Settings'), _('Configure advanced NetBird settings.'));
+        m = new form.Map('netbird', _('NetBird') + ' - ' + _('Settings'), 
+            _('Configure your NetBird daemon connection variables. Fill in your Setup Key or bind to your custom Self-Hosted coordination management URL to register the router.'));
 
         s = m.section(form.TypedSection, 'netbird', _('Global Settings'));
         s.anonymous = true;

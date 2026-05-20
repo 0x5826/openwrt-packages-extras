@@ -27,8 +27,8 @@ return view.extend({
         let isKeyMissing = (!config.setup_key && !config.identity_exists);
 
         let container = E('div', { 'class': 'cbi-map' }, [
-            E('h2', {}, _('NetBird Overview')),
-            E('div', { 'class': 'cbi-map-descr' }, _('NetBird is an open-source VPN management platform built on top of WireGuard, making it easy to create secure private networks.'))
+            E('h2', {}, _('NetBird') + ' - ' + _('Overview')),
+            E('div', { 'class': 'cbi-map-descr' }, _('NetBird is a zero-configuration private network platform based on WireGuard. Easily build a secure overlay mesh network among your multiple dispersed nodes.'))
         ]);
 
         // Section 1: Service Status

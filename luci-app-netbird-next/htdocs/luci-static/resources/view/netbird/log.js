@@ -24,8 +24,8 @@ return view.extend({
         poll.add(() => this.updateLogs(), 5);
 
         return E('div', { 'class': 'cbi-map' }, [
-            E('h2', {}, _('NetBird Log')),
-            E('div', { 'class': 'cbi-map-descr' }, _('Showing the last 100 lines of NetBird service logs.')),
+            E('h2', {}, _('NetBird') + ' - ' + _('Log')),
+            E('div', { 'class': 'cbi-map-descr' }, _('Inspect and stream the local NetBird daemon service logs. Synchronized topology updates, WireGuard link configurations, and peer events are shown below.')),
             E('fieldset', { 'class': 'cbi-section' }, [
                 E('legend', {}, _('Logs')),
                 E('div', { 'class': 'cbi-section-node' }, area)

@@ -183,3 +183,12 @@ msgstr "出口节点"
 
 msgid "Allow this device to act as an exit node."
 msgstr "允许此设备作为出口节点。"
+
+msgid "NetBird is a zero-configuration private network platform based on WireGuard. Easily build a secure overlay mesh network among your multiple dispersed nodes."
+msgstr "NetBird 是基于 WireGuard 的零配置私有网络管理平台。支持一键快速连接，自动构建网格化的加密 P2P 组网信道，轻松打通异地多端网络互联。"
+
+msgid "Configure your NetBird daemon connection variables. Fill in your Setup Key or bind to your custom Self-Hosted coordination management URL to register the router."
+msgstr "配置 NetBird 守护进程连接变量。在此填入 Setup Key 快速激活绑定，或配置自定义 Self-Hosted 协调服务器与管理控制台 URL。"
+
+msgid "Inspect and stream the local NetBird daemon service logs. Synchronized topology updates, WireGuard link configurations, and peer events are shown below."
+msgstr "实时查看和流式导出 NetBird 本地守护进程运行日志。包括与信号服务器握手状态、节点拓扑实时同步及加密信道更新日志。"
