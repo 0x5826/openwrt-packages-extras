@@ -342,3 +342,15 @@ msgstr "配置已保存，但生效失败，请强制重启服务。"
 
 msgid "Configuration saved, but service is not running or reload failed. Please force restart service."
 msgstr "配置已保存，但服务未运行或重载失败，请强制重启服务。"
+
+msgid "Overview of the local frpc service state, active process PID, loaded config files, and detailed online proxy information."
+msgstr "展示 frpc 客户端本地服务运行状态、活动进程 PID、当前加载的配置文件以及在线穿透隧道的实时统计与健康度参数。"
+
+msgid "Configure the Frp client parameters. Complete the server link details and local port forwarding rules to build an intranet penetration channel."
+msgstr "配置 Frp 客户端的核心参数。支持一键式服务状态启用控制，并提供具备语法高亮、实时语法校验、行号提示的专业级 TOML 配置文件编辑器。"
+
+msgid "Real-time background system logs of the active frpc process, helping you diagnose server handshake and protocol errors."
+msgstr "实时查询当前活跃 frpc 进程的后台系统日志，方便您快速诊断与 frp 服务端的握手协议及穿透连接异常。"
+
+msgid "Frp Client Title"
+msgstr "Frp 客户端"

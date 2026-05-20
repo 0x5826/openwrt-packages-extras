@@ -251,8 +251,8 @@ return view.extend({
 		}, this), 0);
 
 		return E('div', { 'class': 'cbi-map' }, [
-			E('h2', {}, _('Frp Client Settings')),
-			E('div', { 'class': 'cbi-map-descr' }, _('Single TOML editor with syntax highlight, line numbers and error position hints.')),
+			E('h2', {}, _('Frp Client Title') + ' - ' + _('Settings')),
+			E('div', { 'class': 'cbi-map-descr' }, _('Configure the Frp client parameters. Complete the server link details and local port forwarding rules to build an intranet penetration channel.')),
 			E('div', { 'class': 'cbi-section' }, [
 				E('h3', { 'class': 'cbi-section-title' }, _('Service Control')),
 				E('div', { 'class': 'cbi-value' }, [

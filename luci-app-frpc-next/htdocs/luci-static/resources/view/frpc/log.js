@@ -23,8 +23,8 @@ return view.extend({
 		poll.add(() => this.updateLogs(), 5);
 
 		return E('div', { 'class': 'cbi-map' }, [
-			E('h2', {}, _('Frp Client Log')),
-			E('div', { 'class': 'cbi-map-descr' }, _('Showing the last 100 lines of frpc service logs.')),
+			E('h2', {}, _('Frp Client Title') + ' - ' + _('Log')),
+			E('div', { 'class': 'cbi-map-descr' }, _('Real-time background system logs of the active frpc process, helping you diagnose server handshake and protocol errors.')),
 			E('fieldset', { 'class': 'cbi-section' }, [
 				E('legend', {}, _('Logs')),
 				E('div', { 'class': 'cbi-section-node' }, area)

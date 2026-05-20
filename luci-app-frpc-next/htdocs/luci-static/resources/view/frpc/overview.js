@@ -87,8 +87,8 @@ return view.extend({
 		const stateInfo = renderState(status || {});
 
 		const container = E('div', { 'class': 'cbi-map' }, [
-			E('h2', {}, _('Frp Client Overview')),
-			E('div', { 'class': 'cbi-map-descr' }, _('Frp Client overview of runtime state, generated config, and proxy count.'))
+			E('h2', {}, _('Frp Client Title') + ' - ' + _('Overview')),
+			E('div', { 'class': 'cbi-map-descr' }, _('Overview of the local frpc service state, active process PID, loaded config files, and detailed online proxy information.'))
 		]);
 
 		const statusSection = E('div', { 'class': 'cbi-section' }, [
