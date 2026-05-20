@@ -36,7 +36,7 @@ return view.extend({
 		}, 5);
 
 		return E('div', { 'class': 'cbi-map' }, [
-			E('h2', {}, _('Shadowsocks Server') + ' - ' + _('Log')),
+			E('h2', {}, _('Shadowsocks Server Title') + ' - ' + _('Log')),
 			E('div', { 'class': 'cbi-map-descr' }, _('Logs are updated every 5 seconds.')),
 			E('fieldset', { 'class': 'cbi-section' }, [
 				E('legend', {}, _('Log')),

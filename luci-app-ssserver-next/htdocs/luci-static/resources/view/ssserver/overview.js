@@ -63,7 +63,7 @@ return view.extend({
 		const firewall = (ssserverConfig.open_firewall === '1') ? _('Enabled') : _('Disabled');
 
 		const container = E('div', { 'class': 'cbi-map' }, [
-			E('h2', {}, _('Shadowsocks Server') + ' - ' + _('Overview')),
+			E('h2', {}, _('Shadowsocks Server Title') + ' - ' + _('Overview')),
 			E('div', { 'class': 'cbi-map-descr' }, _('Overview of ssserver running status and actual runtime configurations.'))
 		]);
 

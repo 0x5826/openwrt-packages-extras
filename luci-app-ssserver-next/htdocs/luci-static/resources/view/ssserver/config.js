@@ -36,7 +36,7 @@ return view.extend({
 		var tfo_val = data[1].value || 0;
 		var lan_ip = data[2].ip || '192.168.1.1';
 
-		m = new form.Map('ssserver', _('Shadowsocks Server') + ' - ' + _('Settings'),
+		m = new form.Map('ssserver', _('Shadowsocks Server Title') + ' - ' + _('Settings'),
 			_('A fast and secure tunnel proxy that helps you securely access your local network. ' +
 			  'This version uses shadowsocks-rust.'));
 

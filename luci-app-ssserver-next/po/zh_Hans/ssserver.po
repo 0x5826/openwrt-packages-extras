@@ -142,3 +142,5 @@ msgstr "秒"
 msgid "Loading logs..."
 msgstr "正在加载日志..."
 
+msgid "Shadowsocks Server Title"
+msgstr "Shadowsocks 服务端"
