@@ -73,6 +73,37 @@ const methods = {
 			}
 			return { ip: ip };
 		}
+	},
+
+	get_status: {
+		call: function() {
+			let u = connect();
+			let running = false;
+			let pid = null;
+			if (u) {
+				let res = u.call('service', 'list', { name: 'ssserver' });
+				if (res && res.ssserver && res.ssserver.instances) {
+					let inst = res.ssserver.instances.instance1;
+					if (inst && inst.running) {
+						running = true;
+						pid = inst.pid;
+					}
+				}
+				u.disconnect();
+			}
+			return { running: running, pid: pid };
+		}
+	},
+
+	service_action: {
+		args: { action: '' },
+		call: function(req) {
+			let action = req.args?.action ?? '';
+			if (action != 'start' && action != 'stop' && action != 'restart' && action != 'reload')
+				return { success: false, error: 'invalid action' };
+			let rc = system('/etc/init.d/ssserver ' + action + ' >/dev/null 2>&1');
+			return { success: (rc === 0), applied: (rc === 0) };
+		}
 	}
 };
 

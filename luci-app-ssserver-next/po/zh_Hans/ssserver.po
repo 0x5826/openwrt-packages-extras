@@ -4,6 +4,27 @@ msgstr "Content-Type: text/plain; charset=UTF-8"
 msgid "Shadowsocks Server"
 msgstr "Shadowsocks服务端"
 
+msgid "Overview"
+msgstr "概览"
+
+msgid "Service Status"
+msgstr "服务状态"
+
+msgid "Current Status"
+msgstr "当前状态"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "Restart"
+msgstr "重启"
+
+msgid "Unknown"
+msgstr "未知"
+
 msgid "A fast and secure tunnel proxy that helps you securely access your local network. This version uses shadowsocks-rust."
 msgstr "一个快速、安全的隧道代理，可以帮助您安全地访问局域网。此版本使用 shadowsocks-rust。"
 
@@ -80,10 +101,44 @@ msgid "Automatically open the server port in the firewall (WAN)."
 msgstr "自动在防火墙 (WAN) 中开放服务器端口。"
 
 msgid "Shadowsocks Server Log"
-msgstr "Shadowsocks 服务端日志"
+msgstr "Shadowsocks服务端日志"
 
 msgid "Logs are updated every 5 seconds."
 msgstr "日志每 5 秒更新一次。"
 
 msgid "No log entries found."
 msgstr "未找到日志条目。"
+
+msgid "Default"
+msgstr "默认"
+
+msgid "Enabled"
+msgstr "已启用"
+
+msgid "Disabled"
+msgstr "已禁用"
+
+msgid "Overview of ssserver running status and actual runtime configurations."
+msgstr "Shadowsocks服务端运行状态及当前运行配置概览。"
+
+msgid "Restarting Shadowsocks Server, please wait..."
+msgstr "正在重启Shadowsocks服务端，请稍候..."
+
+msgid "Service restarted successfully."
+msgstr "服务重启成功。"
+
+msgid "Failed to restart service."
+msgstr "服务重启失败。"
+
+msgid "An error occurred: "
+msgstr "发生错误："
+
+msgid "Runtime Configurations"
+msgstr "运行配置"
+
+msgid "seconds"
+msgstr "秒"
+
+msgid "Loading logs..."
+msgstr "正在加载日志..."
+
