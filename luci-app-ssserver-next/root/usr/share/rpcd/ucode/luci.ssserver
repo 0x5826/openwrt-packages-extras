@@ -1,0 +1,79 @@
+'use strict';
+
+import { connect } from 'ubus';
+import * as fs from 'fs';
+
+const methods = {
+	get_log: {
+		call: function() {
+			let p = fs.popen('logread -e ssserver');
+			let log = '';
+			if (p) {
+				log = p.read('all');
+				p.close();
+			}
+			return { log: log };
+		}
+	},
+
+	get_ciphers: {
+		call: function() {
+			let ciphers = [];
+			let p = fs.popen('/usr/bin/ssserver --help 2>&1');
+			if (p) {
+				let output = p.read('all');
+				p.close();
+				let start = index(output, '--encrypt-method');
+				if (start >= 0) {
+					let sub = substr(output, start);
+					let res = match(sub, /possible values: ([^\]]+)/);
+					if (res) {
+						let list = split(res[1], /,\s*/);
+						for (let c in list) {
+							let val = rtrim(ltrim(c));
+							// Clean up possible newlines and extra spaces
+							val = replace(val, /\s+/g, "");
+							if (val) push(ciphers, val);
+						}
+					}
+				}
+			}
+			// Fallback if parsing fails or returns nothing
+			if (length(ciphers) == 0) {
+				ciphers = [
+					'chacha20-ietf-poly1305',
+					'aes-256-gcm',
+					'aes-128-gcm',
+					'2022-blake3-aes-128-gcm',
+					'2022-blake3-aes-256-gcm',
+					'2022-blake3-chacha20-poly1305'
+				];
+			}
+			return { ciphers: ciphers };
+		}
+	},
+
+	get_tfo_status: {
+		call: function() {
+			let val = rtrim(fs.readfile('/proc/sys/net/ipv4/tcp_fastopen') || '0');
+			return { value: +val };
+		}
+	},
+
+	get_lan_ip: {
+		call: function() {
+			let u = connect();
+			let ip = '';
+			if (u) {
+				let status = u.call('network.interface.lan', 'status');
+				if (status && type(status['ipv4-address']) === 'array' && length(status['ipv4-address']) > 0) {
+					ip = status['ipv4-address'][0].address;
+				}
+				u.disconnect();
+			}
+			return { ip: ip };
+		}
+	}
+};
+
+return { 'luci.ssserver': methods };

@@ -1,0 +1,220 @@
+#!/usr/bin/ucode
+'use strict';
+import { popen, readfile, writefile, unlink } from 'fs';
+import { cursor } from 'uci';
+
+function trim(s) {
+    if (s) return replace(s, /^\s+|\s+$/g, '');
+    return s;
+}
+
+function shellquote(s) {
+    if (!s) return "''";
+    return "'" + replace(s, "'", "'\\''") + "'";
+}
+
+function get_configdir() {
+    let c = cursor();
+    c.load('lucky');
+    let dir = c.get('lucky', '@lucky[0]', 'configdir');
+    return dir ? trim(dir) : '';
+}
+
+function get_pid() {
+    let fd = popen("pidof /usr/bin/lucky");
+    let pid = fd ? trim(fd.read('all')) : "";
+    if (fd) fd.close();
+    return pid;
+}
+
+const CACHE_FILE = '/tmp/lucky_info_cache';
+
+// 读取缓存，仅在 PID 未变（包括停止状态 pid==""）时返回有效数据
+function get_cache() {
+    try {
+        let content = readfile(CACHE_FILE);
+        if (content) {
+            let cache = json(content);
+            let currentPid = get_pid();
+            if (cache && cache.pid === currentPid && cache.data) {
+                return cache.data;
+            }
+        }
+    } catch(err) {}
+    return null;
+}
+
+// 写入缓存，绑定当前 PID
+function set_cache(data) {
+    let pid = get_pid();
+    if (data) {
+        writefile(CACHE_FILE, sprintf("%J", { pid: pid, data: data }));
+    }
+}
+
+// 清除缓存
+function clear_cache() {
+    try { unlink(CACHE_FILE); } catch(err) {}
+}
+
+const methods = {
+    // 合并接口：一次返回运行状态 + 程序信息 + 管理信息
+    get_info: {
+        call: function() {
+            let configPath = get_configdir();
+
+            // 1. 检测运行状态
+            let pid = get_pid();
+            let running = (pid !== "");
+
+            // 2. 程序信息（从缓存或实时获取）
+            let luckyInfo = "";
+            let luckyArch = "";
+            let adminPort = "";
+            let adminSafeUrl = "";
+            let adminAllowInternet = false;
+
+            let cached = get_cache();
+            if (cached) {
+                luckyInfo = cached.luckyInfo || "";
+                luckyArch = cached.luckyArch || "";
+                adminPort = cached.adminPort || "";
+                adminSafeUrl = cached.adminSafeUrl || "";
+                adminAllowInternet = cached.adminAllowInternet || false;
+            } else {
+                let fd = popen(configPath ?
+                    `/usr/bin/lucky -info -cd ${shellquote(configPath)}` :
+                    "/usr/bin/lucky -info");
+                if (fd) { luckyInfo = trim(fd.read('all')); fd.close(); }
+
+                fd = popen("/usr/bin/luckyarch");
+                if (fd) { luckyArch = trim(fd.read('all')); fd.close(); }
+
+                let cmd = configPath ?
+                    `/usr/bin/lucky -baseConfInfo -cd ${shellquote(configPath)}` :
+                    `/usr/bin/lucky -baseConfInfo`;
+                fd = popen(cmd);
+                if (fd) {
+                    let confStr = trim(fd.read('all'));
+                    fd.close();
+                    if (confStr) {
+                        try {
+                            let obj = json(confStr);
+                            if (obj && obj.BaseConfigure) {
+                                adminPort = obj.BaseConfigure.AdminWebListenPort || "";
+                                adminSafeUrl = obj.BaseConfigure.SafeURL || "";
+                                adminAllowInternet = obj.BaseConfigure.AllowInternetaccess || false;
+                            }
+                        } catch(err) {}
+                    }
+                }
+
+                set_cache({ 
+                    luckyInfo: luckyInfo, 
+                    luckyArch: luckyArch,
+                    adminPort: adminPort,
+                    adminSafeUrl: adminSafeUrl,
+                    adminAllowInternet: adminAllowInternet
+                });
+            }
+
+
+
+            return {
+                running: running,
+                luckyInfo: luckyInfo,
+                luckyArch: luckyArch,
+                adminPort: adminPort,
+                adminSafeUrl: adminSafeUrl,
+                adminAllowInternet: adminAllowInternet
+            };
+        }
+    },
+    // 保留轻量 get_status 用于 poll 轮询
+    get_status: {
+        call: function() {
+            return { running: (get_pid() !== "") };
+        }
+    },
+    get_log: {
+        call: function() {
+            let fd = popen("logread -e lucky | tail -n 100");
+            let log = fd ? fd.read('all') : "";
+            if (fd) fd.close();
+            return { log: log };
+        }
+    },
+    set_config: {
+        args: { key: 'key', value: 'value' },
+        call: function(req) {
+            if (!req.args || !req.args.key) {
+                return { ret: 1 };
+            }
+            let key = req.args.key;
+            let value = req.args.value || "";
+            let ret = 1;
+            let configPath = get_configdir();
+
+            if (key === "admin_http_port" || key === "admin_safe_url" || key === "switch_Internetaccess") {
+                let realKey = key;
+                let cmd = "";
+
+                if (key === "admin_http_port") realKey = "AdminWebListenPort";
+                else if (key === "admin_safe_url") realKey = "SafeURL";
+                else if (key === "switch_Internetaccess") realKey = "AllowInternetaccess";
+
+                if (key === "admin_safe_url" && value === "") {
+                    cmd = `/usr/bin/lucky -rCancelSafeURL`;
+                } else {
+                    cmd = `/usr/bin/lucky -setconf -key ${shellquote(realKey)} -value ${shellquote(value)}`;
+                }
+
+                if (configPath !== "") {
+                    cmd += ` -cd ${shellquote(configPath)}`;
+                }
+                system(cmd);
+                ret = 0;
+            } else if (key === "configdir") {
+                let c = cursor();
+                c.load('lucky');
+                c.set('lucky', '@lucky[0]', 'configdir', value);
+                c.commit('lucky');
+                ret = 0;
+            } else if (key === "reset_auth_info") {
+                let cmd1 = `/usr/bin/lucky -setconf -key AdminAccount -value 666`;
+                let cmd2 = `/usr/bin/lucky -setconf -key AdminPassword -value 666`;
+                if (configPath !== "") {
+                    cmd1 += ` -cd ${shellquote(configPath)}`;
+                    cmd2 += ` -cd ${shellquote(configPath)}`;
+                }
+                system(cmd1);
+                system(cmd2);
+                ret = 0;
+            }
+
+            return { ret: ret };
+        }
+    },
+    service: {
+        args: { action: 'action' },
+        call: function(req) {
+            if (!req.args || !req.args.action) {
+                return { success: false };
+            }
+            let action = req.args.action;
+            let applied = true;
+            if (action === "start" || action === "restart" || action === "stop") {
+                // 停止时清除缓存
+                if (action === "stop") {
+                    clear_cache();
+                }
+                let rc = system(`/etc/init.d/lucky ${action} >/dev/null 2>&1`);
+                applied = (rc === 0);
+                system("sleep 2");
+            }
+            return { success: true, applied: applied };
+        }
+    }
+};
+
+return { 'luci.lucky': methods };

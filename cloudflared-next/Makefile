@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: GPL-3.0-only
+#
+# Copyright (C) 2021 ImmortalWrt.org
+
+include $(TOPDIR)/rules.mk
+
+PKG_NAME:=cloudflared-next
+PKG_VERSION:=2026.5.0
+PKG_RELEASE:=1
+
+PKG_SOURCE:=cloudflared-$(PKG_VERSION).tar.gz
+PKG_SOURCE_URL:=https://codeload.github.com/cloudflare/cloudflared/tar.gz/$(PKG_VERSION)?
+PKG_HASH:=21d57fc7da8d83ba9633f79f7593f5898a027f8410fecf5a8c33661090aa7063
+
+PKG_BUILD_DIR:=$(BUILD_DIR)/cloudflared-$(PKG_VERSION)
+
+PKG_LICENSE:=Apache-2.0
+PKG_LICENSE_FILES:=LICENSE
+PKG_MAINTAINER:=Tianling Shen <cnsztl@immortalwrt.org>
+
+PKG_BUILD_DEPENDS:=golang/host
+PKG_BUILD_PARALLEL:=1
+PKG_BUILD_FLAGS:=no-mips16
+
+GO_PKG:=github.com/cloudflare/cloudflared
+GO_PKG_LDFLAGS_X:=main.Version=$(PKG_VERSION)
+
+include $(INCLUDE_DIR)/package.mk
+include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
+
+define Package/cloudflared-next
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=Web Servers/Proxies
+  TITLE:=Cloudflare Tunnel client Next
+  URL:=https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/get-started/
+  DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle
+  PROVIDES:=cloudflared
+  CONFLICTS:=cloudflared
+endef
+
+define Package/cloudflared-next/description
+  Contains the command-line client for Cloudflare Tunnel, a tunneling
+  daemon that proxies traffic from the Cloudflare network to your origins.
+
+  This daemon sits between Cloudflare network and your origin (e.g. a
+  webserver). Cloudflare attracts client requests and sends them to you
+  via this daemon, without requiring you to poke holes on your firewall
+  --- your origin can remain as closed as possible.
+endef
+
+define Package/cloudflared-next/conffiles
+/etc/config/cloudflared
+/etc/cloudflared/
+endef
+
+define Package/cloudflared-next/install
+	$(call GoPackage/Package/Install/Bin,$(1))
+
+	$(INSTALL_DIR) $(1)/etc/cloudflared/
+	$(INSTALL_CONF) $(CURDIR)/files/sample_config.yml $(1)/etc/cloudflared/config.yml
+	$(INSTALL_DIR) $(1)/etc/config/
+	$(INSTALL_CONF) $(CURDIR)/files/cloudflared.config $(1)/etc/config/cloudflared
+	$(INSTALL_DIR) $(1)/etc/init.d/
+	$(INSTALL_BIN) $(CURDIR)/files/cloudflared.init $(1)/etc/init.d/cloudflared
+endef
+
+$(eval $(call GoBinPackage,cloudflared-next))
+$(eval $(call BuildPackage,cloudflared-next))

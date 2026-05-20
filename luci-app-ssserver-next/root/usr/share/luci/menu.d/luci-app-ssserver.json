@@ -1,0 +1,26 @@
+{
+	"admin/services/ssserver": {
+		"title": "Shadowsocks Server",
+		"action": {
+			"type": "alias",
+			"path": "admin/services/ssserver/config"
+		},
+		"index": 50
+	},
+	"admin/services/ssserver/config": {
+		"title": "Settings",
+		"action": {
+			"type": "view",
+			"path": "ssserver/config"
+		},
+		"index": 10
+	},
+	"admin/services/ssserver/log": {
+		"title": "Log",
+		"action": {
+			"type": "view",
+			"path": "ssserver/log"
+		},
+		"index": 20
+	}
+}

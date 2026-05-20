@@ -1,0 +1,28 @@
+config frpc 'main'
+	option enabled '0'
+	option server_addr '127.0.0.1'
+	option server_port '7000'
+	option token ''
+	option webServer_addr '127.0.0.1'
+	option webServer_port '7400'
+	option webServer_user 'admin'
+	option webServer_pwd 'admin'
+	option log_file '/var/log/frpc.log'
+	option log_level 'info'
+	option log_max_days '3'
+
+# Example TCP Proxy
+# config proxy 'ssh_example'
+# 	option type 'tcp'
+# 	option local_ip '127.0.0.1'
+# 	option local_port '22'
+# 	option remote_port '6000'
+# 	option use_encryption '1'
+# 	option use_compression '1'
+
+# Example HTTP Proxy
+# config proxy 'web_example'
+# 	option type 'http'
+# 	option local_ip '127.0.0.1'
+# 	option local_port '80'
+# 	option custom_domains 'example.com'

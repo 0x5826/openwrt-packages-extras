@@ -1,0 +1,88 @@
+'use strict';
+
+import { access, readfile, writefile } from 'fs';
+import { cursor } from 'uci';
+
+const UCI_CONFIG = 'netbird';
+
+const methods = {
+    get_status: {
+        call: function() {
+            let status_json = {};
+            
+            // Check if daemon is likely running by looking for its socket
+            let daemon_running = access('/var/run/netbird.sock', 'f');
+            
+            if (daemon_running) {
+                system('/usr/bin/netbird status --json > /tmp/netbird_status.json 2>/dev/null');
+                let content = readfile('/tmp/netbird_status.json');
+                if (content) {
+                    try {
+                        status_json = json(content);
+                    } catch (e) {}
+                }
+            }
+            
+            // Always try to get version if not provided by status
+            if (!status_json.daemon_version && !status_json.cli_version) {
+                system('/usr/bin/netbird version > /tmp/netbird_version 2>/dev/null');
+                let vline = readfile('/tmp/netbird_version');
+                if (vline) {
+                    // Manual trim: split by space or newline and take first part
+                    let parts = split(vline, /[ \n\r\t]+/);
+                    if (length(parts) > 0 && parts[0] != "") {
+                        status_json.cli_version = parts[0];
+                    } else {
+                        status_json.cli_version = vline;
+                    }
+                }
+            }
+            
+            let uci_cursor = cursor();
+            let config = {
+                enabled: int(uci_cursor.get(UCI_CONFIG, '@netbird[0]', 'enabled') || '0'),
+                setup_key: uci_cursor.get(UCI_CONFIG, '@netbird[0]', 'setup_key') || '',
+                management_url: uci_cursor.get(UCI_CONFIG, '@netbird[0]', 'management_url') || '',
+                admin_url: uci_cursor.get(UCI_CONFIG, '@netbird[0]', 'admin_url') || 'https://app.netbird.io/',
+                exit_node: int(uci_cursor.get(UCI_CONFIG, '@netbird[0]', 'exit_node') || '0'),
+                identity_exists: access('/root/.config/netbird/default.json', 'f')
+            };
+            
+            return {
+                config: config,
+                status: status_json
+            };
+        }
+    },
+
+    get_logs: {
+        args: { lines: 100 },
+        call: function(request) {
+            let lines = int(request.args?.lines ?? 100);
+            let logs = "";
+            let log_tmp = "/tmp/netbird_log.tmp";
+            
+            // Get logs and strip the redundant system prefixes (e.g., "daemon.info netbird[123]: ")
+            system('logread -e netbird | tail -n ' + lines + " | sed 's/^.*netbird\\[[0-9]*\\]: //' > " + log_tmp + ' 2>&1');
+            logs = readfile(log_tmp) || "";
+            
+            return { logs: logs };
+        }
+    },
+
+    connect: {
+        args: { setup_key: "string" },
+        call: function(request) {
+            return { result: true };
+        }
+    },
+
+    disconnect: {
+        call: function() {
+            let res = system('/usr/bin/netbird down >/dev/null 2>&1');
+            return { result: (res === 0) };
+        }
+    }
+};
+
+return { 'luci.netbird': methods };
