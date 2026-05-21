@@ -2,6 +2,7 @@
 'require view';
 'require uci';
 'require form';
+'require ui';
 
 return view.extend({
 	load: function() {
@@ -11,8 +12,63 @@ return view.extend({
 		]);
 	},
 
+	// Check if the current config meets the requirements to enable service.
+	// Returns an error string if conditions are not met, or null if OK.
+	_checkEnableRequirements: function() {
+		var link_sections = uci.sections('linkback', 'link') || [];
+		if (link_sections.length <= 1) {
+			return _('Cannot enable service: At least 2 monitored WAN interfaces must be configured for failover switcher.');
+		}
+		var has_valid_check = false;
+		for (var i = 0; i < link_sections.length; i++) {
+			var s_id = link_sections[i]['.name'];
+			if (uci.get('linkback', s_id, 'ping_targets') ||
+			    uci.get('linkback', s_id, 'dns_server') ||
+			    uci.get('linkback', s_id, 'tcp_target')) {
+				has_valid_check = true;
+				break;
+			}
+		}
+		if (!has_valid_check) {
+			return _('Cannot enable service: At least one interface must have a configured check type (Ping, DNS, or TCP).');
+		}
+		return null;
+	},
+
+	// Override handleSave: show native LuCI warning notification bar instead of
+	// the full-screen red modal error dialog when enable conditions are not met.
+	handleSave: function() {
+		var cb = document.querySelector('input[type="checkbox"][name$=".enabled"]');
+		var will_enable = cb ? cb.checked : false;
+
+		if (will_enable) {
+			var err = this._checkEnableRequirements();
+			if (err) {
+				ui.addNotification(null, E('p', err), 'warning');
+				return Promise.resolve();
+			}
+		}
+		return this.map ? this.map.save() : Promise.resolve();
+	},
+
+	// Override handleSaveApply: same guard with save+apply.
+	handleSaveApply: function(ev, mode) {
+		var cb = document.querySelector('input[type="checkbox"][name$=".enabled"]');
+		var will_enable = cb ? cb.checked : false;
+
+		if (will_enable) {
+			var err = this._checkEnableRequirements();
+			if (err) {
+				ui.addNotification(null, E('p', err), 'warning');
+				return Promise.resolve();
+			}
+		}
+		return this.map ? this.map.save(null, true) : Promise.resolve();
+	},
+
 	render: function() {
 		var m, s, o;
+		var self = this;
 
 		// Helper function to expand table column controls and eliminate right empty space
 		var makeTableColumnExpand = function(opt, width) {
@@ -38,6 +94,9 @@ return view.extend({
 			_('LinkBack 链路守护') + ' - ' + _('Settings'),
 			_('Configure Multi-WAN failover service, health check parameters, and monitored link interfaces.'));
 
+		// Store map reference for use in handleSave/handleSaveApply
+		self.map = m;
+
 		// --- Global Settings Section ---
 		s = m.section(form.TypedSection, 'global', _('Global Settings'));
 		s.anonymous = true;
@@ -46,31 +105,9 @@ return view.extend({
 		o = s.option(form.Flag, 'enabled', _('Enable Service'),
 			_('Master switch to enable or disable the LinkBack failover daemon.'));
 		o.rmempty = false;
+		// Validation is now handled by handleSave/handleSaveApply via ui.addNotification.
+		// Keep a passthrough validate to avoid the LuCI red modal when deleting interfaces.
 		o.validate = function(section_id, value) {
-			var form_val = (typeof(this.formvalue) === 'function') ? this.formvalue(section_id) : null;
-			// If service is not being enabled (both value and latest form input are not '1'), skip strong validations
-			if (value !== '1' || form_val === '0') {
-				return true;
-			}
-
-			var link_sections = uci.sections('linkback', 'link');
-			if (!link_sections || link_sections.length <= 1) {
-				return _('Cannot enable service: At least 2 monitored WAN interfaces must be configured for failover switcher.');
-			}
-			var has_valid_check = false;
-			for (var i = 0; i < link_sections.length; i++) {
-				var s_id = link_sections[i]['.name'];
-				var ping_targets = uci.get('linkback', s_id, 'ping_targets');
-				var dns_server = uci.get('linkback', s_id, 'dns_server');
-				var tcp_target = uci.get('linkback', s_id, 'tcp_target');
-				if (ping_targets || dns_server || tcp_target) {
-					has_valid_check = true;
-					break;
-				}
-			}
-			if (!has_valid_check) {
-				return _('Cannot enable service: At least one interface must have a configured check type (Ping, DNS, or TCP).');
-			}
 			return true;
 		};
 
@@ -205,14 +242,14 @@ return view.extend({
 			}
 		};
 
-		// 2. Ping Probe Parameters
+		// 6. Ping Probe Parameters
 		o = s.option(form.Value, 'ping_targets', _('Ping Targets'),
 			_('Space-separated list of IPs to ping (e.g., 223.5.5.5 8.8.8.8).'));
 		o.rmempty = true;
 		o.modalonly = true;
 		o.depends('check_type', 'ping');
 
-		// 3. DNS Probe Parameters
+		// 7. DNS Probe Parameters
 		o = s.option(form.Value, 'dns_server', _('DNS Server'),
 			_('DNS server IP for UDP query probe (e.g., 119.29.29.29).'));
 		o.datatype = 'ip4addr';
@@ -226,7 +263,7 @@ return view.extend({
 		o.modalonly = true;
 		o.depends('check_type', 'dns');
 
-		// 4. TCP Probe Parameters
+		// 8. TCP Probe Parameters
 		o = s.option(form.Value, 'tcp_target', _('TCP Target'),
 			_('Target IP for TCP handshake probe.'));
 		o.datatype = 'ip4addr';
@@ -241,7 +278,7 @@ return view.extend({
 		o.modalonly = true;
 		o.depends('check_type', 'tcp');
 
-		// 5. Individual health check options (Modal only)
+		// 9. Individual health check options (Modal only)
 		o = s.option(form.Value, 'check_interval', _('Check Interval (s)'),
 			_('Time in seconds between each health check cycle for this link.'));
 		o.datatype = 'uinteger';
@@ -270,171 +307,6 @@ return view.extend({
 		o.rmempty = false;
 		o.modalonly = true;
 
-		return m.render().then(function(map_node) {
-			// 1. Inject styling for the gorgeous blue alert and disabled state
-			if (!document.getElementById('linkback_settings_style')) {
-				var css = [
-					'.linkback-alert-info {',
-					'    background-color: rgba(33, 150, 243, 0.1) !important;',
-					'    border-left: 4px solid #2196f3 !important;',
-					'    color: #0d47a1 !important;',
-					'    padding: 12px 16px !important;',
-					'    margin-bottom: 20px !important;',
-					'    border-radius: 4px !important;',
-					'    font-size: 13px !important;',
-					'    line-height: 1.5 !important;',
-					'    display: flex !important;',
-					'    align-items: center !important;',
-					'    gap: 12px !important;',
-					'    box-shadow: 0 2px 5px rgba(33, 150, 243, 0.05) !important;',
-					'}',
-					'.linkback-disabled-wrapper {',
-					'    opacity: 0.5 !important;',
-					'    cursor: not-allowed !important;',
-					'}',
-					'.linkback-disabled-wrapper * {',
-					'    pointer-events: none !important;',
-					'}'
-				].join('\n');
-				var style_node = document.createElement('style');
-				style_node.id = 'linkback_settings_style';
-				style_node.innerHTML = css;
-				document.head.appendChild(style_node);
-			}
-
-			// 2. Define the status checking and rendering logic
-			var lastState = null;
-			var checkStatus = function() {
-				var link_sections = uci.sections('linkback', 'link') || [];
-				var has_valid_check = false;
-				for (var i = 0; i < link_sections.length; i++) {
-					var s_id = link_sections[i]['.name'];
-					var ping_targets = uci.get('linkback', s_id, 'ping_targets');
-					var dns_server = uci.get('linkback', s_id, 'dns_server');
-					var tcp_target = uci.get('linkback', s_id, 'tcp_target');
-					if (ping_targets || dns_server || tcp_target) {
-						has_valid_check = true;
-						break;
-					}
-				}
-
-				var currentState = 'valid';
-				var errorMsg = null;
-				if (link_sections.length <= 1) {
-					currentState = 'no_links';
-					errorMsg = _('Cannot enable service: At least 2 monitored WAN interfaces must be configured for failover switcher.');
-				} else if (!has_valid_check) {
-					currentState = 'no_checks';
-					errorMsg = _('Cannot enable service: At least one interface must have a configured check type (Ping, DNS, or TCP).');
-				}
-
-				if (currentState === lastState) {
-					return;
-				}
-				lastState = currentState;
-
-				// Find the global checkbox
-				var checkbox = map_node.querySelector('.cbi-section[id^="cbi-linkback-"] input[type="checkbox"][name$=".enabled"]') ||
-				               map_node.querySelector('input[type="checkbox"][name$=".enabled"]');
-				var checkboxContainer = checkbox ? checkbox.closest('.cbi-value') : null;
-				var global_section = map_node.querySelector('.cbi-section');
-
-				var alertBar = map_node.querySelector('#linkback-status-alert');
-
-				if (errorMsg) {
-					// Need to show warning and lock/disable the checkbox
-					if (!alertBar) {
-						if (global_section) {
-							alertBar = document.createElement('div');
-							alertBar.id = 'linkback-status-alert';
-							alertBar.className = 'linkback-alert-info';
-							
-							var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-							svg.setAttribute('viewBox', '0 0 24 24');
-							svg.setAttribute('width', '18');
-							svg.setAttribute('height', '18');
-							svg.setAttribute('fill', 'none');
-							svg.setAttribute('stroke', 'currentColor');
-							svg.setAttribute('stroke-width', '2');
-							svg.setAttribute('stroke-linecap', 'round');
-							svg.setAttribute('stroke-linejoin', 'round');
-							svg.style.flexShrink = '0';
-							svg.style.marginRight = '8px';
-
-							var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-							circle.setAttribute('cx', '12');
-							circle.setAttribute('cy', '12');
-							circle.setAttribute('r', '10');
-							svg.appendChild(circle);
-
-							var line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-							line1.setAttribute('x1', '12');
-							line1.setAttribute('y1', '16');
-							line1.setAttribute('x2', '12');
-							line1.setAttribute('y2', '12');
-							svg.appendChild(line1);
-
-							var line2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-							line2.setAttribute('x1', '12');
-							line2.setAttribute('y1', '8');
-							line2.setAttribute('x2', '12.01');
-							line2.setAttribute('y2', '8');
-							svg.appendChild(line2);
-
-							alertBar.appendChild(svg);
-
-							var textDiv = document.createElement('div');
-							textDiv.id = 'linkback-status-alert-text';
-							textDiv.textContent = errorMsg;
-							alertBar.appendChild(textDiv);
-
-							global_section.insertBefore(alertBar, global_section.firstChild);
-						}
-					} else {
-						var alertText = alertBar.querySelector('#linkback-status-alert-text');
-						if (alertText) {
-							alertText.textContent = errorMsg;
-						}
-						alertBar.style.display = '';
-					}
-
-					if (checkbox) {
-						checkbox.disabled = true;
-						checkbox.checked = false;
-						// Trigger change event to notify LuCI UI model of the state update
-						var event = document.createEvent('HTMLEvents');
-						event.initEvent('change', true, true);
-						checkbox.dispatchEvent(event);
-					}
-					if (checkboxContainer) {
-						checkboxContainer.classList.add('linkback-disabled-wrapper');
-					}
-				} else {
-					// Everything is valid, clear alerts and unlock checkbox
-					if (alertBar) {
-						alertBar.style.display = 'none';
-					}
-					if (checkbox) {
-						checkbox.disabled = false;
-					}
-					if (checkboxContainer) {
-						checkboxContainer.classList.remove('linkback-disabled-wrapper');
-					}
-				}
-			};
-
-			// 3. Initial check on page render
-			checkStatus();
-
-			// 4. Setup MutationObserver to watch for changes (rows added/deleted/edited)
-			var observer = new MutationObserver(function(mutations) {
-				observer.disconnect();
-				checkStatus();
-				observer.observe(map_node, { childList: true, subtree: true });
-			});
-			observer.observe(map_node, { childList: true, subtree: true });
-
-			return map_node;
-		});
+		return m.render();
 	}
 });
