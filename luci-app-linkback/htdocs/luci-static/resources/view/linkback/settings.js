@@ -194,7 +194,7 @@ return view.extend({
 
 		// 5. Dummy display option for Check Type in main Grid table (read-only)
 		o = s.option(form.DummyValue, 'check_type_disp', _('Check Type'));
-		o.tableonly = true;
+		o.modalonly = false;
 		o.cfgvalue = function(section_id) {
 			if (uci.get('linkback', section_id, 'ping_targets'))
 				return _('Ping Probe');
