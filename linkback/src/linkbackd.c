@@ -506,6 +506,33 @@ static bool validate_loaded_config(void) {
 	return true;
 }
 
+// Retrieve the real default route metric for a device from /proc/net/route
+static int get_system_route_metric(const char *device) {
+	if (device[0] == '\0') return -1;
+	FILE *fp = fopen("/proc/net/route", "r");
+	if (!fp) return -1;
+
+	char line[256];
+	char iface[32];
+	unsigned long dest;
+	int metric = -1;
+
+	// Skip header line
+	if (fgets(line, sizeof(line), fp)) {
+		while (fgets(line, sizeof(line), fp)) {
+			// Destination is 2nd column, Metric is 7th column, dest is in hex
+			if (sscanf(line, "%31s %lx %*s %*d %*d %*d %d", iface, &dest, &metric) == 3) {
+				if (strcmp(iface, device) == 0 && dest == 0) {
+					fclose(fp);
+					return metric;
+				}
+			}
+		}
+	}
+	fclose(fp);
+	return -1;
+}
+
 // Compare priority for sorting (lowest priority number is highest precedence)
 static int compare_links(const void *a, const void *b) {
 	link_t *la = (link_t *)a;
@@ -747,6 +774,17 @@ int main(int argc, char **argv) {
 					
 					// Push metric out of choice range
 					update_route_metric(link, 1000 + link->metric);
+				}
+			}
+
+			// 4. Active routing metric self-healing to prevent external/netifd interference
+			if (link->device[0] != '\0') {
+				int expected_metric = (link->is_up && link->healthy) ? link->metric : (1000 + link->metric);
+				int real_metric = get_system_route_metric(link->device);
+				if (real_metric != -1 && real_metric != expected_metric) {
+					syslog(LOG_WARNING, "Route metric mismatch detected on %s (%s, priority %d): expected %d, got %d. Correcting...", 
+					       link->name, link->device, link->priority, expected_metric, real_metric);
+					update_route_metric(link, expected_metric);
 				}
 			}
 		}
