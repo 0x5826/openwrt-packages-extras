@@ -12,35 +12,9 @@ PKG_VERSION:=1.0.0
 PKG_RELEASE:=1
 PKG_MAINTAINER:=Dante
 
-include $(INCLUDE_DIR)/package.mk
-
-define Package/$(PKG_NAME)
-  SECTION:=luci
-  CATEGORY:=LuCI
-  SUBMENU:=3. Applications
-  TITLE:=LuCI support for Multi-WAN LinkBack Failover/Failback
-  DEPENDS:=+luci-base +ucode +ucode-mod-fs +ucode-mod-uci +ucode-mod-ubus +linkback
-  MAINTAINER:=Dante
-  PKGARCH:=all
-endef
-
-define Package/$(PKG_NAME)/description
-  LuCI Support for LinkBack: A lightweight C-based Multi-WAN link fault detection and seamless route failover/failback daemon.
-endef
-
-define Package/$(PKG_NAME)/install
-	# Install LuCI static resource files (JS)
-	$(INSTALL_DIR) $(1)/www/luci-static/resources/view/linkback
-	$(INSTALL_DATA) ./htdocs/luci-static/resources/view/linkback/* $(1)/www/luci-static/resources/view/linkback/
-
-	# Install routing menus and ACLs
-	$(INSTALL_DIR) $(1)/usr/share/luci/menu.d
-	$(INSTALL_DATA) ./root/usr/share/luci/menu.d/* $(1)/usr/share/luci/menu.d/
-	$(INSTALL_DIR) $(1)/usr/share/rpcd/acl.d
-	$(INSTALL_DATA) ./root/usr/share/rpcd/acl.d/* $(1)/usr/share/rpcd/acl.d/
-	$(INSTALL_DIR) $(1)/usr/share/rpcd/ucode
-	$(INSTALL_DATA) ./root/usr/share/rpcd/ucode/* $(1)/usr/share/rpcd/ucode/
-endef
+LUCI_TITLE:=LuCI support for Multi-WAN LinkBack Failover/Failback
+LUCI_DEPENDS:=+luci-base +ucode +ucode-mod-fs +ucode-mod-uci +ucode-mod-ubus +linkback
+LUCI_PKGARCH:=all
 
 define Package/$(PKG_NAME)/postinst
 #!/sh
@@ -50,4 +24,6 @@ define Package/$(PKG_NAME)/postinst
 exit 0
 endef
 
-$(eval $(call BuildPackage,$(PKG_NAME)))
+include $(TOPDIR)/feeds/luci/luci.mk
+
+# call BuildPackage - OpenWrt buildroot signature

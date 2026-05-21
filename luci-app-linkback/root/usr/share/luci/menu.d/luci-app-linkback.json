@@ -10,20 +10,20 @@
 			"uci": { "linkback": true }
 		}
 	},
-	"admin/network/linkback/status": {
+	"admin/network/linkback/overview": {
 		"title": "Overview",
 		"order": 10,
 		"action": {
 			"type": "view",
-			"path": "linkback/status"
+			"path": "linkback/overview"
 		}
 	},
-	"admin/network/linkback/config": {
+	"admin/network/linkback/settings": {
 		"title": "Settings",
 		"order": 20,
 		"action": {
 			"type": "view",
-			"path": "linkback/config"
+			"path": "linkback/settings"
 		}
 	},
 	"admin/network/linkback/log": {
