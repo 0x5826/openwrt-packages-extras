@@ -176,12 +176,15 @@ return view.extend({
 			// 动态生成仅针对当前渲染 section_id 的 choices 和 keylist
 			var filtered_choices = {};
 			var filtered_keylist = [];
-			this.keylist.forEach(function(key) {
-				if (!used_names[key]) {
-					filtered_keylist.push(key);
-					filtered_choices[key] = this.keyvalues[key];
+			if (Array.isArray(this.keylist)) {
+				for (var i = 0; i < this.keylist.length; i++) {
+					var key = this.keylist[i];
+					if (!used_names[key]) {
+						filtered_keylist.push(key);
+						filtered_choices[key] = this.vallist[i];
+					}
 				}
-			}, this);
+			}
 
 			// 直接在局部变量中实例化 ui.Select，避免任何时序与引用问题
 			var widget = new ui.Select((cfgvalue != null) ? cfgvalue : this.default, filtered_choices, {
