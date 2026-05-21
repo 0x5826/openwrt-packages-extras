@@ -75,9 +75,10 @@ return view.extend({
 		}
 
 		var statusSection = E('div', { 'class': 'cbi-section' }, [
+			E('h3', { 'class': 'cbi-section-title' }, _('Service Status')),
 			E('div', { 'class': 'cbi-section-node' }, [
 				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Service Status')),
+					E('label', { 'class': 'cbi-value-title' }, _('Running State')),
 					E('div', { 'class': 'cbi-value-field', style: 'display:flex; align-items:center;' }, [
 						E('span', {
 							id: 'linkback-service-state',
