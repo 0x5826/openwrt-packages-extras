@@ -176,21 +176,6 @@ return view.extend({
 			return true;
 		};
 
-		o.write = function(section_id, value) {
-			var next = (value == null) ? '' : String(value).trim();
-			if (!next) {
-				var current = uci.get('linkback', section_id, 'name');
-				if (current)
-					uci.set('linkback', section_id, 'name', current);
-				return;
-			}
-			uci.set('linkback', section_id, 'name', next);
-		};
-		o.remove = function(section_id) {
-			var current = uci.get('linkback', section_id, 'name');
-			if (current)
-				uci.set('linkback', section_id, 'name', current);
-		};
 		makeTableColumnExpand(o, '25%');
 
 		// 3. Priority (No description for main column)
