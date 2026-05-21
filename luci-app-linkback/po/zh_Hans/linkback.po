@@ -137,7 +137,7 @@ msgid "Enabled"
 msgstr "已启用"
 
 msgid "Base Metric"
-msgstr "默认跃点 (Metric)"
+msgstr "默认跃点"
 
 msgid "Default route metric when this link is healthy (e.g., wan=10, wan2=20)."
 msgstr "当该接口健康时应用的默认路由 Metric 跃点数值 (例如：wan=10, wan2=20)。"
