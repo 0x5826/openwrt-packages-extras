@@ -2,7 +2,6 @@
 
 import { readfile } from 'fs';
 import { popen } from 'fs';
-import * as json from 'json';
 
 const STATUS_FILE = '/var/run/linkback.json';
 
@@ -14,7 +13,7 @@ const methods = {
 
 			if (content) {
 				try {
-					status = json.parse(content);
+					status = json(content);
 				} catch (err) {
 					// Handle JSON parse error gracefully
 				}
@@ -42,7 +41,7 @@ const methods = {
 				log_content = p.read('all');
 				p.close();
 			}
-			return { log: log_content || _('No logs available.') };
+			return { log: log_content || 'No logs available.' };
 		}
 	},
 
