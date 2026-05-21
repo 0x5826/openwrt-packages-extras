@@ -2,12 +2,12 @@ TARGET := linkbackd
 OBJS := linkbackd.o
 
 CFLAGS += -Wall -O2
-LDFLAGS += -luci
+LIBS := -luci
 
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o $(TARGET) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(OBJS) -o $(TARGET) $(LDFLAGS) $(LIBS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
