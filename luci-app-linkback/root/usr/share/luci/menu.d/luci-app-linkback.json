@@ -1,0 +1,13 @@
+{
+	"admin/network/linkback": {
+		"title": "LinkBack 链路守护",
+		"action": {
+			"type": "view",
+			"path": "linkback/linkback"
+		},
+		"order": 90,
+		"depends": {
+			"acl": [ "luci-app-linkback" ]
+		}
+	}
+}
