@@ -336,13 +336,13 @@ static bool load_config(void) {
 		link->metric = metric ? atoi(metric) : (link->priority * 10);
 		link->current_metric = link->metric;
 
-		// Parse ping targets (split by comma)
+		// Parse ping targets (split by comma or space)
 		const char *pings = uci_lookup_option_string(ctx, s, "ping_targets");
 		if (pings) {
 			char tmp[256];
 			strncpy(tmp, pings, sizeof(tmp) - 1);
 			tmp[sizeof(tmp) - 1] = '\0';
-			char *token = strtok(tmp, ",");
+			char *token = strtok(tmp, ", \t");
 			while (token && link->ping_target_count < MAX_TARGETS) {
 				// Trim leading whitespace
 				while (*token == ' ' || *token == '\t' || *token == '\r' || *token == '\n') {
