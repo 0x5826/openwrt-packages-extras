@@ -186,6 +186,10 @@ return view.extend({
 				}
 			}
 
+			// 判断当前是编辑已有配置还是添加新配置
+			// 如果在 UCI 中已经保存了 name，则是编辑状态，此时网卡不可编辑
+			var is_edit = !!uci.get('linkback', section_id, 'name');
+
 			// 直接在局部变量中实例化 ui.Select，避免任何时序与引用问题
 			var widget = new ui.Select((cfgvalue != null) ? cfgvalue : this.default, filtered_choices, {
 				id: this.cbid(section_id),
@@ -196,7 +200,7 @@ return view.extend({
 				orientation: this.orientation,
 				placeholder: this.placeholder,
 				validate: this.getValidator(section_id),
-				disabled: (this.readonly != null) ? this.readonly : this.map.readonly
+				disabled: is_edit ? true : ((this.readonly != null) ? this.readonly : this.map.readonly)
 			});
 
 			return widget.render();
