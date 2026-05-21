@@ -162,12 +162,9 @@ return view.extend({
 			}
 		});
 
-		// Robust, race-condition-free uniqueness validator
+		// 动态隐藏已被配置的接口：通过在 renderWidget 中进行局部变量过滤与实例化 ui.Select，
+		// 完全不修改全局的 this.keylist 和 this.keyvalues，保证 100% 线程安全和无副作用
 		o.renderWidget = function(section_id, option_index, cfgvalue) {
-			// 备份全局的 keylist 和 keyvalues
-			var orig_keylist = this.keylist.slice();
-			var orig_keyvalues = Object.assign({}, this.keyvalues);
-
 			// 找出已经被其他 Section 选中的网卡（已配置接口名）
 			var used_names = {};
 			uci.sections('linkback', 'link').forEach(function(sec) {
@@ -176,28 +173,30 @@ return view.extend({
 				}
 			});
 
-			// 过滤掉已被其他 Section 使用的选项
+			// 动态生成仅针对当前渲染 section_id 的 choices 和 keylist
+			var filtered_choices = {};
 			var filtered_keylist = [];
-			var filtered_keyvalues = {};
-			orig_keylist.forEach(function(key) {
+			this.keylist.forEach(function(key) {
 				if (!used_names[key]) {
 					filtered_keylist.push(key);
-					filtered_keyvalues[key] = orig_keyvalues[key];
+					filtered_choices[key] = this.keyvalues[key];
 				}
+			}, this);
+
+			// 直接在局部变量中实例化 ui.Select，避免任何时序与引用问题
+			var widget = new ui.Select((cfgvalue != null) ? cfgvalue : this.default, filtered_choices, {
+				id: this.cbid(section_id),
+				size: this.size,
+				sort: filtered_keylist,
+				widget: this.widget,
+				optional: this.optional,
+				orientation: this.orientation,
+				placeholder: this.placeholder,
+				validate: this.getValidator(section_id),
+				disabled: (this.readonly != null) ? this.readonly : this.map.readonly
 			});
 
-			// 临时替换以供 transformChoices() 使用
-			this.keylist = filtered_keylist;
-			this.keyvalues = filtered_keyvalues;
-
-			// 调用 ListValue 的原始 renderWidget 方法同步生成下拉框
-			var widget_node = form.ListValue.prototype.renderWidget.call(this, section_id, option_index, cfgvalue);
-
-			// 恢复全局属性
-			this.keylist = orig_keylist;
-			this.keyvalues = orig_keyvalues;
-
-			return widget_node;
+			return widget.render();
 		};
 
 		o.validate = function(section_id, value) {
