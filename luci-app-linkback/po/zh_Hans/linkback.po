@@ -220,3 +220,25 @@ msgstr "接口健康时的默认路由跃点 (Metric) 数值。"
 msgid "Combined weight score required to mark this link healthy."
 msgstr "判定该接口健康所需的各检测指标成功权重分之和。"
 
+msgid "Collecting..."
+msgstr "正在收集数据..."
+
+msgid "Running State"
+msgstr "运行状态"
+
+msgid "Check Type"
+msgstr "检测类型"
+
+msgid "Time in seconds between each health check cycle for this link."
+msgstr "该链路每次健康度检测周期之间的时间间隔 (秒)。"
+
+msgid "Maximum wait time in seconds for each individual check probe for this link."
+msgstr "该链路每个检测探针的最大等待超时时间 (秒)。"
+
+msgid "Number of consecutive successful checks required before marking this link as healthy (failback anti-flap)."
+msgstr "判定该链路恢复健康所需连续检测成功的次数 (防抖动回切)。"
+
+msgid "Number of consecutive failed checks required before marking this link as faulted (failover anti-flap)."
+msgstr "判定该链路发生故障所需连续检测失败的次数 (防抖动切换)。"
+
+
