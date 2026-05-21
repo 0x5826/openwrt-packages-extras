@@ -26,7 +26,8 @@ return L.view.extend({
 	load: function() {
 		return Promise.all([
 			callGetStatus(),
-			uci.load('linkback')
+			uci.load('linkback'),
+			uci.load('network')
 		]);
 	},
 
@@ -328,9 +329,14 @@ return L.view.extend({
 		sl.addremove = true;
 
 		// Link Name matching network.interface
-		var iface = sl.option(form.Value, 'name', _('WAN Interface Name'), _('Matches your Network Interface name (e.g. wan, wan2)'));
-		iface.datatype = 'string';
+		var iface = sl.option(form.ListValue, 'name', _('WAN Interface Name'), _('Select a logical interface configured in your Network Settings.'));
 		iface.rmempty = false;
+		uci.sections('network', 'interface').forEach(function(s) {
+			var n = s['.name'];
+			if (n !== 'loopback' && n !== 'lan') {
+				iface.value(n);
+			}
+		});
 
 		var enabled = sl.option(form.Flag, 'enabled', _('Enabled'));
 		enabled.default = '1';
