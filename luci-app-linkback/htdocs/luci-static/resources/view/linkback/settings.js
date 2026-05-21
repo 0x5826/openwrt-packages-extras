@@ -84,82 +84,97 @@ return view.extend({
 		o.default = '10';
 		o.rmempty = false;
 
-		// 5. Health Threshold (No description for main column)
-		o = s.option(form.Value, 'weight_threshold', _('Health Threshold'));
-		o.datatype = 'uinteger';
-		o.default = '2';
-		o.rmempty = false;
-
 		// --- Health Check Targets (Modal Only) ---
-		
-		// Ping Probe Enable & Parameters
-		o = s.option(form.Flag, 'ping_enabled', _('Enable Ping Probe'));
-		o.default = '1';
-		o.rmempty = false;
-		o.modalonly = true;
 
+		// 1. Check Type Dropdown
+		o = s.option(form.ListValue, 'check_type', _('Check Type'));
+		o.modalonly = true;
+		o.value('ping', _('Ping Probe'));
+		o.value('dns', _('DNS Probe'));
+		o.value('tcp', _('TCP Probe'));
+		o.default = 'ping';
+
+		o.cfgvalue = function(section_id) {
+			var dns_server = uci.get('linkback', section_id, 'dns_server');
+			var tcp_target = uci.get('linkback', section_id, 'tcp_target');
+			if (dns_server) {
+				return 'dns';
+			} else if (tcp_target) {
+				return 'tcp';
+			}
+			return 'ping';
+		};
+
+		o.write = function(section_id, value) {
+			// Silently set weight_threshold = 1
+			uci.set('linkback', section_id, 'weight_threshold', '1');
+
+			if (value === 'ping') {
+				uci.set('linkback', section_id, 'ping_weight', '1');
+				// Clear dns
+				uci.remove('linkback', section_id, 'dns_weight');
+				uci.remove('linkback', section_id, 'dns_server');
+				uci.remove('linkback', section_id, 'dns_domain');
+				// Clear tcp
+				uci.remove('linkback', section_id, 'tcp_weight');
+				uci.remove('linkback', section_id, 'tcp_target');
+				uci.remove('linkback', section_id, 'tcp_port');
+			} else if (value === 'dns') {
+				uci.set('linkback', section_id, 'dns_weight', '1');
+				// Clear ping
+				uci.remove('linkback', section_id, 'ping_weight');
+				uci.remove('linkback', section_id, 'ping_targets');
+				// Clear tcp
+				uci.remove('linkback', section_id, 'tcp_weight');
+				uci.remove('linkback', section_id, 'tcp_target');
+				uci.remove('linkback', section_id, 'tcp_port');
+			} else if (value === 'tcp') {
+				uci.set('linkback', section_id, 'tcp_weight', '1');
+				// Clear ping
+				uci.remove('linkback', section_id, 'ping_weight');
+				uci.remove('linkback', section_id, 'ping_targets');
+				// Clear dns
+				uci.remove('linkback', section_id, 'dns_weight');
+				uci.remove('linkback', section_id, 'dns_server');
+				uci.remove('linkback', section_id, 'dns_domain');
+			}
+		};
+
+		// 2. Ping Probe Parameters
 		o = s.option(form.Value, 'ping_targets', _('Ping Targets'),
 			_('Space-separated list of IPs to ping (e.g., 223.5.5.5 8.8.8.8).'));
 		o.rmempty = true;
 		o.modalonly = true;
-		o.depends('ping_enabled', '1');
+		o.depends('check_type', 'ping');
 
-		o = s.option(form.Value, 'ping_weight', _('Ping Weight'));
-		o.datatype = 'uinteger';
-		o.default = '1';
-		o.modalonly = true;
-		o.depends('ping_enabled', '1');
-
-		// DNS Probe Enable & Parameters
-		o = s.option(form.Flag, 'dns_enabled', _('Enable DNS Probe'));
-		o.default = '1';
-		o.rmempty = false;
-		o.modalonly = true;
-
+		// 3. DNS Probe Parameters
 		o = s.option(form.Value, 'dns_server', _('DNS Server'),
 			_('DNS server IP for UDP query probe (e.g., 119.29.29.29).'));
 		o.datatype = 'ip4addr';
 		o.rmempty = true;
 		o.modalonly = true;
-		o.depends('dns_enabled', '1');
+		o.depends('check_type', 'dns');
 
 		o = s.option(form.Value, 'dns_domain', _('DNS Domain'),
 			_('Domain name to resolve for DNS probe (e.g., www.baidu.com).'));
 		o.rmempty = true;
 		o.modalonly = true;
-		o.depends('dns_enabled', '1');
+		o.depends('check_type', 'dns');
 
-		o = s.option(form.Value, 'dns_weight', _('DNS Weight'));
-		o.datatype = 'uinteger';
-		o.default = '1';
-		o.modalonly = true;
-		o.depends('dns_enabled', '1');
-
-		// TCP Probe Enable & Parameters
-		o = s.option(form.Flag, 'tcp_enabled', _('Enable TCP Probe'));
-		o.default = '1';
-		o.rmempty = false;
-		o.modalonly = true;
-
+		// 4. TCP Probe Parameters
 		o = s.option(form.Value, 'tcp_target', _('TCP Target'),
 			_('Target IP for TCP handshake probe.'));
 		o.datatype = 'ip4addr';
 		o.rmempty = true;
 		o.modalonly = true;
-		o.depends('tcp_enabled', '1');
+		o.depends('check_type', 'tcp');
 
 		o = s.option(form.Value, 'tcp_port', _('TCP Port'),
 			_('Target port for TCP handshake probe.'));
 		o.datatype = 'port';
 		o.rmempty = true;
 		o.modalonly = true;
-		o.depends('tcp_enabled', '1');
-
-		o = s.option(form.Value, 'tcp_weight', _('TCP Weight'));
-		o.datatype = 'uinteger';
-		o.default = '1';
-		o.modalonly = true;
-		o.depends('tcp_enabled', '1');
+		o.depends('check_type', 'tcp');
 
 		return m.render();
 	}
