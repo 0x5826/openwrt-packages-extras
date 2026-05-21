@@ -116,35 +116,6 @@ return view.extend({
 			}
 		};
 
-		// 1.5 Individual health check options (Modal only)
-		o = s.option(form.Value, 'check_interval', _('Check Interval (s)'),
-			_('Time in seconds between each health check cycle for this link.'));
-		o.datatype = 'uinteger';
-		o.default = '5';
-		o.rmempty = false;
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'check_timeout', _('Check Timeout (s)'),
-			_('Maximum wait time in seconds for each individual check probe for this link.'));
-		o.datatype = 'uinteger';
-		o.default = '3';
-		o.rmempty = false;
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'recovery_delay', _('Recovery Delay'),
-			_('Number of consecutive successful checks required before marking this link as healthy (failback anti-flap).'));
-		o.datatype = 'uinteger';
-		o.default = '3';
-		o.rmempty = false;
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'failover_delay', _('Failover Delay'),
-			_('Number of consecutive failed checks required before marking this link as faulted (failover anti-flap).'));
-		o.datatype = 'uinteger';
-		o.default = '2';
-		o.rmempty = false;
-		o.modalonly = true;
-
 		// 2. Ping Probe Parameters
 		o = s.option(form.Value, 'ping_targets', _('Ping Targets'),
 			_('Space-separated list of IPs to ping (e.g., 223.5.5.5 8.8.8.8).'));
@@ -180,6 +151,35 @@ return view.extend({
 		o.rmempty = true;
 		o.modalonly = true;
 		o.depends('check_type', 'tcp');
+
+		// 5. Individual health check options (Modal only)
+		o = s.option(form.Value, 'check_interval', _('Check Interval (s)'),
+			_('Time in seconds between each health check cycle for this link.'));
+		o.datatype = 'uinteger';
+		o.default = '5';
+		o.rmempty = false;
+		o.modalonly = true;
+
+		o = s.option(form.Value, 'check_timeout', _('Check Timeout (s)'),
+			_('Maximum wait time in seconds for each individual check probe for this link.'));
+		o.datatype = 'uinteger';
+		o.default = '3';
+		o.rmempty = false;
+		o.modalonly = true;
+
+		o = s.option(form.Value, 'recovery_delay', _('Recovery Delay'),
+			_('Number of consecutive successful checks required before marking this link as healthy (failback anti-flap).'));
+		o.datatype = 'uinteger';
+		o.default = '3';
+		o.rmempty = false;
+		o.modalonly = true;
+
+		o = s.option(form.Value, 'failover_delay', _('Failover Delay'),
+			_('Number of consecutive failed checks required before marking this link as faulted (failover anti-flap).'));
+		o.datatype = 'uinteger';
+		o.default = '2';
+		o.rmempty = false;
+		o.modalonly = true;
 
 		return m.render();
 	}
