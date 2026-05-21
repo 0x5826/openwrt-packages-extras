@@ -241,4 +241,23 @@ msgstr "判定该链路恢复健康所需连续检测成功的次数 (防抖动�
 msgid "Number of consecutive failed checks required before marking this link as faulted (failover anti-flap)."
 msgstr "判定该链路发生故障所需连续检测失败的次数 (防抖动切换)。"
 
+msgid "Add Monitored Interface"
+msgstr "添加监控接口"
+
+msgid "Edit Monitored Interface"
+msgstr "编辑监控接口"
+
+msgid "Cannot enable service: No monitored WAN interfaces are configured."
+msgstr "无法启用服务: 未配置任何监控的 WAN 接口。"
+
+msgid "Cannot enable service: At least one interface must have a configured check type (Ping, DNS, or TCP)."
+msgstr "无法启用服务: 至少需要为一个接口配置有效的检测类型 (Ping、DNS 或 TCP)。"
+
+msgid "-- Not Configured --"
+msgstr "-- 未配置 --"
+
+msgid "Cannot enable service: At least 2 monitored WAN interfaces must be configured for failover switcher."
+msgstr "无法启用服务: 链路备份切换至少需要配置 2 个监控的 WAN 接口。"
+
+
 

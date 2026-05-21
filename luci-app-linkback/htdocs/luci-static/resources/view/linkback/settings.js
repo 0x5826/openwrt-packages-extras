@@ -14,6 +14,26 @@ return view.extend({
 	render: function() {
 		var m, s, o;
 
+		// Helper function to expand table column controls and eliminate right empty space
+		var makeTableColumnExpand = function(opt, width) {
+			var origRender = opt.render;
+			opt.render = function(option_index, section_id, in_table) {
+				return Promise.resolve(origRender.call(this, option_index, section_id, in_table)).then(function(node) {
+					if (in_table && node) {
+						if (width) {
+							node.style.width = width;
+						}
+						var input = node.querySelector('input, select, .cbi-dropdown');
+						if (input) {
+							input.style.width = '100%';
+							input.style.maxWidth = 'none';
+						}
+					}
+					return node;
+				});
+			};
+		};
+
 		m = new form.Map('linkback',
 			_('LinkBack 链路守护') + ' - ' + _('Settings'),
 			_('Configure Multi-WAN failover service, health check parameters, and monitored link interfaces.'));
@@ -26,6 +46,29 @@ return view.extend({
 		o = s.option(form.Flag, 'enabled', _('Enable Service'),
 			_('Master switch to enable or disable the LinkBack failover daemon.'));
 		o.rmempty = false;
+		o.validate = function(section_id, value) {
+			if (value === '1') {
+				var link_sections = uci.sections('linkback', 'link');
+				if (!link_sections || link_sections.length <= 1) {
+					return _('Cannot enable service: At least 2 monitored WAN interfaces must be configured for failover switcher.');
+				}
+				var has_valid_check = false;
+				for (var i = 0; i < link_sections.length; i++) {
+					var s_id = link_sections[i]['.name'];
+					var ping_targets = uci.get('linkback', s_id, 'ping_targets');
+					var dns_server = uci.get('linkback', s_id, 'dns_server');
+					var tcp_target = uci.get('linkback', s_id, 'tcp_target');
+					if (ping_targets || dns_server || tcp_target) {
+						has_valid_check = true;
+						break;
+					}
+				}
+				if (!has_valid_check) {
+					return _('Cannot enable service: At least one interface must have a configured check type (Ping, DNS, or TCP).');
+				}
+			}
+			return true;
+		};
 
 		// --- Monitored Links Section ---
 		s = m.section(form.GridSection, 'link', _('Monitored WAN Interfaces'),
@@ -33,52 +76,84 @@ return view.extend({
 		s.anonymous = true;
 		s.addremove = true;
 
+		// Custom dynamic Modal title for gorgeous UX
+		s.modaltitle = function(section_id) {
+			var parent_title = _('LinkBack 链路守护') + ' - ' + _('Settings');
+			var is_new = (this.map.addedSection === section_id) || !uci.get('linkback', section_id, 'name');
+			if (is_new) {
+				return parent_title + ' - ' + _('Add Monitored Interface');
+			} else {
+				var name = uci.get('linkback', section_id, 'name') || section_id;
+				return parent_title + ' - ' + _('Edit Monitored Interface') + ' (' + name + ')';
+			}
+		};
+
 		// 1. Enabled (Enabled as the first column)
 		o = s.option(form.Flag, 'enabled', _('Enabled'));
 		o.default = '1';
 		o.rmempty = false;
+		makeTableColumnExpand(o, '8%');
 
 		// 2. Interface name - dynamic dropdown (No description for main column)
 		o = s.option(form.ListValue, 'name', _('Interface'));
 		o.rmempty = false;
-		uci.sections('network', 'interface').forEach(function(sec) {
-			var n = sec['.name'];
-			if (n !== 'loopback' && n !== 'lan') {
-				o.value(n);
-			}
-		});
+		var origNameRender = o.render;
+		o.render = function(option_index, section_id, in_table) {
+			this.keylist = [];
+			this.vallist = [];
+			var added_names = {};
+			uci.sections('linkback', 'link').forEach(function(sec) {
+				if (sec['.name'] !== section_id && sec.name) {
+					added_names[sec.name] = true;
+				}
+			});
+			var self = this;
+			uci.sections('network', 'interface').forEach(function(sec) {
+				var n = sec['.name'];
+				if (n !== 'loopback' && n !== 'lan' && !added_names[n]) {
+					self.value(n);
+				}
+			});
+			return origNameRender.call(this, option_index, section_id, in_table);
+		};
+		makeTableColumnExpand(o, '25%');
 
 		// 3. Priority (No description for main column)
 		o = s.option(form.Value, 'priority', _('Priority'));
 		o.datatype = 'uinteger';
 		o.default = '1';
 		o.rmempty = false;
+		makeTableColumnExpand(o, '15%');
 
 		// 4. Metric (No description for main column)
 		o = s.option(form.Value, 'metric', _('Base Metric'));
 		o.datatype = 'uinteger';
 		o.default = '10';
 		o.rmempty = false;
+		makeTableColumnExpand(o, '15%');
 
-		// --- Health Check Targets (Modal Only) ---
-
-		// 1. Check Type Dropdown
+		// 5. Check Type Dropdown (Displayed in main table & Modal)
 		o = s.option(form.ListValue, 'check_type', _('Check Type'));
-		o.modalonly = true;
+		o.value('', _('-- Not Configured --'));
 		o.value('ping', _('Ping Probe'));
 		o.value('dns', _('DNS Probe'));
 		o.value('tcp', _('TCP Probe'));
-		o.default = 'ping';
+		o.default = '';
+		o.rmempty = true;
+		makeTableColumnExpand(o, '20%');
 
 		o.cfgvalue = function(section_id) {
+			var ping_targets = uci.get('linkback', section_id, 'ping_targets');
 			var dns_server = uci.get('linkback', section_id, 'dns_server');
 			var tcp_target = uci.get('linkback', section_id, 'tcp_target');
 			if (dns_server) {
 				return 'dns';
 			} else if (tcp_target) {
 				return 'tcp';
+			} else if (ping_targets) {
+				return 'ping';
 			}
-			return 'ping';
+			return '';
 		};
 
 		o.write = function(section_id, value) {
@@ -113,6 +188,16 @@ return view.extend({
 				uci.remove('linkback', section_id, 'dns_weight');
 				uci.remove('linkback', section_id, 'dns_server');
 				uci.remove('linkback', section_id, 'dns_domain');
+			} else {
+				// Clear all probe configs if set to empty
+				uci.remove('linkback', section_id, 'ping_weight');
+				uci.remove('linkback', section_id, 'ping_targets');
+				uci.remove('linkback', section_id, 'dns_weight');
+				uci.remove('linkback', section_id, 'dns_server');
+				uci.remove('linkback', section_id, 'dns_domain');
+				uci.remove('linkback', section_id, 'tcp_weight');
+				uci.remove('linkback', section_id, 'tcp_target');
+				uci.remove('linkback', section_id, 'tcp_port');
 			}
 		};
 
