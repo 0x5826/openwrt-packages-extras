@@ -1,13 +1,37 @@
 {
 	"admin/network/linkback": {
 		"title": "LinkBack 链路守护",
+		"order": 90,
+		"action": {
+			"type": "firstchild"
+		},
+		"depends": {
+			"acl": [ "luci-app-linkback" ],
+			"uci": { "linkback": true }
+		}
+	},
+	"admin/network/linkback/status": {
+		"title": "Overview",
+		"order": 10,
 		"action": {
 			"type": "view",
-			"path": "linkback/linkback"
-		},
-		"order": 90,
-		"depends": {
-			"acl": [ "luci-app-linkback" ]
+			"path": "linkback/status"
+		}
+	},
+	"admin/network/linkback/config": {
+		"title": "Settings",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "linkback/config"
+		}
+	},
+	"admin/network/linkback/log": {
+		"title": "Log",
+		"order": 30,
+		"action": {
+			"type": "view",
+			"path": "linkback/log"
 		}
 	}
 }

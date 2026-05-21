@@ -12,8 +12,6 @@ PKG_VERSION:=1.0.0
 PKG_RELEASE:=1
 PKG_MAINTAINER:=Dante
 
-PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
-
 include $(INCLUDE_DIR)/package.mk
 
 define Package/$(PKG_NAME)
@@ -21,29 +19,13 @@ define Package/$(PKG_NAME)
   CATEGORY:=LuCI
   SUBMENU:=3. Applications
   TITLE:=LuCI support for Multi-WAN LinkBack Failover/Failback
-  DEPENDS:=+luci-base +ucode +ucode-mod-fs +ucode-mod-uci +ucode-mod-ubus +libuci +libubus +libubox +libblobmsg-json +ip-full
+  DEPENDS:=+luci-base +ucode +ucode-mod-fs +ucode-mod-uci +ucode-mod-ubus +linkback
   MAINTAINER:=Dante
   PKGARCH:=all
 endef
 
 define Package/$(PKG_NAME)/description
   LuCI Support for LinkBack: A lightweight C-based Multi-WAN link fault detection and seamless route failover/failback daemon.
-endef
-
-define Package/$(PKG_NAME)/conffiles
-/etc/config/linkback
-endef
-
-define Build/Prepare
-	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) ./src/* $(PKG_BUILD_DIR)/
-endef
-
-define Build/Compile
-	$(MAKE) -C $(PKG_BUILD_DIR) \
-		CC="$(TARGET_CC)" \
-		CFLAGS="$(TARGET_CFLAGS)" \
-		LDFLAGS="$(TARGET_LDFLAGS)"
 endef
 
 define Package/$(PKG_NAME)/install
@@ -58,24 +40,12 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DATA) ./root/usr/share/rpcd/acl.d/* $(1)/usr/share/rpcd/acl.d/
 	$(INSTALL_DIR) $(1)/usr/share/rpcd/ucode
 	$(INSTALL_DATA) ./root/usr/share/rpcd/ucode/* $(1)/usr/share/rpcd/ucode/
-
-	# Install config and init files
-	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) ./files/linkback.config $(1)/etc/config/linkback
-	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./files/linkback.init $(1)/etc/init.d/linkback
-
-	# Install C daemon binary
-	$(INSTALL_DIR) $(1)/usr/sbin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/linkbackd $(1)/usr/sbin/linkbackd
 endef
 
 define Package/$(PKG_NAME)/postinst
 #!/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
 	/etc/init.d/rpcd restart
-	/etc/init.d/linkback enable
-	/etc/init.d/linkback restart
 }
 exit 0
 endef
