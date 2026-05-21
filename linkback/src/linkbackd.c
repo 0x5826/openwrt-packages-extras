@@ -526,14 +526,14 @@ static void update_route_metric(link_t *link, int new_metric) {
 		         link->device, new_metric);
 	}
 
-	syslog(LOG_INFO, "Applying route metric update on link %s (%s): %d -> %d", 
-	       link->name, link->device, link->current_metric, new_metric);
+	syslog(LOG_INFO, "Applying route metric update on link %s (%s, priority %d): %d -> %d", 
+	       link->name, link->device, link->priority, link->current_metric, new_metric);
 	
 	int rc = system(cmd);
 	if (rc == 0) {
 		link->current_metric = new_metric;
 	} else {
-		syslog(LOG_ERR, "Failed to apply route update for %s using cmd: %s", link->name, cmd);
+		syslog(LOG_ERR, "Failed to apply route update for %s (priority %d) using cmd: %s", link->name, link->priority, cmd);
 	}
 }
 
@@ -553,7 +553,7 @@ static void restore_all_metrics(void) {
 			}
 			int rc = system(cmd);
 			if (rc == 0) {
-				syslog(LOG_INFO, "Successfully restored default metric %d for interface %s", link->metric, link->name);
+				syslog(LOG_INFO, "Successfully restored default metric %d for interface %s (priority %d)", link->metric, link->name, link->priority);
 			}
 		}
 	}
@@ -729,8 +729,8 @@ int main(int argc, char **argv) {
 				if (!link->healthy && link->consecutive_success >= link->recovery_delay) {
 					// Recovered! Failback!
 					link->healthy = true;
-					syslog(LOG_NOTICE, "Link %s (%s) recovered to healthy after %d successes. Score: %d/%d.", 
-					       link->name, link->device, link->consecutive_success, current_score, link->weight_threshold);
+					syslog(LOG_NOTICE, "Link %s (%s, priority %d) recovered to healthy after %d successes. Score: %d/%d.", 
+					       link->name, link->device, link->priority, link->consecutive_success, current_score, link->weight_threshold);
 					
 					// Restore original metric
 					update_route_metric(link, link->metric);
@@ -742,8 +742,8 @@ int main(int argc, char **argv) {
 				if (link->healthy && link->consecutive_failure >= link->failover_delay) {
 					// Failed! Failover!
 					link->healthy = false;
-					syslog(LOG_WARNING, "Link %s (%s) went down after %d failures. Score: %d/%d.", 
-					       link->name, link->device, link->consecutive_failure, current_score, link->weight_threshold);
+					syslog(LOG_WARNING, "Link %s (%s, priority %d) went down after %d failures. Score: %d/%d.", 
+					       link->name, link->device, link->priority, link->consecutive_failure, current_score, link->weight_threshold);
 					
 					// Push metric out of choice range
 					update_route_metric(link, 1000 + link->metric);
