@@ -192,18 +192,27 @@ return view.extend({
 		o.rmempty = false;
 		makeTableColumnExpand(o, '15%');
 
-		// 5. Check Type Dropdown (Displayed in main table & Modal)
-		// This is a VIRTUAL field - it does NOT exist in UCI. It is derived from
-		// the presence of ping_targets/dns_server/tcp_target in cfgvalue, and
-		// controls which probe fields to show/clear in write.
+		// 5. Dummy display option for Check Type in main Grid table (read-only)
+		o = s.option(form.Dummy, 'check_type_disp', _('Check Type'));
+		o.cfgvalue = function(section_id) {
+			if (uci.get('linkback', section_id, 'ping_targets'))
+				return _('Ping Probe');
+			if (uci.get('linkback', section_id, 'dns_server'))
+				return _('DNS Probe');
+			if (uci.get('linkback', section_id, 'tcp_target'))
+				return _('TCP Probe');
+			return _('-- Not Configured --');
+		};
+		makeTableColumnExpand(o, '20%');
+
+		// 6. Check Type Dropdown (Virtual field, Modal only to avoid Save & Apply side-effects)
 		o = s.option(form.ListValue, 'check_type', _('Check Type'));
-		o.value('', _('-- Not Configured --'));
 		o.value('ping', _('Ping Probe'));
 		o.value('dns', _('DNS Probe'));
 		o.value('tcp', _('TCP Probe'));
-		o.default = '';
+		o.default = 'ping';
 		o.rmempty = false;
-		makeTableColumnExpand(o, '20%');
+		o.modalonly = true;
 
 		// Derive the check type from which probe target is configured in UCI.
 		o.cfgvalue = function(section_id) {
@@ -213,20 +222,17 @@ return view.extend({
 				return 'dns';
 			if (uci.get('linkback', section_id, 'tcp_target'))
 				return 'tcp';
-			return '';
+			return 'ping'; // Default to ping if not configured
 		};
 
 		// Only write when the check type actually CHANGES from the current state.
-		// This prevents the "edit modal save deletes config" bug where the dropdown
-		// defaults to '' and clears everything even when the user didn't change it.
 		o.write = function(section_id, value) {
-			var current = this.cfgvalue(section_id);
-			var next = (value == null) ? null : String(value);
-			if (next == null) {
-				return;
-			}
+			var current = uci.get('linkback', section_id, 'ping_targets') ? 'ping' :
+			              (uci.get('linkback', section_id, 'dns_server') ? 'dns' :
+			              (uci.get('linkback', section_id, 'tcp_target') ? 'tcp' : ''));
+			var next = (value == null) ? 'ping' : String(value);
 
-			// No change - do nothing (this is the key fix)
+			// No change - do nothing
 			if (next === current) {
 				return;
 			}
@@ -258,25 +264,33 @@ return view.extend({
 			} else if (next === 'tcp') {
 				uci.set('linkback', section_id, 'tcp_weight', '1');
 			}
-
-			// If service is already enabled and this change breaks config, auto-disable
-			var enabled = uci.get('linkback', '@global[0]', 'enabled');
-			if (enabled === '1' && next === '') {
-				var iface_name = uci.get('linkback', section_id, 'name') || section_id;
-				ui.addNotification(null, E('p',
-					_('Service has been auto-disabled because the configuration is no longer valid: ') +
-					_('Cannot enable service: Interface "%s" has no health check configured.').format(iface_name)
-				), 'error');
-				uci.set('linkback', '@global[0]', 'enabled', '0');
-			}
 		};
 
-		// 6. Ping Probe Parameters
+		// 7. Ping Probe Parameters
 		o = s.option(form.Value, 'ping_targets', _('Ping Targets'),
-			_('Space-separated list of IPs to ping (e.g., 223.5.5.5 8.8.8.8).'));
+			_('Comma-separated list of IPs to ping (e.g., 223.5.5.5,8.8.8.8).'));
 		o.rmempty = true;
 		o.modalonly = true;
 		o.depends('check_type', 'ping');
+		o.validate = function(section_id, value) {
+			if (!value) return true;
+			var ips = value.replace(/\s+/g, '').split(',');
+			for (var i = 0; i < ips.length; i++) {
+				var ipPattern = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+				if (!ipPattern.test(ips[i])) {
+					return _('Invalid IP address: "%s"').format(ips[i]);
+				}
+			}
+			return true;
+		};
+		o.write = function(section_id, value) {
+			if (value != null) {
+				var cleaned = String(value).replace(/\s+/g, '');
+				uci.set('linkback', section_id, 'ping_targets', cleaned);
+			} else {
+				uci.remove('linkback', section_id, 'ping_targets');
+			}
+		};
 
 		// 7. DNS Probe Parameters
 		o = s.option(form.Value, 'dns_server', _('DNS Server'),

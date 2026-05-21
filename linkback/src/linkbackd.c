@@ -336,17 +336,29 @@ static bool load_config(void) {
 		link->metric = metric ? atoi(metric) : (link->priority * 10);
 		link->current_metric = link->metric;
 
-		// Parse ping targets (split by space)
+		// Parse ping targets (split by comma)
 		const char *pings = uci_lookup_option_string(ctx, s, "ping_targets");
 		if (pings) {
 			char tmp[256];
 			strncpy(tmp, pings, sizeof(tmp) - 1);
 			tmp[sizeof(tmp) - 1] = '\0';
-			char *token = strtok(tmp, " ");
+			char *token = strtok(tmp, ",");
 			while (token && link->ping_target_count < MAX_TARGETS) {
-				strncpy(link->ping_targets[link->ping_target_count], token, MAX_IP_LEN - 1);
-				link->ping_target_count++;
-				token = strtok(NULL, " ");
+				// Trim leading whitespace
+				while (*token == ' ' || *token == '\t' || *token == '\r' || *token == '\n') {
+					token++;
+				}
+				// Trim trailing whitespace
+				char *end = token + strlen(token) - 1;
+				while (end > token && (*end == ' ' || *end == '\t' || *end == '\r' || *end == '\n')) {
+					*end = '\0';
+					end--;
+				}
+				if (*token != '\0') {
+					strncpy(link->ping_targets[link->ping_target_count], token, MAX_IP_LEN - 1);
+					link->ping_target_count++;
+				}
+				token = strtok(NULL, ",");
 			}
 		}
 
