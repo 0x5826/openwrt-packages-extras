@@ -52,14 +52,19 @@ return view.extend({
 		o.rmempty = false;
 
 		// --- Monitored Links Section ---
-		s = m.section(form.TypedSection, 'link', _('Monitored WAN Interfaces'),
+		s = m.section(form.GridSection, 'link', _('Monitored WAN Interfaces'),
 			_('Add and prioritize your WAN interfaces. Lower priority number means higher preference (e.g., 1 = primary, 2 = backup).'));
 		s.anonymous = true;
 		s.addremove = true;
 
-		// Interface name - dynamic dropdown
+		// 1. Enabled (Enabled as the first column)
+		o = s.option(form.Flag, 'enabled', _('Enabled'));
+		o.default = '1';
+		o.rmempty = false;
+
+		// 2. Interface name - dynamic dropdown
 		o = s.option(form.ListValue, 'name', _('Interface'),
-			_('Select a logical WAN interface from Network settings.'));
+			_('Select a logical WAN interface.'));
 		o.rmempty = false;
 		uci.sections('network', 'interface').forEach(function(sec) {
 			var n = sec['.name'];
@@ -68,62 +73,70 @@ return view.extend({
 			}
 		});
 
-		o = s.option(form.Flag, 'enabled', _('Enabled'));
-		o.default = '1';
-
+		// 3. Priority
 		o = s.option(form.Value, 'priority', _('Priority'),
-			_('Routing priority (lower number = higher preference, e.g. 1 = primary).'));
+			_('Routing priority (lower = higher preference).'));
 		o.datatype = 'uinteger';
 		o.default = '1';
 		o.rmempty = false;
 
+		// 4. Metric
 		o = s.option(form.Value, 'metric', _('Base Metric'),
-			_('Default route metric when this link is healthy (e.g., wan=10, wan2=20).'));
+			_('Default route metric when healthy.'));
 		o.datatype = 'uinteger';
 		o.default = '10';
 		o.rmempty = false;
 
-		// --- Health Check Targets ---
+		// 5. Health Threshold
+		o = s.option(form.Value, 'weight_threshold', _('Health Threshold'),
+			_('Combined weight score required to mark this link healthy.'));
+		o.datatype = 'uinteger';
+		o.default = '2';
+		o.rmempty = false;
+
+		// --- Health Check Targets (Modal Only) ---
 		o = s.option(form.Value, 'ping_targets', _('Ping Targets'),
 			_('Space-separated list of IPs to ping (e.g., 223.5.5.5 8.8.8.8).'));
 		o.rmempty = true;
+		o.modalonly = true;
 
 		o = s.option(form.Value, 'ping_weight', _('Ping Weight'));
 		o.datatype = 'uinteger';
 		o.default = '1';
+		o.modalonly = true;
 
 		o = s.option(form.Value, 'dns_server', _('DNS Server'),
 			_('DNS server IP for UDP query probe (e.g., 119.29.29.29).'));
 		o.datatype = 'ip4addr';
 		o.rmempty = true;
+		o.modalonly = true;
 
 		o = s.option(form.Value, 'dns_domain', _('DNS Domain'),
 			_('Domain name to resolve for DNS probe (e.g., www.baidu.com).'));
 		o.rmempty = true;
+		o.modalonly = true;
 
 		o = s.option(form.Value, 'dns_weight', _('DNS Weight'));
 		o.datatype = 'uinteger';
 		o.default = '1';
+		o.modalonly = true;
 
 		o = s.option(form.Value, 'tcp_target', _('TCP Target'),
 			_('Target IP for TCP handshake probe.'));
 		o.datatype = 'ip4addr';
 		o.rmempty = true;
+		o.modalonly = true;
 
 		o = s.option(form.Value, 'tcp_port', _('TCP Port'),
 			_('Target port for TCP handshake probe.'));
 		o.datatype = 'port';
 		o.rmempty = true;
+		o.modalonly = true;
 
 		o = s.option(form.Value, 'tcp_weight', _('TCP Weight'));
 		o.datatype = 'uinteger';
 		o.default = '1';
-
-		o = s.option(form.Value, 'weight_threshold', _('Health Threshold'),
-			_('Combined weight score required to mark this link healthy (e.g., if threshold is 2, any 2 successful checks suffice).'));
-		o.datatype = 'uinteger';
-		o.default = '2';
-		o.rmempty = false;
+		o.modalonly = true;
 
 		return m.render();
 	}
