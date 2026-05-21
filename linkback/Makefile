@@ -20,7 +20,7 @@ define Package/$(PKG_NAME)
   SECTION:=net
   CATEGORY:=Network
   SUBMENU:=Routing and Redirection
-  TITLE:=Lightweight C-based Multi-WAN link fault detection and failover daemon
+  TITLE:=LinkBack gateway switch daemon
   DEPENDS:=+libuci +libubus +libubox +libblobmsg-json +ip-full
   MAINTAINER:=Dante
 endef
