@@ -47,25 +47,29 @@ return view.extend({
 			_('Master switch to enable or disable the LinkBack failover daemon.'));
 		o.rmempty = false;
 		o.validate = function(section_id, value) {
-			if (value === '1') {
-				var link_sections = uci.sections('linkback', 'link');
-				if (!link_sections || link_sections.length <= 1) {
-					return _('Cannot enable service: At least 2 monitored WAN interfaces must be configured for failover switcher.');
+			var form_val = (typeof(this.formvalue) === 'function') ? this.formvalue(section_id) : null;
+			// If service is not being enabled (both value and latest form input are not '1'), skip strong validations
+			if (value !== '1' || form_val === '0') {
+				return true;
+			}
+
+			var link_sections = uci.sections('linkback', 'link');
+			if (!link_sections || link_sections.length <= 1) {
+				return _('Cannot enable service: At least 2 monitored WAN interfaces must be configured for failover switcher.');
+			}
+			var has_valid_check = false;
+			for (var i = 0; i < link_sections.length; i++) {
+				var s_id = link_sections[i]['.name'];
+				var ping_targets = uci.get('linkback', s_id, 'ping_targets');
+				var dns_server = uci.get('linkback', s_id, 'dns_server');
+				var tcp_target = uci.get('linkback', s_id, 'tcp_target');
+				if (ping_targets || dns_server || tcp_target) {
+					has_valid_check = true;
+					break;
 				}
-				var has_valid_check = false;
-				for (var i = 0; i < link_sections.length; i++) {
-					var s_id = link_sections[i]['.name'];
-					var ping_targets = uci.get('linkback', s_id, 'ping_targets');
-					var dns_server = uci.get('linkback', s_id, 'dns_server');
-					var tcp_target = uci.get('linkback', s_id, 'tcp_target');
-					if (ping_targets || dns_server || tcp_target) {
-						has_valid_check = true;
-						break;
-					}
-				}
-				if (!has_valid_check) {
-					return _('Cannot enable service: At least one interface must have a configured check type (Ping, DNS, or TCP).');
-				}
+			}
+			if (!has_valid_check) {
+				return _('Cannot enable service: At least one interface must have a configured check type (Ping, DNS, or TCP).');
 			}
 			return true;
 		};
