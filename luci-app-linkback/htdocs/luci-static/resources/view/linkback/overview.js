@@ -75,34 +75,18 @@ return view.extend({
 		}
 
 		var statusSection = E('div', { 'class': 'cbi-section' }, [
-			E('h3', { 'class': 'cbi-section-title' }, _('Service Status')),
 			E('div', { 'class': 'cbi-section-node' }, [
 				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Current Status')),
-					E('div', { 'class': 'cbi-value-field' }, [
+					E('label', { 'class': 'cbi-value-title' }, _('Service Status')),
+					E('div', { 'class': 'cbi-value-field', style: 'display:flex; align-items:center;' }, [
 						E('span', {
 							id: 'linkback-service-state',
 							style: 'font-weight:bold; color:' + stateColor + '; margin-right:15px;'
-						}, stateText)
-					])
-				]),
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Service Control')),
-					E('div', { 'class': 'cbi-value-field' }, [
+						}, stateText),
 						E('button', {
 							'class': 'btn cbi-button cbi-button-apply',
 							click: ui.createHandlerFn(this, 'handleServiceAction', 'restart')
-						}, _('Restart')),
-						E('button', {
-							'class': 'btn cbi-button cbi-button-action',
-							style: 'margin-left:10px;',
-							click: ui.createHandlerFn(this, 'handleServiceAction', 'start')
-						}, _('Start')),
-						E('button', {
-							'class': 'btn cbi-button cbi-button-reset',
-							style: 'margin-left:10px;',
-							click: ui.createHandlerFn(this, 'handleServiceAction', 'stop')
-						}, _('Stop'))
+						}, _('Restart'))
 					])
 				])
 			])

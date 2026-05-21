@@ -62,9 +62,8 @@ return view.extend({
 		o.default = '1';
 		o.rmempty = false;
 
-		// 2. Interface name - dynamic dropdown
-		o = s.option(form.ListValue, 'name', _('Interface'),
-			_('Select a logical WAN interface.'));
+		// 2. Interface name - dynamic dropdown (No description for main column)
+		o = s.option(form.ListValue, 'name', _('Interface'));
 		o.rmempty = false;
 		uci.sections('network', 'interface').forEach(function(sec) {
 			var n = sec['.name'];
@@ -73,36 +72,48 @@ return view.extend({
 			}
 		});
 
-		// 3. Priority
-		o = s.option(form.Value, 'priority', _('Priority'),
-			_('Routing priority (lower = higher preference).'));
+		// 3. Priority (No description for main column)
+		o = s.option(form.Value, 'priority', _('Priority'));
 		o.datatype = 'uinteger';
 		o.default = '1';
 		o.rmempty = false;
 
-		// 4. Metric
-		o = s.option(form.Value, 'metric', _('Base Metric'),
-			_('Default route metric when healthy.'));
+		// 4. Metric (No description for main column)
+		o = s.option(form.Value, 'metric', _('Base Metric'));
 		o.datatype = 'uinteger';
 		o.default = '10';
 		o.rmempty = false;
 
-		// 5. Health Threshold
-		o = s.option(form.Value, 'weight_threshold', _('Health Threshold'),
-			_('Combined weight score required to mark this link healthy.'));
+		// 5. Health Threshold (No description for main column)
+		o = s.option(form.Value, 'weight_threshold', _('Health Threshold'));
 		o.datatype = 'uinteger';
 		o.default = '2';
 		o.rmempty = false;
 
 		// --- Health Check Targets (Modal Only) ---
+		
+		// Ping Probe Enable & Parameters
+		o = s.option(form.Flag, 'ping_enabled', _('Enable Ping Probe'));
+		o.default = '1';
+		o.rmempty = false;
+		o.modalonly = true;
+
 		o = s.option(form.Value, 'ping_targets', _('Ping Targets'),
 			_('Space-separated list of IPs to ping (e.g., 223.5.5.5 8.8.8.8).'));
 		o.rmempty = true;
 		o.modalonly = true;
+		o.depends('ping_enabled', '1');
 
 		o = s.option(form.Value, 'ping_weight', _('Ping Weight'));
 		o.datatype = 'uinteger';
 		o.default = '1';
+		o.modalonly = true;
+		o.depends('ping_enabled', '1');
+
+		// DNS Probe Enable & Parameters
+		o = s.option(form.Flag, 'dns_enabled', _('Enable DNS Probe'));
+		o.default = '1';
+		o.rmempty = false;
 		o.modalonly = true;
 
 		o = s.option(form.Value, 'dns_server', _('DNS Server'),
@@ -110,15 +121,24 @@ return view.extend({
 		o.datatype = 'ip4addr';
 		o.rmempty = true;
 		o.modalonly = true;
+		o.depends('dns_enabled', '1');
 
 		o = s.option(form.Value, 'dns_domain', _('DNS Domain'),
 			_('Domain name to resolve for DNS probe (e.g., www.baidu.com).'));
 		o.rmempty = true;
 		o.modalonly = true;
+		o.depends('dns_enabled', '1');
 
 		o = s.option(form.Value, 'dns_weight', _('DNS Weight'));
 		o.datatype = 'uinteger';
 		o.default = '1';
+		o.modalonly = true;
+		o.depends('dns_enabled', '1');
+
+		// TCP Probe Enable & Parameters
+		o = s.option(form.Flag, 'tcp_enabled', _('Enable TCP Probe'));
+		o.default = '1';
+		o.rmempty = false;
 		o.modalonly = true;
 
 		o = s.option(form.Value, 'tcp_target', _('TCP Target'),
@@ -126,17 +146,20 @@ return view.extend({
 		o.datatype = 'ip4addr';
 		o.rmempty = true;
 		o.modalonly = true;
+		o.depends('tcp_enabled', '1');
 
 		o = s.option(form.Value, 'tcp_port', _('TCP Port'),
 			_('Target port for TCP handshake probe.'));
 		o.datatype = 'port';
 		o.rmempty = true;
 		o.modalonly = true;
+		o.depends('tcp_enabled', '1');
 
 		o = s.option(form.Value, 'tcp_weight', _('TCP Weight'));
 		o.datatype = 'uinteger';
 		o.default = '1';
 		o.modalonly = true;
+		o.depends('tcp_enabled', '1');
 
 		return m.render();
 	}

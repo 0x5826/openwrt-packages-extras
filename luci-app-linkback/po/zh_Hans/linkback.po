@@ -198,3 +198,25 @@ msgstr "系统日志"
 
 msgid "No logs available."
 msgstr "暂无可用运行日志。"
+
+msgid "Enable Ping Probe"
+msgstr "启用 Ping 检测"
+
+msgid "Enable DNS Probe"
+msgstr "启用 DNS 检测"
+
+msgid "Enable TCP Probe"
+msgstr "启用 TCP 检测"
+
+msgid "Select a logical WAN interface."
+msgstr "选择逻辑 WAN 接口。"
+
+msgid "Routing priority (lower = higher preference)."
+msgstr "路由优先级（数值越小优先级越高）。"
+
+msgid "Default route metric when healthy."
+msgstr "接口健康时的默认路由跃点 (Metric) 数值。"
+
+msgid "Combined weight score required to mark this link healthy."
+msgstr "判定该接口健康所需的各检测指标成功权重分之和。"
+
