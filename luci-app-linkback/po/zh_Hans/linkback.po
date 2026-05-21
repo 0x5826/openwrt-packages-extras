@@ -283,3 +283,15 @@ msgstr "%s (已配置)"
 msgid "This interface has already been configured."
 msgstr "该接口已被配置，请选择其他接口。"
 
+msgid "Priority must not be empty."
+msgstr "优先级不能为空。"
+
+msgid "Priority %s conflicts with interface \"%s\". Priorities must be unique."
+msgstr "优先级 %s 与接口 \"%s\" 冲突。优先级必须是唯一的。"
+
+msgid "Metric must not be empty."
+msgstr "默认跃点不能为空。"
+
+msgid "Metric %s conflicts with interface \"%s\". Metrics must be unique."
+msgstr "跃点数 %s 与接口 \"%s\" 冲突。跃点数必须是唯一的。"
+
