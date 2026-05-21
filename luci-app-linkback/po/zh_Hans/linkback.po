@@ -276,3 +276,10 @@ msgstr "DNS 探测"
 
 msgid "TCP Probe"
 msgstr "TCP 探测"
+
+msgid "%s (configured)"
+msgstr "%s (已配置)"
+
+msgid "This interface has already been configured."
+msgstr "该接口已被配置，请选择其他接口。"
+

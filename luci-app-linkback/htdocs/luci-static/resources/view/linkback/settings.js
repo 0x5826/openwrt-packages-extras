@@ -90,7 +90,7 @@ return view.extend({
 			if (value === '1') {
 				var err = self._validateServiceConfig();
 				if (err) {
-					ui.addNotification(null, E('p', err), 'warning');
+					ui.addNotification(null, E('p', err), 'error');
 					uci.set('linkback', section_id, 'enabled', '0');
 					return;
 				}
@@ -144,24 +144,52 @@ return view.extend({
 		// 2. Interface name - dynamic dropdown (No description for main column)
 		o = s.option(form.ListValue, 'name', _('Interface'));
 		o.rmempty = false;
-		var origNameRender = o.render;
-		o.render = function(option_index, section_id, in_table) {
-			this.keylist = [];
-			this.vallist = [];
-			var added_names = {};
+
+		// Once-off load of all network interfaces safely avoiding race conditions
+		var network_interfaces = {};
+		uci.sections('network', 'interface').forEach(function(sec) {
+			var n = sec['.name'];
+			if (n !== 'loopback' && n !== 'lan') {
+				network_interfaces[n] = true;
+				o.value(n);
+			}
+		});
+
+		// Safeguard to show already configured interfaces even if they were deleted from network config
+		uci.sections('linkback', 'link').forEach(function(sec) {
+			if (sec.name && !network_interfaces[sec.name]) {
+				o.value(sec.name, _('%s (configured)').format(sec.name));
+			}
+		});
+
+		// Robust, race-condition-free uniqueness validator
+		o.validate = function(section_id, value) {
+			var added = false;
 			uci.sections('linkback', 'link').forEach(function(sec) {
-				if (sec['.name'] !== section_id && sec.name) {
-					added_names[sec.name] = true;
+				if (sec['.name'] !== section_id && sec.name === value) {
+					added = true;
 				}
 			});
-			var self = this;
-			uci.sections('network', 'interface').forEach(function(sec) {
-				var n = sec['.name'];
-				if (n !== 'loopback' && n !== 'lan' && !added_names[n]) {
-					self.value(n);
-				}
-			});
-			return origNameRender.call(this, option_index, section_id, in_table);
+			if (added) {
+				return _('This interface has already been configured.');
+			}
+			return true;
+		};
+
+		o.write = function(section_id, value) {
+			var next = (value == null) ? '' : String(value).trim();
+			if (!next) {
+				var current = uci.get('linkback', section_id, 'name');
+				if (current)
+					uci.set('linkback', section_id, 'name', current);
+				return;
+			}
+			uci.set('linkback', section_id, 'name', next);
+		};
+		o.remove = function(section_id) {
+			var current = uci.get('linkback', section_id, 'name');
+			if (current)
+				uci.set('linkback', section_id, 'name', current);
 		};
 		makeTableColumnExpand(o, '25%');
 
@@ -189,7 +217,7 @@ return view.extend({
 		o.value('dns', _('DNS Probe'));
 		o.value('tcp', _('TCP Probe'));
 		o.default = '';
-		o.rmempty = true;
+		o.rmempty = false;
 		makeTableColumnExpand(o, '20%');
 
 		// Derive the check type from which probe target is configured in UCI.
@@ -208,9 +236,13 @@ return view.extend({
 		// defaults to '' and clears everything even when the user didn't change it.
 		o.write = function(section_id, value) {
 			var current = this.cfgvalue(section_id);
+			var next = (value == null) ? null : String(value);
+			if (next == null) {
+				return;
+			}
 
 			// No change - do nothing (this is the key fix)
-			if (value === current) {
+			if (next === current) {
 				return;
 			}
 
@@ -234,30 +266,24 @@ return view.extend({
 			}
 
 			// Set new type's default weight
-			if (value === 'ping') {
+			if (next === 'ping') {
 				uci.set('linkback', section_id, 'ping_weight', '1');
-			} else if (value === 'dns') {
+			} else if (next === 'dns') {
 				uci.set('linkback', section_id, 'dns_weight', '1');
-			} else if (value === 'tcp') {
+			} else if (next === 'tcp') {
 				uci.set('linkback', section_id, 'tcp_weight', '1');
 			}
 
 			// If service is already enabled and this change breaks config, auto-disable
 			var enabled = uci.get('linkback', '@global[0]', 'enabled');
-			if (enabled === '1' && value === '') {
+			if (enabled === '1' && next === '') {
 				var iface_name = uci.get('linkback', section_id, 'name') || section_id;
 				ui.addNotification(null, E('p',
 					_('Service has been auto-disabled because the configuration is no longer valid: ') +
 					_('Cannot enable service: Interface "%s" has no health check configured.').format(iface_name)
-				), 'warning');
+				), 'error');
 				uci.set('linkback', '@global[0]', 'enabled', '0');
 			}
-		};
-
-		// Remove is called when the value is empty and rmempty is true.
-		// For this virtual field, treat remove the same as write('').
-		o.remove = function(section_id) {
-			return this.write(section_id, '');
 		};
 
 		// 6. Ping Probe Parameters

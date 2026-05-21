@@ -33,6 +33,7 @@ static volatile bool keep_running = true;
 
 // Prototypes
 static void restore_all_metrics(void);
+static bool validate_loaded_config(void);
 static void handle_signal(int sig) {
 	syslog(LOG_INFO, "Received signal %d, exiting...", sig);
 	keep_running = false;
@@ -399,6 +400,97 @@ static bool load_config(void) {
 
 	uci_unload(ctx, pkg);
 	uci_free_context(ctx);
+
+	if (!validate_loaded_config()) {
+		return false;
+	}
+
+	return true;
+}
+
+// Startup-time defensive validation. LuCI-side checks can be bypassed by
+// direct UCI edits, so daemon must refuse unsafe/incomplete configs.
+static bool validate_loaded_config(void) {
+	if (!global_cfg.enabled) {
+		return true;
+	}
+
+	if (link_count < 2) {
+		syslog(LOG_ERR, "Invalid config: at least 2 enabled monitored links are required, got %d.", link_count);
+		return false;
+	}
+
+	for (int i = 0; i < link_count; i++) {
+		link_t *a = &links[i];
+
+		if (a->name[0] == '\0') {
+			syslog(LOG_ERR, "Invalid config: link[%d] has empty interface name.", i);
+			return false;
+		}
+
+		if (a->priority <= 0) {
+			syslog(LOG_ERR, "Invalid config: link %s has invalid priority %d (must be > 0).", a->name, a->priority);
+			return false;
+		}
+
+		if (a->metric <= 0) {
+			syslog(LOG_ERR, "Invalid config: link %s has invalid metric %d (must be > 0).", a->name, a->metric);
+			return false;
+		}
+
+		// No duplicate priorities
+		for (int j = i + 1; j < link_count; j++) {
+			link_t *b = &links[j];
+			if (a->priority == b->priority) {
+				syslog(LOG_ERR, "Invalid config: duplicate priority %d on links %s and %s.", a->priority, a->name, b->name);
+				return false;
+			}
+		}
+
+		bool has_ping = (a->ping_target_count > 0);
+		bool has_dns = (a->dns_server[0] != '\0' && a->dns_domain[0] != '\0');
+		bool has_tcp = (a->tcp_target[0] != '\0' && a->tcp_port > 0);
+		if (!has_ping && !has_dns && !has_tcp) {
+			syslog(LOG_ERR, "Invalid config: link %s has no complete health-check probe configured.", a->name);
+			return false;
+		}
+
+		if ((a->dns_server[0] != '\0') != (a->dns_domain[0] != '\0')) {
+			syslog(LOG_ERR, "Invalid config: link %s DNS probe is incomplete (dns_server + dns_domain required).", a->name);
+			return false;
+		}
+
+		if ((a->tcp_target[0] != '\0') != (a->tcp_port > 0)) {
+			syslog(LOG_ERR, "Invalid config: link %s TCP probe is incomplete (tcp_target + tcp_port required).", a->name);
+			return false;
+		}
+
+		if (a->ping_weight < 0 || a->dns_weight < 0 || a->tcp_weight < 0) {
+			syslog(LOG_ERR, "Invalid config: link %s has negative probe weight.", a->name);
+			return false;
+		}
+
+		int max_score = 0;
+		if (has_ping) max_score += a->ping_weight;
+		if (has_dns) max_score += a->dns_weight;
+		if (has_tcp) max_score += a->tcp_weight;
+		if (max_score <= 0) {
+			syslog(LOG_ERR, "Invalid config: link %s effective max score is %d (must be > 0).", a->name, max_score);
+			return false;
+		}
+
+		if (a->weight_threshold <= 0 || a->weight_threshold > max_score) {
+			syslog(LOG_ERR, "Invalid config: link %s threshold %d out of range (1..%d).", a->name, a->weight_threshold, max_score);
+			return false;
+		}
+
+		if (a->check_interval <= 0 || a->check_timeout <= 0 ||
+		    a->recovery_delay <= 0 || a->failover_delay <= 0) {
+			syslog(LOG_ERR, "Invalid config: link %s timing values must be > 0.", a->name);
+			return false;
+		}
+	}
+
 	return true;
 }
 
