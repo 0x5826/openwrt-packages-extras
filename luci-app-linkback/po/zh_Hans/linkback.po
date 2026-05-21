@@ -259,5 +259,20 @@ msgstr "-- 未配置 --"
 msgid "Cannot enable service: At least 2 monitored WAN interfaces must be configured for failover switcher."
 msgstr "无法启用服务: 链路备份切换至少需要配置 2 个监控的 WAN 接口。"
 
+msgid "Cannot enable service: Interface \"%s\" has no health check configured."
+msgstr "无法启用服务: 接口「%s」未配置健康检测策略。"
 
+msgid "Cannot enable service: Interfaces \"%s\" and \"%s\" have the same priority %s."
+msgstr "无法启用服务: 接口「%s」和「%s」的路由优先级均为 %s，不允许重复。"
 
+msgid "Service has been auto-disabled because the configuration is no longer valid: "
+msgstr "由于配置不再合法，服务已被自动禁用: "
+
+msgid "Ping Probe"
+msgstr "Ping 探测"
+
+msgid "DNS Probe"
+msgstr "DNS 探测"
+
+msgid "TCP Probe"
+msgstr "TCP 探测"

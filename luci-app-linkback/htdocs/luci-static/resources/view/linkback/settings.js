@@ -12,6 +12,43 @@ return view.extend({
 		]);
 	},
 
+	// Comprehensive validation: check all conditions required for the service
+	// to be safely enabled. Returns an error message string, or null if OK.
+	_validateServiceConfig: function() {
+		var link_sections = uci.sections('linkback', 'link') || [];
+
+		// Rule 1: At least 2 interfaces
+		if (link_sections.length < 2) {
+			return _('Cannot enable service: At least 2 monitored WAN interfaces must be configured for failover switcher.');
+		}
+
+		// Rule 2: ALL interfaces must have a health check configured
+		for (var i = 0; i < link_sections.length; i++) {
+			var s_id = link_sections[i]['.name'];
+			var iface_name = uci.get('linkback', s_id, 'name') || s_id;
+			var has_check = uci.get('linkback', s_id, 'ping_targets') ||
+			                uci.get('linkback', s_id, 'dns_server') ||
+			                uci.get('linkback', s_id, 'tcp_target');
+			if (!has_check) {
+				return _('Cannot enable service: Interface "%s" has no health check configured.').format(iface_name);
+			}
+		}
+
+		// Rule 3: No duplicate priorities
+		var priorities = {};
+		for (var i = 0; i < link_sections.length; i++) {
+			var s_id = link_sections[i]['.name'];
+			var iface_name = uci.get('linkback', s_id, 'name') || s_id;
+			var prio = uci.get('linkback', s_id, 'priority') || '1';
+			if (priorities[prio]) {
+				return _('Cannot enable service: Interfaces "%s" and "%s" have the same priority %s.').format(priorities[prio], iface_name, prio);
+			}
+			priorities[prio] = iface_name;
+		}
+
+		return null;
+	},
+
 	render: function() {
 		var m, s, o;
 		var self = this;
@@ -48,37 +85,12 @@ return view.extend({
 		o = s.option(form.Flag, 'enabled', _('Enable Service'),
 			_('Master switch to enable or disable the LinkBack failover daemon.'));
 		o.rmempty = false;
-		// Intercept at UCI write level: works for ALL save paths including the
-		// top-right pending-changes apply button (which bypasses handleSaveApply).
+		// Intercept at UCI write level to validate before enabling.
 		o.write = function(section_id, value) {
 			if (value === '1') {
-				var link_sections = uci.sections('linkback', 'link') || [];
-				var err_msg = null;
-
-				if (link_sections.length <= 1) {
-					err_msg = _('Cannot enable service: At least 2 monitored WAN interfaces must be configured for failover switcher.');
-				} else {
-					var has_check = false;
-					for (var i = 0; i < link_sections.length; i++) {
-						var ls = link_sections[i]['.name'];
-						if (uci.get('linkback', ls, 'ping_targets') ||
-						    uci.get('linkback', ls, 'dns_server') ||
-						    uci.get('linkback', ls, 'tcp_target')) {
-							has_check = true;
-							break;
-						}
-					}
-					if (!has_check) {
-						err_msg = _('Cannot enable service: At least one interface must have a configured check type (Ping, DNS, or TCP).');
-					}
-				}
-
-				if (err_msg) {
-					// Show native LuCI warning notification bar (the blue/yellow banner
-					// at the top of the page, not a full-screen modal).
-					ui.addNotification(null, E('p', err_msg), 'warning');
-					// Silently reset to '0' so UCI in-memory never has enabled='1'
-					// when conditions are not met.
+				var err = self._validateServiceConfig();
+				if (err) {
+					ui.addNotification(null, E('p', err), 'warning');
 					uci.set('linkback', section_id, 'enabled', '0');
 					return;
 				}
@@ -102,6 +114,25 @@ return view.extend({
 				var name = uci.get('linkback', section_id, 'name') || section_id;
 				return parent_title + ' - ' + _('Edit Monitored Interface') + ' (' + name + ')';
 			}
+		};
+
+		// When service is already enabled and user modifies/deletes links,
+		// re-validate on the GridSection level. If the resulting config is invalid,
+		// show a warning and auto-disable the service to maintain safety.
+		var origRemove = s.handleRemove;
+		s.handleRemove = function(section_id, ev) {
+			return origRemove.apply(this, arguments).then(function() {
+				var enabled = uci.get('linkback', '@global[0]', 'enabled');
+				if (enabled === '1') {
+					var err = self._validateServiceConfig();
+					if (err) {
+						ui.addNotification(null, E('p',
+							_('Service has been auto-disabled because the configuration is no longer valid: ') + err
+						), 'warning');
+						uci.set('linkback', '@global[0]', 'enabled', '0');
+					}
+				}
+			});
 		};
 
 		// 1. Enabled (Enabled as the first column)
@@ -149,6 +180,9 @@ return view.extend({
 		makeTableColumnExpand(o, '15%');
 
 		// 5. Check Type Dropdown (Displayed in main table & Modal)
+		// This is a VIRTUAL field - it does NOT exist in UCI. It is derived from
+		// the presence of ping_targets/dns_server/tcp_target in cfgvalue, and
+		// controls which probe fields to show/clear in write.
 		o = s.option(form.ListValue, 'check_type', _('Check Type'));
 		o.value('', _('-- Not Configured --'));
 		o.value('ping', _('Ping Probe'));
@@ -158,63 +192,72 @@ return view.extend({
 		o.rmempty = true;
 		makeTableColumnExpand(o, '20%');
 
+		// Derive the check type from which probe target is configured in UCI.
 		o.cfgvalue = function(section_id) {
-			var ping_targets = uci.get('linkback', section_id, 'ping_targets');
-			var dns_server = uci.get('linkback', section_id, 'dns_server');
-			var tcp_target = uci.get('linkback', section_id, 'tcp_target');
-			if (dns_server) {
-				return 'dns';
-			} else if (tcp_target) {
-				return 'tcp';
-			} else if (ping_targets) {
+			if (uci.get('linkback', section_id, 'ping_targets'))
 				return 'ping';
-			}
+			if (uci.get('linkback', section_id, 'dns_server'))
+				return 'dns';
+			if (uci.get('linkback', section_id, 'tcp_target'))
+				return 'tcp';
 			return '';
 		};
 
+		// Only write when the check type actually CHANGES from the current state.
+		// This prevents the "edit modal save deletes config" bug where the dropdown
+		// defaults to '' and clears everything even when the user didn't change it.
 		o.write = function(section_id, value) {
+			var current = this.cfgvalue(section_id);
+
+			// No change - do nothing (this is the key fix)
+			if (value === current) {
+				return;
+			}
+
 			// Silently set weight_threshold = 1
 			uci.set('linkback', section_id, 'weight_threshold', '1');
 
-			if (value === 'ping') {
-				uci.set('linkback', section_id, 'ping_weight', '1');
-				// Clear dns
+			// Clear old type's fields
+			if (current === 'ping' || current === '') {
+				uci.remove('linkback', section_id, 'ping_weight');
+				uci.remove('linkback', section_id, 'ping_targets');
+			}
+			if (current === 'dns' || current === '') {
 				uci.remove('linkback', section_id, 'dns_weight');
 				uci.remove('linkback', section_id, 'dns_server');
 				uci.remove('linkback', section_id, 'dns_domain');
-				// Clear tcp
-				uci.remove('linkback', section_id, 'tcp_weight');
-				uci.remove('linkback', section_id, 'tcp_target');
-				uci.remove('linkback', section_id, 'tcp_port');
-			} else if (value === 'dns') {
-				uci.set('linkback', section_id, 'dns_weight', '1');
-				// Clear ping
-				uci.remove('linkback', section_id, 'ping_weight');
-				uci.remove('linkback', section_id, 'ping_targets');
-				// Clear tcp
-				uci.remove('linkback', section_id, 'tcp_weight');
-				uci.remove('linkback', section_id, 'tcp_target');
-				uci.remove('linkback', section_id, 'tcp_port');
-			} else if (value === 'tcp') {
-				uci.set('linkback', section_id, 'tcp_weight', '1');
-				// Clear ping
-				uci.remove('linkback', section_id, 'ping_weight');
-				uci.remove('linkback', section_id, 'ping_targets');
-				// Clear dns
-				uci.remove('linkback', section_id, 'dns_weight');
-				uci.remove('linkback', section_id, 'dns_server');
-				uci.remove('linkback', section_id, 'dns_domain');
-			} else {
-				// Clear all probe configs if set to empty
-				uci.remove('linkback', section_id, 'ping_weight');
-				uci.remove('linkback', section_id, 'ping_targets');
-				uci.remove('linkback', section_id, 'dns_weight');
-				uci.remove('linkback', section_id, 'dns_server');
-				uci.remove('linkback', section_id, 'dns_domain');
+			}
+			if (current === 'tcp' || current === '') {
 				uci.remove('linkback', section_id, 'tcp_weight');
 				uci.remove('linkback', section_id, 'tcp_target');
 				uci.remove('linkback', section_id, 'tcp_port');
 			}
+
+			// Set new type's default weight
+			if (value === 'ping') {
+				uci.set('linkback', section_id, 'ping_weight', '1');
+			} else if (value === 'dns') {
+				uci.set('linkback', section_id, 'dns_weight', '1');
+			} else if (value === 'tcp') {
+				uci.set('linkback', section_id, 'tcp_weight', '1');
+			}
+
+			// If service is already enabled and this change breaks config, auto-disable
+			var enabled = uci.get('linkback', '@global[0]', 'enabled');
+			if (enabled === '1' && value === '') {
+				var iface_name = uci.get('linkback', section_id, 'name') || section_id;
+				ui.addNotification(null, E('p',
+					_('Service has been auto-disabled because the configuration is no longer valid: ') +
+					_('Cannot enable service: Interface "%s" has no health check configured.').format(iface_name)
+				), 'warning');
+				uci.set('linkback', '@global[0]', 'enabled', '0');
+			}
+		};
+
+		// Remove is called when the value is empty and rmempty is true.
+		// For this virtual field, treat remove the same as write('').
+		o.remove = function(section_id) {
+			return this.write(section_id, '');
 		};
 
 		// 6. Ping Probe Parameters
