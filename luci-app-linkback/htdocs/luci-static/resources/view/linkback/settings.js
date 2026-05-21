@@ -12,60 +12,6 @@ return view.extend({
 		]);
 	},
 
-	// Check if the current config meets the requirements to enable service.
-	// Returns an error string if conditions are not met, or null if OK.
-	_checkEnableRequirements: function() {
-		var link_sections = uci.sections('linkback', 'link') || [];
-		if (link_sections.length <= 1) {
-			return _('Cannot enable service: At least 2 monitored WAN interfaces must be configured for failover switcher.');
-		}
-		var has_valid_check = false;
-		for (var i = 0; i < link_sections.length; i++) {
-			var s_id = link_sections[i]['.name'];
-			if (uci.get('linkback', s_id, 'ping_targets') ||
-			    uci.get('linkback', s_id, 'dns_server') ||
-			    uci.get('linkback', s_id, 'tcp_target')) {
-				has_valid_check = true;
-				break;
-			}
-		}
-		if (!has_valid_check) {
-			return _('Cannot enable service: At least one interface must have a configured check type (Ping, DNS, or TCP).');
-		}
-		return null;
-	},
-
-	// Override handleSave: show native LuCI warning notification bar instead of
-	// the full-screen red modal error dialog when enable conditions are not met.
-	handleSave: function() {
-		var cb = document.querySelector('input[type="checkbox"][name$=".enabled"]');
-		var will_enable = cb ? cb.checked : false;
-
-		if (will_enable) {
-			var err = this._checkEnableRequirements();
-			if (err) {
-				ui.addNotification(null, E('p', err), 'warning');
-				return Promise.resolve();
-			}
-		}
-		return this.map ? this.map.save() : Promise.resolve();
-	},
-
-	// Override handleSaveApply: same guard with save+apply.
-	handleSaveApply: function(ev, mode) {
-		var cb = document.querySelector('input[type="checkbox"][name$=".enabled"]');
-		var will_enable = cb ? cb.checked : false;
-
-		if (will_enable) {
-			var err = this._checkEnableRequirements();
-			if (err) {
-				ui.addNotification(null, E('p', err), 'warning');
-				return Promise.resolve();
-			}
-		}
-		return this.map ? this.map.save(null, true) : Promise.resolve();
-	},
-
 	render: function() {
 		var m, s, o;
 		var self = this;
@@ -94,9 +40,6 @@ return view.extend({
 			_('LinkBack 链路守护') + ' - ' + _('Settings'),
 			_('Configure Multi-WAN failover service, health check parameters, and monitored link interfaces.'));
 
-		// Store map reference for use in handleSave/handleSaveApply
-		self.map = m;
-
 		// --- Global Settings Section ---
 		s = m.section(form.TypedSection, 'global', _('Global Settings'));
 		s.anonymous = true;
@@ -105,10 +48,42 @@ return view.extend({
 		o = s.option(form.Flag, 'enabled', _('Enable Service'),
 			_('Master switch to enable or disable the LinkBack failover daemon.'));
 		o.rmempty = false;
-		// Validation is now handled by handleSave/handleSaveApply via ui.addNotification.
-		// Keep a passthrough validate to avoid the LuCI red modal when deleting interfaces.
-		o.validate = function(section_id, value) {
-			return true;
+		// Intercept at UCI write level: works for ALL save paths including the
+		// top-right pending-changes apply button (which bypasses handleSaveApply).
+		o.write = function(section_id, value) {
+			if (value === '1') {
+				var link_sections = uci.sections('linkback', 'link') || [];
+				var err_msg = null;
+
+				if (link_sections.length <= 1) {
+					err_msg = _('Cannot enable service: At least 2 monitored WAN interfaces must be configured for failover switcher.');
+				} else {
+					var has_check = false;
+					for (var i = 0; i < link_sections.length; i++) {
+						var ls = link_sections[i]['.name'];
+						if (uci.get('linkback', ls, 'ping_targets') ||
+						    uci.get('linkback', ls, 'dns_server') ||
+						    uci.get('linkback', ls, 'tcp_target')) {
+							has_check = true;
+							break;
+						}
+					}
+					if (!has_check) {
+						err_msg = _('Cannot enable service: At least one interface must have a configured check type (Ping, DNS, or TCP).');
+					}
+				}
+
+				if (err_msg) {
+					// Show native LuCI warning notification bar (the blue/yellow banner
+					// at the top of the page, not a full-screen modal).
+					ui.addNotification(null, E('p', err_msg), 'warning');
+					// Silently reset to '0' so UCI in-memory never has enabled='1'
+					// when conditions are not met.
+					uci.set('linkback', section_id, 'enabled', '0');
+					return;
+				}
+			}
+			uci.set('linkback', section_id, 'enabled', value);
 		};
 
 		// --- Monitored Links Section ---
