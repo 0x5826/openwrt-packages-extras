@@ -302,27 +302,11 @@ static bool load_config(void) {
 
 	// Parse global config
 	global_cfg.enabled = false;
-	global_cfg.check_interval = 5;
-	global_cfg.check_timeout = 3;
-	global_cfg.recovery_delay = 3;
-	global_cfg.failover_delay = 2;
 
 	struct uci_section *global_sec = uci_lookup_section(ctx, pkg, "global");
 	if (global_sec) {
 		const char *enabled = uci_lookup_option_string(ctx, global_sec, "enabled");
 		global_cfg.enabled = (enabled && strcmp(enabled, "1") == 0);
-
-		const char *interval = uci_lookup_option_string(ctx, global_sec, "check_interval");
-		if (interval) global_cfg.check_interval = atoi(interval);
-
-		const char *timeout = uci_lookup_option_string(ctx, global_sec, "check_timeout");
-		if (timeout) global_cfg.check_timeout = atoi(timeout);
-
-		const char *recovery = uci_lookup_option_string(ctx, global_sec, "recovery_delay");
-		if (recovery) global_cfg.recovery_delay = atoi(recovery);
-
-		const char *failover = uci_lookup_option_string(ctx, global_sec, "failover_delay");
-		if (failover) global_cfg.failover_delay = atoi(failover);
 	}
 
 	// Parse links
@@ -392,9 +376,22 @@ static bool load_config(void) {
 		const char *thresh = uci_lookup_option_string(ctx, s, "weight_threshold");
 		link->weight_threshold = thresh ? atoi(thresh) : 2;
 
+		const char *interval = uci_lookup_option_string(ctx, s, "check_interval");
+		link->check_interval = interval ? atoi(interval) : 5;
+
+		const char *timeout = uci_lookup_option_string(ctx, s, "check_timeout");
+		link->check_timeout = timeout ? atoi(timeout) : 3;
+
+		const char *recovery = uci_lookup_option_string(ctx, s, "recovery_delay");
+		link->recovery_delay = recovery ? atoi(recovery) : 3;
+
+		const char *failover = uci_lookup_option_string(ctx, s, "failover_delay");
+		link->failover_delay = failover ? atoi(failover) : 2;
+
 		// Default runtime states
 		link->healthy = true;
 		link->is_up = false;
+		link->last_checked = 0; // Force immediate check on startup
 
 		link_count++;
 		if (link_count >= MAX_LINKS) break;
@@ -465,7 +462,7 @@ static void write_status_json(void) {
 
 	fprintf(fp, "{\n");
 	fprintf(fp, "  \"enabled\": %s,\n", global_cfg.enabled ? "true" : "false");
-	fprintf(fp, "  \"check_interval\": %d,\n", global_cfg.check_interval);
+	fprintf(fp, "  \"check_interval\": 5,\n");
 
 	// Find current active gateway link (first healthy link ordered by priority)
 	char active_link[MAX_NAME_LEN] = "none";
@@ -491,6 +488,10 @@ static void write_status_json(void) {
 		fprintf(fp, "      \"gateway\": \"%s\",\n", link->gateway);
 		fprintf(fp, "      \"score\": %d,\n", link->current_score);
 		fprintf(fp, "      \"threshold\": %d,\n", link->weight_threshold);
+		fprintf(fp, "      \"check_interval\": %d,\n", link->check_interval);
+		fprintf(fp, "      \"check_timeout\": %d,\n", link->check_timeout);
+		fprintf(fp, "      \"recovery_delay\": %d,\n", link->recovery_delay);
+		fprintf(fp, "      \"failover_delay\": %d,\n", link->failover_delay);
 		fprintf(fp, "      \"ping\": {\"ok\": %s, \"rtt\": %d},\n", link->ping_ok ? "true" : "false", link->ping_rtt_ms);
 		fprintf(fp, "      \"dns\": {\"ok\": %s, \"rtt\": %d},\n", link->dns_ok ? "true" : "false", link->dns_rtt_ms);
 		fprintf(fp, "      \"tcp\": {\"ok\": %s, \"rtt\": %d}\n", link->tcp_ok ? "true" : "false", link->tcp_rtt_ms);
@@ -526,13 +527,22 @@ int main(int argc, char **argv) {
 	// Sort links by priority (lowest priority number first)
 	qsort(links, link_count, sizeof(link_t), compare_links);
 
-	syslog(LOG_INFO, "Loaded %d monitored interfaces. Starting health check loop every %d seconds.", 
-	       link_count, global_cfg.check_interval);
+	syslog(LOG_INFO, "Loaded %d monitored interfaces. Starting health check scheduler.", link_count);
 
 	// Core check loop
 	while (keep_running) {
+		time_t now = time(NULL);
+		bool any_checked = false;
+
 		for (int i = 0; i < link_count; i++) {
 			link_t *link = &links[i];
+
+			// Check if this interface is due for checking
+			if (now - link->last_checked < link->check_interval) {
+				continue;
+			}
+			link->last_checked = now;
+			any_checked = true;
 
 			// 1. Fetch real-time netifd status
 			char dev[MAX_NAME_LEN] = {0};
@@ -570,7 +580,7 @@ int main(int argc, char **argv) {
 			if (link->ping_target_count > 0) {
 				for (int p = 0; p < link->ping_target_count; p++) {
 					int rtt = -1;
-					if (run_ping_check(link->device, link->ping_targets[p], global_cfg.check_timeout, &rtt)) {
+					if (run_ping_check(link->device, link->ping_targets[p], link->check_timeout, &rtt)) {
 						link->ping_ok = true;
 						link->ping_rtt_ms = rtt;
 						break; // At least one host responds
@@ -584,7 +594,7 @@ int main(int argc, char **argv) {
 			link->dns_rtt_ms = -1;
 			if (link->dns_server[0] != '\0' && link->dns_domain[0] != '\0') {
 				int rtt = -1;
-				if (run_dns_check(link->device, link->dns_server, link->dns_domain, global_cfg.check_timeout, &rtt)) {
+				if (run_dns_check(link->device, link->dns_server, link->dns_domain, link->check_timeout, &rtt)) {
 					link->dns_ok = true;
 					link->dns_rtt_ms = rtt;
 					current_score += link->dns_weight;
@@ -596,7 +606,7 @@ int main(int argc, char **argv) {
 			link->tcp_rtt_ms = -1;
 			if (link->tcp_target[0] != '\0' && link->tcp_port > 0) {
 				int rtt = -1;
-				if (run_tcp_check(link->device, link->tcp_target, link->tcp_port, global_cfg.check_timeout, &rtt)) {
+				if (run_tcp_check(link->device, link->tcp_target, link->tcp_port, link->check_timeout, &rtt)) {
 					link->tcp_ok = true;
 					link->tcp_rtt_ms = rtt;
 					current_score += link->tcp_weight;
@@ -612,7 +622,7 @@ int main(int argc, char **argv) {
 				link->consecutive_success++;
 				link->consecutive_failure = 0;
 
-				if (!link->healthy && link->consecutive_success >= global_cfg.recovery_delay) {
+				if (!link->healthy && link->consecutive_success >= link->recovery_delay) {
 					// Recovered! Failback!
 					link->healthy = true;
 					syslog(LOG_NOTICE, "Link %s (%s) recovered to healthy after %d successes. Score: %d/%d.", 
@@ -625,7 +635,7 @@ int main(int argc, char **argv) {
 				link->consecutive_failure++;
 				link->consecutive_success = 0;
 
-				if (link->healthy && link->consecutive_failure >= global_cfg.failover_delay) {
+				if (link->healthy && link->consecutive_failure >= link->failover_delay) {
 					// Failed! Failover!
 					link->healthy = false;
 					syslog(LOG_WARNING, "Link %s (%s) went down after %d failures. Score: %d/%d.", 
@@ -637,11 +647,13 @@ int main(int argc, char **argv) {
 			}
 		}
 
-		// Write states to shared JSON file
-		write_status_json();
+		if (any_checked) {
+			// Write states to shared JSON file
+			write_status_json();
+		}
 
-		// Sleep interval
-		sleep(global_cfg.check_interval);
+		// High-responsiveness scheduler ticks every second
+		sleep(1);
 	}
 
 	// Terminating: clean up routes before exit

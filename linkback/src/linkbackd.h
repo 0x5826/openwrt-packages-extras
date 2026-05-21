@@ -2,6 +2,7 @@
 #define LINKBACKD_H
 
 #include <stdbool.h>
+#include <time.h>
 
 #define MAX_LINKS 16
 #define MAX_NAME_LEN 32
@@ -33,6 +34,10 @@ typedef struct {
 
 	// Thresholds
 	int weight_threshold;
+	int check_interval;
+	int check_timeout;
+	int recovery_delay;
+	int failover_delay;
 
 	// Runtime state
 	char device[MAX_NAME_LEN];   // physical interface name e.g., pppoe-wan, eth1
@@ -41,6 +46,7 @@ typedef struct {
 	bool healthy;               // daemon link health state
 	int consecutive_success;
 	int consecutive_failure;
+	time_t last_checked;        // Last health check timestamp
 
 	// Detailed health checks status
 	bool ping_ok;
@@ -56,10 +62,6 @@ typedef struct {
 
 typedef struct {
 	bool enabled;
-	int check_interval;
-	int check_timeout;
-	int recovery_delay;
-	int failover_delay;
 } global_config_t;
 
 #endif // LINKBACKD_H

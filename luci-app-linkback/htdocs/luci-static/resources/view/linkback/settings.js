@@ -27,30 +27,6 @@ return view.extend({
 			_('Master switch to enable or disable the LinkBack failover daemon.'));
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'check_interval', _('Check Interval (s)'),
-			_('Time in seconds between each health check cycle.'));
-		o.datatype = 'uinteger';
-		o.default = '5';
-		o.rmempty = false;
-
-		o = s.option(form.Value, 'check_timeout', _('Check Timeout (s)'),
-			_('Maximum wait time in seconds for each individual check probe.'));
-		o.datatype = 'uinteger';
-		o.default = '3';
-		o.rmempty = false;
-
-		o = s.option(form.Value, 'recovery_delay', _('Recovery Delay'),
-			_('Number of consecutive successful checks required before marking a faulted link as healthy again (failback anti-flap).'));
-		o.datatype = 'uinteger';
-		o.default = '3';
-		o.rmempty = false;
-
-		o = s.option(form.Value, 'failover_delay', _('Failover Delay'),
-			_('Number of consecutive failed checks required before marking a healthy link as faulted (failover anti-flap).'));
-		o.datatype = 'uinteger';
-		o.default = '2';
-		o.rmempty = false;
-
 		// --- Monitored Links Section ---
 		s = m.section(form.GridSection, 'link', _('Monitored WAN Interfaces'),
 			_('Add and prioritize your WAN interfaces. Lower priority number means higher preference (e.g., 1 = primary, 2 = backup).'));
@@ -139,6 +115,35 @@ return view.extend({
 				uci.remove('linkback', section_id, 'dns_domain');
 			}
 		};
+
+		// 1.5 Individual health check options (Modal only)
+		o = s.option(form.Value, 'check_interval', _('Check Interval (s)'),
+			_('Time in seconds between each health check cycle for this link.'));
+		o.datatype = 'uinteger';
+		o.default = '5';
+		o.rmempty = false;
+		o.modalonly = true;
+
+		o = s.option(form.Value, 'check_timeout', _('Check Timeout (s)'),
+			_('Maximum wait time in seconds for each individual check probe for this link.'));
+		o.datatype = 'uinteger';
+		o.default = '3';
+		o.rmempty = false;
+		o.modalonly = true;
+
+		o = s.option(form.Value, 'recovery_delay', _('Recovery Delay'),
+			_('Number of consecutive successful checks required before marking this link as healthy (failback anti-flap).'));
+		o.datatype = 'uinteger';
+		o.default = '3';
+		o.rmempty = false;
+		o.modalonly = true;
+
+		o = s.option(form.Value, 'failover_delay', _('Failover Delay'),
+			_('Number of consecutive failed checks required before marking this link as faulted (failover anti-flap).'));
+		o.datatype = 'uinteger';
+		o.default = '2';
+		o.rmempty = false;
+		o.modalonly = true;
 
 		// 2. Ping Probe Parameters
 		o = s.option(form.Value, 'ping_targets', _('Ping Targets'),
