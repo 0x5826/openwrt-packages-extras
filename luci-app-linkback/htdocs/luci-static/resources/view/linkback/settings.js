@@ -229,7 +229,11 @@ return view.extend({
 		makeTableColumnExpand(o, '15%');
 
 		// 4. Metric (No description for main column)
-		o = s.option(form.Value, 'metric', _('Base Metric'));
+		var metric_title = _('Base Metric');
+		if (metric_title === '默认跃点 (Metric)') {
+			metric_title = '默认跃点';
+		}
+		o = s.option(form.Value, 'metric', metric_title);
 		o.datatype = 'uinteger';
 		o.default = '10';
 		o.rmempty = false;
