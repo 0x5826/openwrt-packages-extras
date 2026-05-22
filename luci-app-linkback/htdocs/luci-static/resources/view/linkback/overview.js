@@ -26,22 +26,12 @@ return view.extend({
 			return;
 
 		var css = [
-			'@keyframes breathe-green{0%{box-shadow:0 0 4px rgba(76,175,80,.4)}50%{box-shadow:0 0 16px rgba(76,175,80,.9);border-color:#4CAF50}100%{box-shadow:0 0 4px rgba(76,175,80,.4)}}',
-			'.linkback-card-active{border:2px solid #4CAF50!important;animation:breathe-green 2.5s infinite ease-in-out;background-color:rgba(76,175,80,.05)!important}',
-			'.linkback-card-standby{border:1px solid #2196F3!important;background-color:rgba(33,150,243,.03)!important}',
-			'.linkback-card-faulted{border:1px solid #f44336!important;background-color:rgba(244,67,54,.03)!important;opacity:.8}',
 			'.linkback-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}',
 			'.linkback-dot-green{background-color:#4CAF50;box-shadow:0 0 6px #4CAF50}',
 			'.linkback-dot-red{background-color:#f44336;box-shadow:0 0 6px #f44336}',
 			'.linkback-dot-grey{background-color:#9e9e9e}',
-			'.linkback-indicator{display:inline-flex;align-items:center;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:bold;margin-right:10px;background-color:rgba(0,0,0,.05)}',
-			'.linkback-stack{position:relative;margin-left:20px;padding:10px 0}',
-			'.linkback-stack::before{content:"";position:absolute;left:14px;top:20px;bottom:20px;width:2px;background:#e0e0e0;z-index:1}',
-			'.linkback-node{display:flex;align-items:flex-start;margin-bottom:25px;position:relative;z-index:2}',
-			'.linkback-num{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:#2196F3;color:#fff;font-weight:bold;margin-right:20px;box-shadow:0 2px 4px rgba(0,0,0,.15);flex-shrink:0}',
-			'.linkback-card{flex-grow:1;padding:15px;border-radius:8px;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.05);transition:all .3s ease}',
-			'.linkback-card:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(0,0,0,.1)}',
-			'.linkback-badge{display:inline-block;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:bold;color:#fff}',
+			'.linkback-indicator{display:inline-flex;align-items:center;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:bold;background-color:rgba(0,0,0,.05)}',
+			'.linkback-badge{display:inline-block;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold;color:#fff;text-align:center}',
 			'.linkback-badge-active{background-color:#4CAF50}',
 			'.linkback-badge-standby{background-color:#2196F3}',
 			'.linkback-badge-faulted{background-color:#f44336}'
@@ -62,7 +52,7 @@ return view.extend({
 			E('div', { 'class': 'cbi-map-descr' }, _('Real-time health state, priority mapping, and service control for Multi-WAN default routing metrics.'))
 		]);
 
-		// --- Service Status Section ---
+		// --- Service Status Section (Aligned with lucky style) ---
 		var stateText = _('Collecting...');
 		var stateColor = '#999';
 
@@ -74,29 +64,31 @@ return view.extend({
 			stateColor = 'red';
 		}
 
-		var statusSection = E('div', { 'class': 'cbi-section' }, [
-			E('h3', { 'class': 'cbi-section-title' }, _('Service Status')),
+		var statusSection = E('fieldset', { 'class': 'cbi-section' }, [
+			E('legend', {}, _('Service Status')),
 			E('div', { 'class': 'cbi-section-node' }, [
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Running State')),
-					E('div', { 'class': 'cbi-value-field', style: 'display:flex; align-items:center;' }, [
-						E('span', {
-							id: 'linkback-service-state',
-							style: 'font-weight:bold; color:' + stateColor + '; margin-right:15px;'
-						}, stateText),
-						E('button', {
-							'class': 'btn cbi-button cbi-button-apply',
-							click: ui.createHandlerFn(this, 'handleServiceAction', 'restart')
-						}, _('Restart'))
+				E('table', { 'class': 'table cbi-section-table' }, [
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left', 'width': '33%' }, _('Running State')),
+						E('td', { 'class': 'td left' }, [
+							E('span', {
+								id: 'linkback-service-state',
+								style: 'font-weight:bold; color:' + stateColor + '; margin-right:15px;'
+							}, stateText),
+							E('button', {
+								'class': 'btn cbi-button cbi-button-apply',
+								click: ui.createHandlerFn(this, 'handleServiceAction', 'restart')
+							}, _('Restart'))
+						])
 					])
 				])
 			])
 		]);
 		container.appendChild(statusSection);
 
-		// --- Link Priority Stack Section ---
-		var linkSection = E('div', { 'class': 'cbi-section' }, [
-			E('h3', { 'class': 'cbi-section-title' }, _('Link Priority Stack')),
+		// --- Link Priority Stack Section (Aligned with lucky style) ---
+		var linkSection = E('fieldset', { 'class': 'cbi-section' }, [
+			E('legend', {}, _('Link Priority Stack')),
 			E('div', { 'class': 'cbi-section-node' }, [
 				E('div', { id: 'linkback-status-box' }, [
 					E('p', { 'class': 'spinning' }, _('Loading real-time link status...'))
@@ -144,27 +136,34 @@ return view.extend({
 		}
 
 		var activeLink = status.active_link || 'none';
-		var stack = E('div', { 'class': 'linkback-stack' });
+
+		// Create standard LuCI section table
+		var table = E('table', { 'class': 'table cbi-section-table' }, [
+			E('tr', { 'class': 'tr table-titles' }, [
+				E('th', { 'class': 'th', 'width': '5%', 'style': 'text-align:center;' }, '#'),
+				E('th', { 'class': 'th', 'width': '20%', 'style': 'text-align:left;' }, _('Link Name')),
+				E('th', { 'class': 'th', 'width': '12%', 'style': 'text-align:left;' }, _('Status')),
+				E('th', { 'class': 'th', 'width': '28%', 'style': 'text-align:left;' }, _('Routing Attributes')),
+				E('th', { 'class': 'th', 'width': '25%', 'style': 'text-align:left;' }, _('Latency Details')),
+				E('th', { 'class': 'th', 'width': '10%', 'style': 'text-align:left;' }, _('Score'))
+			])
+		]);
 
 		status.links.forEach(function(link, index) {
 			var roleTitle = '';
 			var roleClass = '';
-			var cardClass = 'linkback-card ';
 
 			if (link.is_up && link.healthy) {
 				if (link.name === activeLink) {
-					roleTitle = _('主选链路 / Active');
+					roleTitle = _('Active');
 					roleClass = 'linkback-badge-active';
-					cardClass += 'linkback-card-active';
 				} else {
-					roleTitle = _('次选链路 / Standby');
+					roleTitle = _('Standby');
 					roleClass = 'linkback-badge-standby';
-					cardClass += 'linkback-card-standby';
 				}
 			} else {
-				roleTitle = _('备选链路 / Faulted');
+				roleTitle = _('Faulted');
 				roleClass = 'linkback-badge-faulted';
-				cardClass += 'linkback-card-faulted';
 			}
 
 			// Health check indicators
@@ -172,7 +171,7 @@ return view.extend({
 
 			if (link.ping && link.ping.rtt !== -1) {
 				var dotClass = link.ping.ok ? 'linkback-dot-green' : 'linkback-dot-red';
-				checkBadges.push(E('span', { 'class': 'linkback-indicator' }, [
+				checkBadges.push(E('span', { 'class': 'linkback-indicator', 'style': 'margin-bottom:4px; margin-right:6px;' }, [
 					E('span', { 'class': 'linkback-dot ' + dotClass }),
 					'Ping: ' + (link.ping.ok ? link.ping.rtt + 'ms' : _('Failed'))
 				]));
@@ -180,7 +179,7 @@ return view.extend({
 
 			if (link.dns && link.dns.rtt !== -1) {
 				var dotClass = link.dns.ok ? 'linkback-dot-green' : 'linkback-dot-red';
-				checkBadges.push(E('span', { 'class': 'linkback-indicator' }, [
+				checkBadges.push(E('span', { 'class': 'linkback-indicator', 'style': 'margin-bottom:4px; margin-right:6px;' }, [
 					E('span', { 'class': 'linkback-dot ' + dotClass }),
 					'DNS: ' + (link.dns.ok ? link.dns.rtt + 'ms' : _('Failed'))
 				]));
@@ -188,43 +187,45 @@ return view.extend({
 
 			if (link.tcp && link.tcp.rtt !== -1) {
 				var dotClass = link.tcp.ok ? 'linkback-dot-green' : 'linkback-dot-red';
-				checkBadges.push(E('span', { 'class': 'linkback-indicator' }, [
+				checkBadges.push(E('span', { 'class': 'linkback-indicator', 'style': 'margin-bottom:4px; margin-right:6px;' }, [
 					E('span', { 'class': 'linkback-dot ' + dotClass }),
 					'TCP: ' + (link.tcp.ok ? link.tcp.rtt + 'ms' : _('Failed'))
 				]));
 			}
 
-			var metaItems = [
-				E('span', { style: 'margin-right:15px;' }, _('Priority') + ': ' + link.priority),
-				E('span', { style: 'margin-right:15px;' }, _('Metric') + ': ' + link.metric + ' → ' + link.current_metric)
-			];
-
-			if (link.gateway) {
-				metaItems.push(E('span', {}, _('Gateway') + ': ' + link.gateway));
+			if (checkBadges.length === 0) {
+				checkBadges.push(E('span', { 'style': 'color:#999;' }, '-'));
 			}
 
-			var card = E('div', { 'class': cardClass }, [
-				E('div', { style: 'display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;' }, [
-					E('strong', { style: 'font-size:15px;' },
-						link.name + (link.device ? ' (' + link.device + ')' : '')),
-					E('span', { 'class': 'linkback-badge ' + roleClass }, roleTitle)
-				]),
-				E('div', { style: 'font-size:12px; color:#555; margin-bottom:12px;' }, metaItems),
-				E('div', { style: 'display:flex; justify-content:space-between; align-items:center;' }, [
-					E('div', {}, checkBadges),
-					E('span', { style: 'font-weight:bold; font-size:12px;' },
-						_('Score') + ': ' + link.score + ' / ' + link.threshold +
-						(link.score >= link.threshold ? ' ✓' : ' ✗'))
-				])
+			// Route and metric attributes
+			var routeDetails = E('div', { 'style': 'font-size:12px; line-height:1.6;' }, [
+				E('div', {}, E('strong', {}, _('Gateway') + ': ') + (link.gateway || '-')),
+				E('div', {}, E('strong', {}, _('Priority') + ': ') + link.priority + ' | ' + E('strong', {}, _('Metric') + ': ') + link.metric + ' → ' + link.current_metric)
 			]);
 
-			stack.appendChild(E('div', { 'class': 'linkback-node' }, [
-				E('div', { 'class': 'linkback-num' }, [ String(index + 1) ]),
-				card
-			]));
+			var scoreColor = (link.score >= link.threshold) ? 'green' : 'red';
+			var scoreCheck = (link.score >= link.threshold) ? ' ✓' : ' ✗';
+
+			var row = E('tr', { 'class': 'tr' }, [
+				E('td', { 'class': 'td', 'style': 'text-align:center; font-weight:bold; vertical-align:middle;' }, String(index + 1)),
+				E('td', { 'class': 'td', 'style': 'font-weight:bold; vertical-align:middle;' }, [
+					E('span', { 'style': 'font-size:14px;' }, link.name),
+					link.device ? E('span', { 'style': 'font-size:11px; color:#666; margin-left:6px; background:#eee; padding:2px 4px; border-radius:3px;' }, link.device) : ''
+				]),
+				E('td', { 'class': 'td', 'style': 'vertical-align:middle;' }, [
+					E('span', { 'class': 'linkback-badge ' + roleClass }, roleTitle)
+				]),
+				E('td', { 'class': 'td', 'style': 'vertical-align:middle;' }, routeDetails),
+				E('td', { 'class': 'td', 'style': 'vertical-align:middle;' }, E('div', { 'style': 'display:flex; flex-wrap:wrap; align-items:center;' }, checkBadges)),
+				E('td', { 'class': 'td', 'style': 'vertical-align:middle; font-weight:bold; color:' + scoreColor + ';' }, 
+					link.score + ' / ' + link.threshold + scoreCheck
+				)
+			]);
+
+			table.appendChild(row);
 		});
 
-		dom.content(box, [ stack ]);
+		dom.content(box, [ table ]);
 	},
 
 	handleServiceAction: function(ev, action) {
