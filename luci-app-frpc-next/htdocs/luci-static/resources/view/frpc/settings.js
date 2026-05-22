@@ -63,22 +63,41 @@ return view.extend({
 			return;
 
 		const css = [
-			'@media (min-width: 768px) {',
-			'  .frpc-editor-textarea { margin-left: 60px !important; }',
-			'  .frpc-editor-buttons { margin-left: 60px !important; }',
-			'}'
+			'.frpc-editor-wrap{border:1px solid #ccc;border-radius:4px;overflow:hidden;background:#fff;max-width:900px;box-sizing:border-box;}',
+			'.frpc-editor-main{display:flex;min-height:400px;max-height:65vh;}',
+			'.frpc-editor-gutter{width:48px;background:#f7f7f7;color:#888;border-right:1px solid #e5e5e5;overflow:hidden;font:13px/1.5 monospace;padding:12px 6px;text-align:right;user-select:none;box-sizing:border-box;}',
+			'.frpc-editor-gutter-line{height:1.5em;line-height:1.5;}',
+			'.frpc-editor-gutter-line.err{background:#ffe8e8;color:#b00020;font-weight:700;}',
+			'.frpc-editor-input-wrap{flex:1;background:#fff;position:relative;}',
+			'.frpc-editor-input{width:100%;min-height:100%;box-sizing:border-box;border:0;outline:none;resize:vertical;overflow-wrap:anywhere;white-space:pre;word-break:keep-all;font:13px/1.5 monospace;padding:12px;margin:0;display:block;}'
 		].join('\n');
 
 		document.head.appendChild(E('style', { id: 'frpc_editor_style' }, css));
 	},
 
+	refreshEditor: function() {
+		const ta = document.getElementById('frpc_config');
+		const gutter = document.getElementById('frpc_editor_gutter');
+		if (!ta || !gutter)
+			return;
+
+		const text = ta.value || '';
+		const lineCount = Math.max(1, text.split('\n').length);
+		gutter.innerHTML = '';
+		for (let i = 1; i <= lineCount; i++) {
+			gutter.appendChild(E('div', {
+				'class': 'frpc-editor-gutter-line' + (this._errorLine === i ? ' err' : '')
+			}, String(i)));
+		}
+	},
+
 	renderEditor: function(configText) {
+		const gutter = E('div', { id: 'frpc_editor_gutter', 'class': 'frpc-editor-gutter' });
 		const ta = E('textarea', {
 			id: 'frpc_config',
-			class: 'cbi-input-textarea frpc-editor-textarea',
-			style: 'width: 100%; max-width: 900px; min-height: 400px; font-family: monospace; font-size: 13px; line-height: 1.5; padding: 12px; border: 1px solid #ccc; border-radius: 4px; outline: none; box-sizing: border-box; resize: vertical;',
+			class: 'frpc-editor-input',
 			spellcheck: 'false',
-			wrap: 'soft'
+			wrap: 'off'
 		}, configText || '');
 
 		ta.addEventListener('keydown', function(ev) {
@@ -93,10 +112,21 @@ return view.extend({
 		});
 
 		ta.addEventListener('input', L.bind(function() {
+			this.refreshEditor();
 			this.scheduleValidate();
 		}, this));
 
-		return ta;
+		ta.addEventListener('scroll', function() {
+			gutter.scrollTop = ta.scrollTop;
+		});
+
+		window.setTimeout(L.bind(function() { this.refreshEditor(); }, this), 0);
+
+		const inputWrap = E('div', { 'class': 'frpc-editor-input-wrap' }, [ ta ]);
+
+		return E('div', { 'class': 'frpc-editor-wrap' }, [
+			E('div', { 'class': 'frpc-editor-main' }, [ gutter, inputWrap ])
+		]);
 	},
 
 	setValidateHint: function(ok, message, pos) {
@@ -107,6 +137,7 @@ return view.extend({
 		hint.style.color = ok ? 'green' : 'red';
 		hint.textContent = message;
 		this._errorLine = (!ok && pos && pos.line) ? pos.line : null;
+		this.refreshEditor();
 	},
 
 	runValidate: function() {
