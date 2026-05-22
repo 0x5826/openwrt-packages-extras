@@ -157,9 +157,7 @@ return L.view.extend({
 				ui.hideModal();
 				
 				var title = _('Confirm AP Mode Switch');
-				var messages = [
-					_('Switching to AP mode will bridge the WAN port into "br-lan". The "br-lan" interface will become a DHCP client to your main router.')
-				];
+				var messages = [];
 
 				if (res && res.ip) {
 					messages.push(E('span', {}, [
@@ -185,7 +183,6 @@ return L.view.extend({
 				
 				var title = _('Confirm AP Mode Switch');
 				var messages = [
-					_('Switching to AP mode will bridge the WAN port into "br-lan". The "br-lan" interface will become a DHCP client to your main router.'),
 					_('WARNING: DHCP probe RPC error: %s').format(err.message),
 					_('If you proceed, you must find the new IP from your main router client list using MAC: %s').format(status.lan_mac || 'N/A'),
 					_('Do you still want to force the switch anyway?')
