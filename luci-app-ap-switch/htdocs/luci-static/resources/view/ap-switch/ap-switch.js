@@ -37,79 +37,80 @@ return L.view.extend({
 		var lan_mac = status.lan_mac || 'N/A';
 		var probed_ip = status.probed_ip || '';
 
+		var changeModeRows = [];
+		if (mode !== 'ap') {
+			changeModeRows.push(E('tr', { 'class': 'tr' }, [
+				E('td', { 'class': 'td left', 'width': '33%' }, _('Pre-fetch AP IP')),
+				E('td', { 'class': 'td left' }, [
+					E('button', {
+						'class': 'cbi-button cbi-button-action',
+						'click': ui.createHandlerFn(self, function() {
+							ui.showModal(null, [ E('p', { 'class': 'spinning' }, _('Probing for DHCP IP on br-lan...')) ]);
+							return callProbeIP().then(function(res) {
+								ui.hideModal();
+								if (res && res.ip) {
+									document.getElementById('probed-ip-display').innerText = res.ip;
+									probed_ip = res.ip;
+									ui.addNotification(null, E('p', _('Successfully fetched IP: %s').format(res.ip)), 'info');
+								} else {
+									ui.addNotification(null, E('p', _('Failed to fetch IP. Ensure a LAN port is connected to your main router.')), 'warning');
+								}
+							});
+						})
+					}, [ _('Probe IP') ]),
+					E('span', { 'style': 'margin-left: 10px; font-weight: bold; color: #2196F3;', 'id': 'probed-ip-display' }, probed_ip || _('Not probed'))
+				])
+			]));
+		}
+		changeModeRows.push(E('tr', { 'class': 'tr' }, [
+			E('td', { 'class': 'td left', 'width': (mode === 'ap' ? '33%' : null) }, _('Switch to %s').format(mode === 'ap' ? _('Router Mode') : _('AP Mode'))),
+			E('td', { 'class': 'td left' }, [
+				E('button', {
+					'class': 'cbi-button cbi-button-apply',
+					'click': ui.createHandlerFn(self, function() {
+						return self.handleSwitch(mode === 'ap' ? 'router' : 'ap', status, probed_ip);
+					})
+				}, [ (mode === 'ap' ? _('Switch to Router Mode') : _('Switch to AP Mode')) ])
+			])
+		]));
+
 		var body = E('div', { 'class': 'cbi-map' }, [
 			E('h2', {}, _('AP Switch Title') + ' - ' + _('Switch Mode')),
 			E('div', { 'class': 'cbi-map-descr' }, _('Switch your system runtime configuration smoothly between standard Router and Access Point (AP) modes. Network interfaces and bridge rules will be adjusted automatically.')),
-			E('div', { 'class': 'cbi-section' }, [
-				E('h3', {}, _('Current Status')),
+			E('fieldset', { 'class': 'cbi-section' }, [
+				E('legend', {}, _('Current Status')),
 				E('div', { 'class': 'cbi-section-node' }, [
-					E('div', { 'class': 'cbi-value' }, [
-						E('label', { 'class': 'cbi-value-title' }, _('Operation Mode')),
-						E('div', { 'class': 'cbi-value-field' }, [
-							E('strong', {}, (mode === 'ap' ? _('Access Point (AP)') : _('Router')))
-						])
-					]),
-					E('div', { 'class': 'cbi-value' }, [
-						E('label', { 'class': 'cbi-value-title' }, _('Login URL')),
-						E('div', { 'class': 'cbi-value-field' }, [
-							lan_ip ? E('a', { 
+					E('table', { 'class': 'table cbi-section-table' }, [
+						E('tr', { 'class': 'tr' }, [
+							E('td', { 'class': 'td left', 'width': '33%' }, _('Operation Mode')),
+							E('td', { 'class': 'td left' }, E('strong', {}, (mode === 'ap' ? _('Access Point (AP)') : _('Router'))))
+						]),
+						E('tr', { 'class': 'tr' }, [
+							E('td', { 'class': 'td left' }, _('Login URL')),
+							E('td', { 'class': 'td left' }, lan_ip ? E('a', { 
 								'href': 'http://' + lan_ip,
 								'target': '_blank',
-								'style': 'text-decoration: underline; font-weight: bold;'
-							}, 'http://' + lan_ip) : _('N/A')
-						])
-					]),
-					E('div', { 'class': 'cbi-value' }, [
-						E('label', { 'class': 'cbi-value-title' }, _('LAN IP Address')),
-						E('div', { 'class': 'cbi-value-field' }, [
-							E('strong', { 'style': 'color: #2196F3;' }, lan_ip || _('Pending...')),
-							E('span', { 'style': 'margin-left: 10px; color: #666;' }, '(' + lan_proto + ')')
-						])
-					]),
-					E('div', { 'class': 'cbi-value' }, [
-						E('label', { 'class': 'cbi-value-title' }, _('LAN MAC Address')),
-						E('div', { 'class': 'cbi-value-field' }, [
-							E('span', { 'id': 'lan-mac' }, lan_mac)
+								'style': 'text-decoration: underline; font-weight: bold; color: blue;'
+							}, 'http://' + lan_ip) : _('N/A'))
+						]),
+						E('tr', { 'class': 'tr' }, [
+							E('td', { 'class': 'td left' }, _('LAN IP Address')),
+							E('td', { 'class': 'td left' }, [
+								E('strong', { 'style': 'color: #2196F3;' }, lan_ip || _('Pending...')),
+								E('span', { 'style': 'margin-left: 10px; color: #666;' }, '(' + lan_proto + ')')
+							])
+						]),
+						E('tr', { 'class': 'tr' }, [
+							E('td', { 'class': 'td left' }, _('LAN MAC Address')),
+							E('td', { 'class': 'td left', 'id': 'lan-mac' }, lan_mac)
 						])
 					])
 				])
 			]),
-			E('div', { 'class': 'cbi-section' }, [
-				E('h3', {}, _('Change Mode')),
+			E('fieldset', { 'class': 'cbi-section' }, [
+				E('legend', {}, _('Change Mode')),
 				E('div', { 'class': 'cbi-section-node' }, [
-					(mode !== 'ap') ? E('div', { 'class': 'cbi-value' }, [
-						E('label', { 'class': 'cbi-value-title' }, _('Pre-fetch AP IP')),
-						E('div', { 'class': 'cbi-value-field' }, [
-							E('button', {
-								'class': 'cbi-button cbi-button-action',
-								'click': ui.createHandlerFn(this, function() {
-									ui.showModal(null, [ E('p', { 'class': 'spinning' }, _('Probing for DHCP IP on br-lan...')) ]);
-									return callProbeIP().then(function(res) {
-										ui.hideModal();
-										if (res && res.ip) {
-											document.getElementById('probed-ip-display').innerText = res.ip;
-											probed_ip = res.ip;
-											ui.addNotification(null, E('p', _('Successfully fetched IP: %s').format(res.ip)), 'info');
-										} else {
-											ui.addNotification(null, E('p', _('Failed to fetch IP. Ensure a LAN port is connected to your main router.')), 'warning');
-										}
-									});
-								})
-							}, [ _('Probe IP') ]),
-							E('span', { 'style': 'margin-left: 10px; font-weight: bold; color: #2196F3;', 'id': 'probed-ip-display' }, probed_ip || _('Not probed'))
-						])
-					]) : E('div', {}, []),
-					E('div', { 'class': 'cbi-value' }, [
-						E('label', { 'class': 'cbi-value-title' }, _('Switch to %s').format(mode === 'ap' ? _('Router Mode') : _('AP Mode'))),
-						E('div', { 'class': 'cbi-value-field' }, [
-							E('button', {
-								'class': 'cbi-button cbi-button-apply',
-								'click': ui.createHandlerFn(this, function() {
-									return self.handleSwitch(mode === 'ap' ? 'router' : 'ap', status, probed_ip);
-								})
-							}, [ (mode === 'ap' ? _('Switch to Router Mode') : _('Switch to AP Mode')) ])
-						])
-					])
+					E('table', { 'class': 'table cbi-section-table' }, changeModeRows)
 				])
 			])
 		]);
