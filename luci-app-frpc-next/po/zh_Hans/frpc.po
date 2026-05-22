@@ -187,17 +187,17 @@ msgstr "未知错误"
 msgid "Log"
 msgstr "日志"
 
-msgid "Validate TOML Syntax"
-msgstr "校验 TOML 语法"
+msgid "Verify Configuration"
+msgstr "校验客户端配置"
 
 msgid "Configuration is empty."
 msgstr "配置为空。"
 
-msgid "TOML syntax looks valid."
-msgstr "TOML 语法看起来有效。"
+msgid "Configuration is valid."
+msgstr "配置校验通过。"
 
-msgid "Syntax error: "
-msgstr "语法错误："
+msgid "Verification failed: "
+msgstr "配置校验失败："
 
 msgid "Service Status"
 msgstr "服务状态"

@@ -53,15 +53,15 @@ function count_proxies(config) {
 
 function verify_config(config) {
 	fs.writefile('/tmp/frpc_test.toml', config || '');
-	let p = fs.popen("/bin/sh -c '/usr/bin/frpc verify -c /tmp/frpc_test.toml >/tmp/frpc_verify.out 2>&1 || /usr/bin/frpc -c /tmp/frpc_test.toml --verify >/tmp/frpc_verify.out 2>&1'", 'r');
-	if (!p)
+	let p = fs.popen("/usr/bin/frpc verify -c /tmp/frpc_test.toml 2>&1", 'r');
+	if (!p) {
+		fs.unlink('/tmp/frpc_test.toml');
 		return { success: false, error: 'failed to validate config' };
+	}
 
-	p.read('all');
+	let output = p.read('all') || '';
 	let code = p.close();
-	let output = fs.readfile('/tmp/frpc_verify.out') || '';
 	fs.unlink('/tmp/frpc_test.toml');
-	fs.unlink('/tmp/frpc_verify.out');
 
 	if (code !== 0)
 		return { success: false, error: output || 'verify failed' };

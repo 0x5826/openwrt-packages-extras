@@ -213,13 +213,13 @@ return view.extend({
 
 		return callValidateConfig(content).then(L.bind(function(res) {
 			if (res && res.success) {
-				this.setValidateHint(true, _('TOML syntax looks valid.'));
+				this.setValidateHint(true, _('Configuration is valid.'));
 				return;
 			}
 
 			const err = (res && res.error) ? String(res.error).trim() : _('Unknown error');
 			const pos = parseErrorPosition(err);
-			let msg = _('Syntax error: ') + err;
+			let msg = _('Verification failed: ') + err;
 			if (pos && pos.line)
 				msg += ' (' + _('Line') + ' ' + pos.line + (pos.col ? ', ' + _('Column') + ' ' + pos.col : '') + ')';
 			this.setValidateHint(false, msg, pos);
@@ -291,7 +291,7 @@ return view.extend({
 					click: ui.createHandlerFn(this, function() {
 						return this.runValidate(true);
 					})
-				}, _('Validate TOML Syntax')),
+				}, _('Verify Configuration')),
 				E('span', { id: 'frpc_validate_hint', style: 'margin-left:12px;' }, '')
 			])
 		]);
@@ -326,7 +326,7 @@ return view.extend({
 				throw new Error('frpc verify failed');
 			}
 
-			this.setValidateHint(true, _('TOML syntax looks valid.'));
+			this.setValidateHint(true, _('Configuration is valid.'));
 			return this.saveConfig();
 		}, this));
 	},
