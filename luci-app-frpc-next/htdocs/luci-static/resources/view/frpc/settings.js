@@ -62,7 +62,7 @@ return view.extend({
 		const ta = E('textarea', {
 			id: 'frpc_config',
 			class: 'cbi-input-textarea',
-			style: 'width: 100%; min-height: 400px; font-family: monospace; font-size: 13px; line-height: 1.5; padding: 12px; border: 1px solid #ccc; border-radius: 4px; outline: none; box-sizing: border-box; resize: vertical;',
+			style: 'width: 100%; max-width: 900px; min-height: 400px; font-family: monospace; font-size: 13px; line-height: 1.5; padding: 12px; border: 1px solid #ccc; border-radius: 4px; outline: none; box-sizing: border-box; resize: vertical;',
 			spellcheck: 'false',
 			wrap: 'soft'
 		}, configText || '');
