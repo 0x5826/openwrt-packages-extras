@@ -86,9 +86,9 @@ return view.extend({
 		]);
 		container.appendChild(statusSection);
 
-		// --- Link Priority Stack Section (Aligned with lucky style) ---
+		// --- Link Status Section (Aligned with lucky style) ---
 		var linkSection = E('fieldset', { 'class': 'cbi-section' }, [
-			E('legend', {}, _('Link Priority Stack')),
+			E('legend', {}, _('Link Status')),
 			E('div', { 'class': 'cbi-section-node' }, [
 				E('div', { id: 'linkback-status-box' }, [
 					E('p', { 'class': 'spinning' }, _('Loading real-time link status...'))

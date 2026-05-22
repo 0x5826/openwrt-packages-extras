@@ -34,8 +34,8 @@ msgstr "启动"
 msgid "Stop"
 msgstr "停止"
 
-msgid "Link Priority Stack"
-msgstr "链路优先级栈"
+msgid "Link Status"
+msgstr "链路状态"
 
 msgid "Loading real-time link status..."
 msgstr "正在加载实时链路状态..."
