@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=frpc-next
-PKG_VERSION:=0.68.1
+PKG_VERSION:=0.69.0
 PKG_RELEASE:=1
 
 # Architecture mapping for pre-built binaries
