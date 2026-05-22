@@ -58,10 +58,24 @@ return view.extend({
 	_validateTimer: null,
 	_errorLine: null,
 
+	injectStyle: function() {
+		if (document.getElementById('frpc_editor_style'))
+			return;
+
+		const css = [
+			'@media (min-width: 768px) {',
+			'  .frpc-editor-textarea { margin-left: 20px !important; }',
+			'  .frpc-editor-buttons { margin-left: 20px !important; }',
+			'}'
+		].join('\n');
+
+		document.head.appendChild(E('style', { id: 'frpc_editor_style' }, css));
+	},
+
 	renderEditor: function(configText) {
 		const ta = E('textarea', {
 			id: 'frpc_config',
-			class: 'cbi-input-textarea',
+			class: 'cbi-input-textarea frpc-editor-textarea',
 			style: 'width: 100%; max-width: 900px; min-height: 400px; font-family: monospace; font-size: 13px; line-height: 1.5; padding: 12px; border: 1px solid #ccc; border-radius: 4px; outline: none; box-sizing: border-box; resize: vertical;',
 			spellcheck: 'false',
 			wrap: 'soft'
@@ -131,6 +145,7 @@ return view.extend({
 	},
 
 	render: function(data) {
+		this.injectStyle();
 		const cfg = data && data[0] ? data[0] : {};
 		const st = data && data[1] ? data[1] : {};
 		const configText = cfg.config || '';
@@ -160,7 +175,7 @@ return view.extend({
 				E('h3', { 'class': 'cbi-section-title' }, _('Configuration Editor')),
 				this.renderEditor(configText)
 			]),
-			E('div', { 'class': 'cbi-section' }, [
+			E('div', { 'class': 'cbi-section frpc-editor-buttons' }, [
 				E('button', {
 					'class': 'btn cbi-button cbi-button-apply',
 					click: ui.createHandlerFn(this, function() {
