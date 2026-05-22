@@ -91,47 +91,44 @@ return view.extend({
 			E('div', { 'class': 'cbi-map-descr' }, _('Overview of the local frpc service state, active process PID, loaded config files, and detailed online proxy information.'))
 		]);
 
-		const statusSection = E('div', { 'class': 'cbi-section' }, [
-			E('h3', { 'class': 'cbi-section-title' }, _('Service Status')),
+		// Service Status Section (Aligned with lucky style)
+		const statusSection = E('fieldset', { 'class': 'cbi-section' }, [
+			E('legend', {}, _('Service Status')),
 			E('div', { 'class': 'cbi-section-node' }, [
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Current Status')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						E('span', { id: 'frpc-status-text', 'style': 'font-weight:bold; color:' + stateInfo.color + '; margin-right:10px;' }, stateInfo.text),
-						E('button', {
-							id: 'frpc-restart-btn',
-							'class': 'btn cbi-button cbi-button-apply',
-							click: ui.createHandlerFn(this, function(ev) {
-								if (!ev || !ev.currentTarget)
-									return;
-								const btn = ev.currentTarget;
-								btn.disabled = true;
-								return callAdoptProcess().then(function() {
-									ui.addNotification(null, E('p', _('Force restarting service, please wait...')), 'info');
-									window.setTimeout(function() { location.reload(); }, 1200);
-								}).finally(function() {
-									btn.disabled = false;
-								});
-							})
-						}, _('Force Restart'))
-					])
-				]),
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Generated Runtime Config')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						E('span', { id: 'frpc-runtime-config' }, status.runtime_config || '-')
-					])
-				]),
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Configured Proxies')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						E('span', { id: 'frpc-proxy-count' }, String(status.proxy_count || 0))
-					])
-				]),
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('frpc Version')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						E('span', { id: 'frpc-version' }, status.version || '-')
+				E('table', { 'class': 'table cbi-section-table' }, [
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left', 'width': '33%' }, _('Current Status')),
+						E('td', { 'class': 'td left' }, [
+							E('span', { id: 'frpc-status-text', 'style': 'font-weight:bold; color:' + stateInfo.color + '; margin-right:10px;' }, stateInfo.text),
+							E('button', {
+								id: 'frpc-restart-btn',
+								'class': 'btn cbi-button cbi-button-apply',
+								click: ui.createHandlerFn(this, function(ev) {
+									if (!ev || !ev.currentTarget)
+										return;
+									const btn = ev.currentTarget;
+									btn.disabled = true;
+									return callAdoptProcess().then(function() {
+										ui.addNotification(null, E('p', _('Force restarting service, please wait...')), 'info');
+										window.setTimeout(function() { location.reload(); }, 1200);
+									}).finally(function() {
+										btn.disabled = false;
+									});
+								})
+							}, _('Force Restart'))
+						])
+					]),
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left' }, _('Generated Runtime Config')),
+						E('td', { 'class': 'td left', id: 'frpc-runtime-config' }, status.runtime_config || '-')
+					]),
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left' }, _('Configured Proxies')),
+						E('td', { 'class': 'td left', id: 'frpc-proxy-count' }, String(status.proxy_count || 0))
+					]),
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left' }, _('frpc Version')),
+						E('td', { 'class': 'td left', id: 'frpc-version' }, status.version || '-')
 					])
 				])
 			])
@@ -139,49 +136,57 @@ return view.extend({
 		container.appendChild(statusSection);
 
 		const proxyRows = flattenProxies(runtime.status);
-		const runtimeSection = E('div', {
+		const runtimeSection = E('fieldset', {
 			'class': 'cbi-section',
 			id: 'frpc-runtime-section',
 			style: (status.state === 'managed') ? '' : 'display:none'
 		}, [
-			E('h3', { 'class': 'cbi-section-title' }, _('Runtime Details')),
+			E('legend', {}, _('Runtime Details')),
 			E('div', { 'class': 'cbi-section-node' }, [
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Web Panel')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						(runtime.web_url ? E('a', {
-							id: 'frpc-web-api',
-							'class': 'btn cbi-button',
-							href: runtime.web_url,
-							target: '_blank',
-							rel: 'noopener noreferrer'
-						}, _('Open')) : E('span', { id: 'frpc-web-api' }, '-'))
-					])
-				]),
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Connected Server')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						E('span', { id: 'frpc-connected-server' }, (runtime.server_addr && runtime.server_port) ? (runtime.server_addr + ':' + runtime.server_port) : '-'),
-						E('div', { 'class': 'cbi-value-description' }, _('Connect to FRP server'))
-					])
-				]),
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Proxy Runtime List')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						E('div', { 'class': 'cbi-value-description', style: 'margin-bottom:6px;' }, _('Running proxy list')),
-						E('div', {
-							id: 'frpc-proxy-list-wrap',
-							style: 'max-height:220px; overflow:auto;'
-						}, proxyRows.length > 0 ? E('table', { 'class': 'table cbi-section-table' }, [
-							E('tr', { 'class': 'tr table-titles' }, [
-								E('th', { 'class': 'th' }, _('Name')),
-								E('th', { 'class': 'th' }, _('Type')),
-								E('th', { 'class': 'th' }, _('Status')),
-								E('th', { 'class': 'th' }, _('Local')),
-								E('th', { 'class': 'th' }, _('Remote')),
-								E('th', { 'class': 'th' }, _('Error'))
-							])
-						]) : E('div', {}, _('No running proxies')))
+				E('table', { 'class': 'table cbi-section-table' }, [
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left', 'width': '33%' }, _('Web Panel')),
+						E('td', { 'class': 'td left', id: 'frpc-web-api' }, 
+							(runtime.web_url ? E('a', {
+								'class': 'btn cbi-button',
+								href: runtime.web_url,
+								target: '_blank',
+								rel: 'noopener noreferrer'
+							}, _('Open')) : '-'))
+					]),
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left' }, _('Connected Server')),
+						E('td', { 'class': 'td left' }, [
+							E('span', { id: 'frpc-connected-server' }, (runtime.server_addr && runtime.server_port) ? (runtime.server_addr + ':' + runtime.server_port) : '-'),
+							E('div', { 'class': 'cbi-value-description', style: 'margin: 4px 0 0 0;' }, _('Connect to FRP server'))
+						])
+					]),
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left' }, _('Proxy Runtime List')),
+						E('td', { 'class': 'td left' }, [
+							E('div', { 'class': 'cbi-value-description', style: 'margin: 0 0 6px 0;' }, _('Running proxy list')),
+							E('div', {
+								id: 'frpc-proxy-list-wrap',
+								style: 'max-height:220px; overflow:auto;'
+							}, proxyRows.length > 0 ? E('table', { 'class': 'table cbi-section-table' }, [
+								E('tr', { 'class': 'tr table-titles' }, [
+									E('th', { 'class': 'th' }, _('Name')),
+									E('th', { 'class': 'th' }, _('Type')),
+									E('th', { 'class': 'th' }, _('Status')),
+									E('th', { 'class': 'th' }, _('Local')),
+									E('th', { 'class': 'th' }, _('Remote')),
+									E('th', { 'class': 'th' }, _('Error'))
+								]),
+								...proxyRows.map((row) => E('tr', { 'class': 'tr' }, [
+									E('td', { 'class': 'td' }, row.name),
+									E('td', { 'class': 'td' }, row.type),
+									E('td', { 'class': 'td' }, row.status),
+									E('td', { 'class': 'td' }, row.local),
+									E('td', { 'class': 'td' }, row.remote),
+									E('td', { 'class': 'td' }, row.err || '-')
+								]))
+							]) : E('div', {}, _('No running proxies')))
+						])
 					])
 				])
 			])

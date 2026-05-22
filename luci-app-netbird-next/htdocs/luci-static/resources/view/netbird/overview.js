@@ -31,7 +31,7 @@ return view.extend({
             E('div', { 'class': 'cbi-map-descr' }, _('NetBird is a zero-configuration private network platform based on WireGuard. Easily build a secure overlay mesh network among your multiple dispersed nodes.'))
         ]);
 
-        // Section 1: Service Status
+        // Section 1: Service Status (Aligned with lucky style)
         let statusText = _('Disconnected');
         let statusColor = 'red';
         
@@ -46,23 +46,23 @@ return view.extend({
             statusColor = 'red';
         }
 
-        let serviceSection = E('div', { 'class': 'cbi-section' }, [
-            E('h3', { 'class': 'cbi-section-title' }, _('Service Status')),
+        let serviceSection = E('fieldset', { 'class': 'cbi-section' }, [
+            E('legend', {}, _('Service Status')),
             E('div', { 'class': 'cbi-section-node' }, [
-                E('div', { 'class': 'cbi-value' }, [
-                    E('label', { 'class': 'cbi-value-title' }, _('Status')),
-                    E('div', { 'class': 'cbi-value-field' }, [
-                        E('span', { 
-                            'id': 'netbird-status-text', 
-                            'class': 'bold',
-                            'style': 'color:' + statusColor
-                        }, statusText)
-                    ])
-                ]),
-                E('div', { 'class': 'cbi-value' }, [
-                    E('label', { 'class': 'cbi-value-title' }, _('Version')),
-                    E('div', { 'class': 'cbi-value-field' }, [
-                        E('span', { 'id': 'netbird-version' }, (status.daemon_version || status.cli_version) ? (status.daemon_version || status.cli_version) : '-')
+                E('table', { 'class': 'table cbi-section-table' }, [
+                    E('tr', { 'class': 'tr' }, [
+                        E('td', { 'class': 'td left', 'width': '33%' }, _('Status')),
+                        E('td', { 'class': 'td left' }, [
+                            E('span', { 
+                                'id': 'netbird-status-text', 
+                                'class': 'bold',
+                                'style': 'color:' + statusColor + '; font-weight:bold;'
+                            }, statusText)
+                        ])
+                    ]),
+                    E('tr', { 'class': 'tr' }, [
+                        E('td', { 'class': 'td left' }, _('Version')),
+                        E('td', { 'class': 'td left', 'id': 'netbird-version' }, (status.daemon_version || status.cli_version) ? (status.daemon_version || status.cli_version) : '-')
                     ])
                 ])
             ])
@@ -82,29 +82,27 @@ return view.extend({
         ]);
         container.appendChild(loginHelp);
 
-        // Section 3: Local Info (Conditional)
-        let infoSection = E('div', { 'class': 'cbi-section', 'id': 'netbird-info-section', 'style': (isConnected || isConnecting) ? '' : 'display:none' }, [
-            E('h3', { 'class': 'cbi-section-title' }, _('Local Information')),
+        // Section 3: Local Info (Conditional, Aligned with lucky style)
+        let infoSection = E('fieldset', { 'class': 'cbi-section', 'id': 'netbird-info-section', 'style': (isConnected || isConnecting) ? '' : 'display:none' }, [
+            E('legend', {}, _('Local Information')),
             E('div', { 'class': 'cbi-section-node' }, [
-                E('div', { 'class': 'cbi-value' }, [
-                    E('label', { 'class': 'cbi-value-title' }, _('Interface IP')),
-                    E('div', { 'class': 'cbi-value-field' }, [
-                        E('span', { 'id': 'netbird-local-ip' }, status.netbirdIp || status.local_ip || '-')
-                    ])
-                ]),
-                E('div', { 'class': 'cbi-value' }, [
-                    E('label', { 'class': 'cbi-value-title' }, _('Host Name')),
-                    E('div', { 'class': 'cbi-value-field' }, [
-                        E('span', { 'id': 'netbird-hostname' }, status.fqdn || status.hostname || '-')
+                E('table', { 'class': 'table cbi-section-table' }, [
+                    E('tr', { 'class': 'tr' }, [
+                        E('td', { 'class': 'td left', 'width': '33%' }, _('Interface IP')),
+                        E('td', { 'class': 'td left', 'id': 'netbird-local-ip' }, status.netbirdIp || status.local_ip || '-')
+                    ]),
+                    E('tr', { 'class': 'tr' }, [
+                        E('td', { 'class': 'td left' }, _('Host Name')),
+                        E('td', { 'class': 'td left', 'id': 'netbird-hostname' }, status.fqdn || status.hostname || '-')
                     ])
                 ])
             ])
         ]);
         container.appendChild(infoSection);
 
-        // Section 4: Peers Table (Conditional)
-        let peersSection = E('div', { 'class': 'cbi-section', 'id': 'netbird-peers-section', 'style': isConnected ? '' : 'display:none' }, [
-            E('h3', { 'class': 'cbi-section-title' }, _('Network Nodes')),
+        // Section 4: Peers Table (Conditional, Aligned with lucky style)
+        let peersSection = E('fieldset', { 'class': 'cbi-section', 'id': 'netbird-peers-section', 'style': isConnected ? '' : 'display:none' }, [
+            E('legend', {}, _('Network Nodes')),
             E('div', { 'class': 'cbi-section-node' }, [
                 E('table', { 'class': 'table cbi-section-table', 'id': 'netbird-peers-table' }, [
                     E('tr', { 'class': 'tr table-titles' }, [
