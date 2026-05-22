@@ -64,8 +64,8 @@ return view.extend({
 
 		const css = [
 			'@media (min-width: 768px) {',
-			'  .frpc-editor-textarea { margin-left: 20px !important; }',
-			'  .frpc-editor-buttons { margin-left: 20px !important; }',
+			'  .frpc-editor-textarea { margin-left: 60px !important; }',
+			'  .frpc-editor-buttons { margin-left: 60px !important; }',
 			'}'
 		].join('\n');
 
