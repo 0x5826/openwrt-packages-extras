@@ -103,19 +103,25 @@ return view.extend({
 							E('button', {
 								id: 'frpc-restart-btn',
 								'class': 'btn cbi-button cbi-button-apply',
+								'style': 'display:' + ((status.state === 'managed' || status.state === 'unmanaged') ? 'inline-block' : 'none') + ';',
 								click: ui.createHandlerFn(this, function(ev) {
-									if (!ev || !ev.currentTarget)
-										return;
+									if (!ev || !ev.currentTarget) return;
 									const btn = ev.currentTarget;
 									btn.disabled = true;
-									return callAdoptProcess().then(function() {
-										ui.addNotification(null, E('p', _('Force restarting service, please wait...')), 'info');
-										window.setTimeout(function() { location.reload(); }, 1200);
-									}).finally(function() {
+									ui.addNotification(null, E('p', _('Restarting FRP Client, please wait...')), 'info');
+									return callServiceAction('restart').then(function(res) {
 										btn.disabled = false;
+										if (res && res.success) {
+											ui.addNotification(null, E('p', _('Service restarted successfully.')), 'info');
+										} else {
+											ui.addNotification(null, E('p', _('Failed to restart service.')), 'error');
+										}
+									}).catch(function(err) {
+										btn.disabled = false;
+										ui.addNotification(null, E('p', _('An error occurred: ') + err.message), 'error');
 									});
 								})
-							}, _('Force Restart'))
+							}, _('Restart'))
 						])
 					]),
 					E('tr', { 'class': 'tr' }, [
@@ -202,6 +208,15 @@ return view.extend({
 			if (statusNode) {
 				statusNode.textContent = next.text;
 				statusNode.style.color = next.color;
+			}
+
+			const restartBtnNode = document.getElementById('frpc-restart-btn');
+			if (restartBtnNode) {
+				if (s.state === 'managed' || s.state === 'unmanaged') {
+					restartBtnNode.style.display = 'inline-block';
+				} else {
+					restartBtnNode.style.display = 'none';
+				}
 			}
 
 			const runtimeConfigNode = document.getElementById('frpc-runtime-config');
