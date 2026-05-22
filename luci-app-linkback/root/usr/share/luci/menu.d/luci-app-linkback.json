@@ -1,5 +1,5 @@
 {
-	"admin/network/linkback": {
+	"admin/services/linkback": {
 		"title": "LinkBack 链路守护",
 		"order": 90,
 		"action": {
@@ -10,7 +10,7 @@
 			"uci": { "linkback": true }
 		}
 	},
-	"admin/network/linkback/overview": {
+	"admin/services/linkback/overview": {
 		"title": "Overview",
 		"order": 10,
 		"action": {
@@ -18,7 +18,7 @@
 			"path": "linkback/overview"
 		}
 	},
-	"admin/network/linkback/settings": {
+	"admin/services/linkback/settings": {
 		"title": "Settings",
 		"order": 20,
 		"action": {
@@ -26,7 +26,7 @@
 			"path": "linkback/settings"
 		}
 	},
-	"admin/network/linkback/log": {
+	"admin/services/linkback/log": {
 		"title": "Log",
 		"order": 30,
 		"action": {
