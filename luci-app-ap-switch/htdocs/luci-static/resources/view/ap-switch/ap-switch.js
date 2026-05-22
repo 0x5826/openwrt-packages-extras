@@ -161,8 +161,15 @@ return L.view.extend({
 				];
 
 				if (res && res.ip) {
-					messages.push(_('Successfully pre-fetched future management IP: %s').format(res.ip));
-					messages.push(_('You can use this IP to access this dashboard after the switch.'));
+					messages.push(E('span', {}, [
+						_('Successfully pre-fetched future management IP: '),
+						E('a', {
+							'href': 'http://' + res.ip,
+							'target': '_blank',
+							'style': 'color: #2196F3; font-weight: bold; text-decoration: underline; word-break: break-all;'
+						}, 'http://' + res.ip)
+					]));
+					messages.push(_('You can use this URL to access this dashboard after the switch.'));
 					messages.push(_('Are you sure you want to switch to AP mode and restart network?'));
 				} else {
 					messages.push(_('WARNING: Failed to pre-fetch IP address via DHCP probe!'));
