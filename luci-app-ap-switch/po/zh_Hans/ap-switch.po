@@ -154,3 +154,16 @@ msgstr "您是否仍要强制执行切换？"
 msgid "WARNING: DHCP probe RPC error: %s"
 msgstr "警告：DHCP 探测 RPC 请求发生错误：%s"
 
+msgid "Confirm AP Mode Switch"
+msgstr "确认切换至 AP 模式"
+
+msgid "Confirm Router Mode Switch"
+msgstr "确认切换至路由器模式"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Confirm"
+msgstr "确认"
+
+

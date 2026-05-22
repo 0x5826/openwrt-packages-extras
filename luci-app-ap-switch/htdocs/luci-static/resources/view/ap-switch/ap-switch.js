@@ -123,6 +123,29 @@ return L.view.extend({
 			});
 		};
 
+		var showConfirmModal = function(title, messages, onConfirm) {
+			var content = [];
+			messages.forEach(function(msg) {
+				content.push(E('p', { 'style': 'margin-bottom: 10px; line-height: 1.5;' }, msg));
+			});
+			content.push(E('div', { 'class': 'right', 'style': 'margin-top: 20px;' }, [
+				E('button', {
+					'class': 'cbi-button cbi-button-reset',
+					'click': ui.hideModal
+				}, _('Cancel')),
+				E('button', {
+					'class': 'cbi-button cbi-button-action cbi-button-apply',
+					'style': 'margin-left: 10px;',
+					'click': function() {
+						ui.hideModal();
+						onConfirm();
+					}
+				}, _('Confirm'))
+			]));
+
+			ui.showModal(title, content);
+		};
+
 		if (target_mode === 'ap') {
 			ui.showModal(null, [
 				E('p', { 'class': 'spinning' }, _('Auto-probing for future AP IP via DHCP on br-lan...')),
@@ -131,38 +154,43 @@ return L.view.extend({
 
 			return callProbeIP().then(function(res) {
 				ui.hideModal();
-				var msg = _('Switching to AP mode will bridge the WAN port into "br-lan". The "br-lan" interface will become a DHCP client to your main router.');
 				
+				var title = _('Confirm AP Mode Switch');
+				var messages = [
+					_('Switching to AP mode will bridge the WAN port into "br-lan". The "br-lan" interface will become a DHCP client to your main router.')
+				];
+
 				if (res && res.ip) {
-					msg += '\n\n' + _('Successfully pre-fetched future management IP: %s').format(res.ip);
-					msg += '\n' + _('You can use this IP to access this dashboard after the switch.');
-					msg += '\n\n' + _('Are you sure you want to switch to AP mode and restart network?');
+					messages.push(_('Successfully pre-fetched future management IP: %s').format(res.ip));
+					messages.push(_('You can use this IP to access this dashboard after the switch.'));
+					messages.push(_('Are you sure you want to switch to AP mode and restart network?'));
 				} else {
-					msg += '\n\n' + _('WARNING: Failed to pre-fetch IP address via DHCP probe!');
-					msg += '\n' + _('This may be because your LAN port is not connected to the main router.');
-					msg += '\n' + _('If you proceed, you must find the new IP from your main router client list using MAC: %s').format(status.lan_mac || 'N/A');
-					msg += '\n\n' + _('Do you still want to force the switch anyway?');
+					messages.push(_('WARNING: Failed to pre-fetch IP address via DHCP probe!'));
+					messages.push(_('This may be because your LAN port is not connected to the main router.'));
+					messages.push(_('If you proceed, you must find the new IP from your main router client list using MAC: %s').format(status.lan_mac || 'N/A'));
+					messages.push(_('Do you still want to force the switch anyway?'));
 				}
 
-				if (confirm(msg)) {
-					return executeSwitch();
-				}
+				showConfirmModal(title, messages, executeSwitch);
 			}).catch(function(err) {
 				ui.hideModal();
-				var msg = _('Switching to AP mode will bridge the WAN port into "br-lan". The "br-lan" interface will become a DHCP client to your main router.');
-				msg += '\n\n' + _('WARNING: DHCP probe RPC error: %s').format(err.message);
-				msg += '\n' + _('If you proceed, you must find the new IP from your main router client list using MAC: %s').format(status.lan_mac || 'N/A');
-				msg += '\n\n' + _('Do you still want to force the switch anyway?');
+				
+				var title = _('Confirm AP Mode Switch');
+				var messages = [
+					_('Switching to AP mode will bridge the WAN port into "br-lan". The "br-lan" interface will become a DHCP client to your main router.'),
+					_('WARNING: DHCP probe RPC error: %s').format(err.message),
+					_('If you proceed, you must find the new IP from your main router client list using MAC: %s').format(status.lan_mac || 'N/A'),
+					_('Do you still want to force the switch anyway?')
+				];
 
-				if (confirm(msg)) {
-					return executeSwitch();
-				}
+				showConfirmModal(title, messages, executeSwitch);
 			});
 		} else {
-			var msg = _('Switching to Router mode will restore the WAN port and local DHCP server. Your device will use the previous static IP address. Are you sure?');
-			if (confirm(msg)) {
-				return executeSwitch();
-			}
+			var title = _('Confirm Router Mode Switch');
+			var messages = [
+				_('Switching to Router mode will restore the WAN port and local DHCP server. Your device will use the previous static IP address. Are you sure?')
+			];
+			showConfirmModal(title, messages, executeSwitch);
 		}
 	}
 });
