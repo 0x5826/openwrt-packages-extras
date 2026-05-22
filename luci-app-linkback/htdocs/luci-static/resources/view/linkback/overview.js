@@ -64,6 +64,8 @@ return view.extend({
 			stateColor = 'red';
 		}
 
+		var isRunning = (status && status.links && status.links.length > 0);
+
 		var statusSection = E('fieldset', { 'class': 'cbi-section' }, [
 			E('legend', {}, _('Service Status')),
 			E('div', { 'class': 'cbi-section-node' }, [
@@ -76,7 +78,9 @@ return view.extend({
 								style: 'font-weight:bold; color:' + stateColor + '; margin-right:15px;'
 							}, stateText),
 							E('button', {
+								id: 'linkback-restart-btn',
 								'class': 'btn cbi-button cbi-button-apply',
+								style: 'display:' + (isRunning ? 'inline-block' : 'none') + ';',
 								click: ui.createHandlerFn(this, 'handleServiceAction', 'restart')
 							}, _('Restart'))
 						])
@@ -124,6 +128,15 @@ return view.extend({
 			} else {
 				stateEl.textContent = _('Stopped');
 				stateEl.style.color = 'red';
+			}
+		}
+
+		var restartBtn = document.getElementById('linkback-restart-btn');
+		if (restartBtn) {
+			if (status && status.links && status.links.length > 0) {
+				restartBtn.style.display = 'inline-block';
+			} else {
+				restartBtn.style.display = 'none';
 			}
 		}
 
