@@ -67,41 +67,43 @@ return view.extend({
 			E('div', { 'class': 'cbi-map-descr' }, _('Overview of ssserver running status and actual runtime configurations.'))
 		]);
 
-		// Service Status Section (Aligned with lucky and frpc style)
-		const statusSection = E('div', { 'class': 'cbi-section' }, [
-			E('h3', { 'class': 'cbi-section-title' }, _('Service Status')),
+		// Service Status Section (Aligned with lucky style)
+		const statusSection = E('fieldset', { 'class': 'cbi-section' }, [
+			E('legend', {}, _('Service Status')),
 			E('div', { 'class': 'cbi-section-node' }, [
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Current Status')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						E('span', {
-							id: 'ssserver-status-text',
-							'style': 'font-weight:bold; color:' + stateInfo.color + '; margin-right:15px;'
-						}, stateInfo.text),
-						E('button', {
-							id: 'ssserver-restart-btn',
-							'class': 'btn cbi-button cbi-button-apply',
-							'style': 'display:' + (status.running ? 'inline-block' : 'none') + ';',
-							click: ui.createHandlerFn(this, function(ev) {
-								if (!ev || !ev.currentTarget) return;
-								const btn = ev.currentTarget;
-								btn.disabled = true;
-								
-								ui.addNotification(null, E('p', _('Restarting Shadowsocks Server, please wait...')), 'info');
-								
-								return callServiceAction('restart').then(function(res) {
-									btn.disabled = false;
-									if (res && res.success) {
-										ui.addNotification(null, E('p', _('Service restarted successfully.')), 'info');
-									} else {
-										ui.addNotification(null, E('p', _('Failed to restart service.')), 'error');
-									}
-								}).catch(function(err) {
-									btn.disabled = false;
-									ui.addNotification(null, E('p', _('An error occurred: ') + err.message), 'error');
-								});
-							})
-						}, _('Restart'))
+				E('table', { 'class': 'table cbi-section-table' }, [
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left', 'width': '33%' }, _('Current Status')),
+						E('td', { 'class': 'td left' }, [
+							E('span', {
+								id: 'ssserver-status-text',
+								'style': 'font-weight:bold; color:' + stateInfo.color + '; margin-right:15px;'
+							}, stateInfo.text),
+							E('button', {
+								id: 'ssserver-restart-btn',
+								'class': 'btn cbi-button cbi-button-apply',
+								'style': 'display:' + (status.running ? 'inline-block' : 'none') + ';',
+								click: ui.createHandlerFn(this, function(ev) {
+									if (!ev || !ev.currentTarget) return;
+									const btn = ev.currentTarget;
+									btn.disabled = true;
+									
+									ui.addNotification(null, E('p', _('Restarting Shadowsocks Server, please wait...')), 'info');
+									
+									return callServiceAction('restart').then(function(res) {
+										btn.disabled = false;
+										if (res && res.success) {
+											ui.addNotification(null, E('p', _('Service restarted successfully.')), 'info');
+										} else {
+											ui.addNotification(null, E('p', _('Failed to restart service.')), 'error');
+										}
+									}).catch(function(err) {
+										btn.disabled = false;
+										ui.addNotification(null, E('p', _('An error occurred: ') + err.message), 'error');
+									});
+								})
+							}, _('Restart'))
+						])
 					])
 				])
 			])
@@ -109,56 +111,42 @@ return view.extend({
 
 		container.appendChild(statusSection);
 
-		// Runtime Configuration Section
-		const configSection = E('div', { 'class': 'cbi-section' }, [
-			E('h3', { 'class': 'cbi-section-title' }, _('Runtime Configurations')),
+		// Runtime Configuration Section (Aligned with lucky style)
+		const configSection = E('fieldset', { 'class': 'cbi-section' }, [
+			E('legend', {}, _('Runtime Configurations')),
 			E('div', { 'class': 'cbi-section-node' }, [
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Server Address')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						E('code', {}, server)
-					])
-				]),
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Server Port')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						E('code', {}, port)
-					])
-				]),
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Encryption Method')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						E('code', {}, method)
-					])
-				]),
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Network Mode')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						E('span', {}, modeText)
-					])
-				]),
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('ssserver timeout')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						E('span', {}, timeout + ' ' + _('seconds'))
-					])
-				]),
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('DNS Resolver')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						E('code', {}, dns)
-					])
-				]),
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('TCP Fast Open')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						E('span', {}, tfo)
-					])
-				]),
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Open Firewall')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						E('span', {}, firewall)
+				E('table', { 'class': 'table cbi-section-table' }, [
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left', 'width': '33%' }, _('Server Address')),
+						E('td', { 'class': 'td left' }, E('code', {}, server))
+					]),
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left' }, _('Server Port')),
+						E('td', { 'class': 'td left' }, E('code', {}, port))
+					]),
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left' }, _('Encryption Method')),
+						E('td', { 'class': 'td left' }, E('code', {}, method))
+					]),
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left' }, _('Network Mode')),
+						E('td', { 'class': 'td left' }, modeText)
+					]),
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left' }, _('ssserver timeout')),
+						E('td', { 'class': 'td left' }, timeout + ' ' + _('seconds'))
+					]),
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left' }, _('DNS Resolver')),
+						E('td', { 'class': 'td left' }, E('code', {}, dns))
+					]),
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left' }, _('TCP Fast Open')),
+						E('td', { 'class': 'td left' }, tfo)
+					]),
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left' }, _('Open Firewall')),
+						E('td', { 'class': 'td left' }, firewall)
 					])
 				])
 			])
