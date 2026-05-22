@@ -21,6 +21,7 @@ var callProbeIP = rpc.declare({
 });
 
 return L.view.extend({
+	i18n: 'ap-switch',
 	handleSaveApply: null,
 	handleSave: null,
 	handleReset: null,
