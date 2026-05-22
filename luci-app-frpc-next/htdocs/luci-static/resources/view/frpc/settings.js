@@ -151,22 +151,7 @@ return view.extend({
 						E('input', {
 							id: 'frpc_enabled',
 							type: 'checkbox',
-							checked: enabled ? 'checked' : null,
-							change: ui.createHandlerFn(this, function(ev) {
-								let on = ev.currentTarget && ev.currentTarget.checked ? 1 : 0;
-								return callSetEnabled(on).then(function(res) {
-									if (!(res && res.success)) {
-										ui.addNotification(null, E('p', _('Failed to update service enable state.')), 'danger');
-										return;
-									}
-
-									ui.addNotification(null, E('p', _('Service enable state updated.')), 'info');
-									return callServiceAction(on ? 'start' : 'stop').then(function(actRes) {
-										if (!(actRes && actRes.success))
-											ui.addNotification(null, E('p', _('Failed to apply service state.')), 'danger');
-									});
-								});
-							})
+							checked: enabled ? 'checked' : null
 						})
 					])
 				])
@@ -187,26 +172,10 @@ return view.extend({
 		]);
 	},
 
-	saveConfig: function() {
-		const configText = document.getElementById('frpc_config')?.value || '';
-
-		return callSaveConfig(configText).then(function(res) {
-			if (res && res.success) {
-				if (res.applied === false) {
-					ui.addNotification(null, E('p', _('Configuration saved, but service is not running or reload failed. Please force restart service.')), 'warning');
-				} else {
-					ui.addNotification(null, E('p', _('Configuration saved and applied successfully.')), 'info');
-				}
-				return;
-			}
-
-			ui.addNotification(null, E('p', _('Configuration save failed: ') + (res && res.error ? res.error : _('Unknown error'))), 'danger');
-			throw new Error('frpc config save failed');
-		});
-	},
-
 	validateAndSave: function() {
 		const configText = document.getElementById('frpc_config')?.value || '';
+		const enabledCheckbox = document.getElementById('frpc_enabled');
+		const on = enabledCheckbox && enabledCheckbox.checked ? 1 : 0;
 
 		return callValidateConfig(configText).then(L.bind(function(res) {
 			if (!res || !res.success) {
@@ -217,7 +186,33 @@ return view.extend({
 			}
 
 			this.setValidateHint(true, _('Configuration is valid.'));
-			return this.saveConfig();
+
+			return callSetEnabled(on).then(L.bind(function(setRes) {
+				if (!setRes || !setRes.success) {
+					ui.addNotification(null, E('p', _('Failed to update service enable state.')), 'danger');
+					throw new Error('frpc set enabled failed');
+				}
+
+				return callSaveConfig(configText).then(L.bind(function(saveRes) {
+					if (saveRes && saveRes.success) {
+						if (on === 0) {
+							return callServiceAction('stop').then(function() {
+								ui.addNotification(null, E('p', _('Configuration saved and applied successfully.')), 'info');
+							});
+						} else {
+							if (saveRes.applied === false) {
+								ui.addNotification(null, E('p', _('Configuration saved, but service is not running or reload failed. Please force restart service.')), 'warning');
+							} else {
+								ui.addNotification(null, E('p', _('Configuration saved and applied successfully.')), 'info');
+							}
+						}
+						return;
+					}
+
+					ui.addNotification(null, E('p', _('Configuration save failed: ') + (saveRes && saveRes.error ? saveRes.error : _('Unknown error'))), 'danger');
+					throw new Error('frpc config save failed');
+				}, this));
+			}, this));
 		}, this));
 	},
 
