@@ -21,6 +21,10 @@ var callProbeIP = rpc.declare({
 });
 
 return L.view.extend({
+	handleSaveApply: null,
+	handleSave: null,
+	handleReset: null,
+
 	load: function() {
 		return Promise.all([
 			callGetStatus(),
@@ -35,44 +39,20 @@ return L.view.extend({
 		var lan_ip = status.lan_ip || 'N/A';
 		var lan_proto = status.lan_proto || 'static';
 		var lan_mac = status.lan_mac || 'N/A';
-		var probed_ip = status.probed_ip || '';
 
-		var changeModeRows = [];
-		if (mode !== 'ap') {
-			changeModeRows.push(E('tr', { 'class': 'tr' }, [
-				E('td', { 'class': 'td left', 'width': '33%' }, _('Pre-fetch AP IP')),
+		var changeModeRows = [
+			E('tr', { 'class': 'tr' }, [
+				E('td', { 'class': 'td left', 'width': '33%' }, _('Switch to %s').format(mode === 'ap' ? _('Router Mode') : _('AP Mode'))),
 				E('td', { 'class': 'td left' }, [
 					E('button', {
-						'class': 'cbi-button cbi-button-action',
+						'class': 'cbi-button cbi-button-apply',
 						'click': ui.createHandlerFn(self, function() {
-							ui.showModal(null, [ E('p', { 'class': 'spinning' }, _('Probing for DHCP IP on br-lan...')) ]);
-							return callProbeIP().then(function(res) {
-								ui.hideModal();
-								if (res && res.ip) {
-									document.getElementById('probed-ip-display').innerText = res.ip;
-									probed_ip = res.ip;
-									ui.addNotification(null, E('p', _('Successfully fetched IP: %s').format(res.ip)), 'info');
-								} else {
-									ui.addNotification(null, E('p', _('Failed to fetch IP. Ensure a LAN port is connected to your main router.')), 'warning');
-								}
-							});
+							return self.handleSwitch(mode === 'ap' ? 'router' : 'ap', status);
 						})
-					}, [ _('Probe IP') ]),
-					E('span', { 'style': 'margin-left: 10px; font-weight: bold; color: #2196F3;', 'id': 'probed-ip-display' }, probed_ip || _('Not probed'))
+					}, [ (mode === 'ap' ? _('Switch to Router Mode') : _('Switch to AP Mode')) ])
 				])
-			]));
-		}
-		changeModeRows.push(E('tr', { 'class': 'tr' }, [
-			E('td', { 'class': 'td left', 'width': (mode === 'ap' ? '33%' : null) }, _('Switch to %s').format(mode === 'ap' ? _('Router Mode') : _('AP Mode'))),
-			E('td', { 'class': 'td left' }, [
-				E('button', {
-					'class': 'cbi-button cbi-button-apply',
-					'click': ui.createHandlerFn(self, function() {
-						return self.handleSwitch(mode === 'ap' ? 'router' : 'ap', status, probed_ip);
-					})
-				}, [ (mode === 'ap' ? _('Switch to Router Mode') : _('Switch to AP Mode')) ])
 			])
-		]));
+		];
 
 		var body = E('div', { 'class': 'cbi-map' }, [
 			E('h2', {}, _('AP Switch Title') + ' - ' + _('Switch Mode')),
@@ -118,44 +98,71 @@ return L.view.extend({
 		return body;
 	},
 
-	handleSwitch: function(target_mode, status, probed_ip) {
-		var msg = '';
-		if (target_mode === 'ap') {
-			msg = _('Switching to AP mode will bridge the WAN port into "br-lan". The "br-lan" interface will become a DHCP client to your main router.');
-			
-			if (probed_ip) {
-				msg += '\n\n' + _('A valid IP was pre-fetched: %s. You can use this address to log in after the switch.').format(probed_ip);
-				msg += '\n\n' + _('Are you sure you want to proceed?');
-			} else {
-				msg += '\n\n' + _('WARNING: No IP address was pre-fetched via DHCP probe!');
-				msg += '\n' + _('We strongly recommend connecting your LAN port to the main router and using "Probe IP" first.');
-				msg += '\n' + _('If you proceed now, you must find the new IP from your main router using MAC: %s').format(status.lan_mac || 'N/A');
-				msg += '\n\n' + _('Do you want to proceed anyway or cancel to plug in the cable and try again?');
-			}
-		} else {
-			msg = _('Switching to Router mode will restore the WAN port and local DHCP server. Your device will use the previous static IP address. Are you sure?');
-		}
+	handleSwitch: function(target_mode, status) {
+		var self = this;
 
-		if (!confirm(msg)) return;
+		var executeSwitch = function() {
+			ui.showModal(null, [
+				E('p', { 'class': 'spinning' }, _('Applying changes and restarting network...')),
+				E('p', {}, _('The page will redirect or you may need to manually reconnect to the new IP address in a few moments.'))
+			]);
 
-		ui.showModal(null, [
-			E('p', { 'class': 'spinning' }, _('Applying changes and restarting network...')),
-			E('p', {}, _('The page will redirect or you may need to manually reconnect to the new IP address in a few moments.'))
-		]);
-
-		return callSetMode(target_mode).then(function(res) {
-			if (res && res.result === 'success') {
-				setTimeout(function() {
+			return callSetMode(target_mode).then(function(res) {
+				if (res && res.result === 'success') {
+					setTimeout(function() {
+						ui.hideModal();
+						ui.addNotification(null, E('p', _('Mode switched successfully. Please check your network connection.')), 'info');
+					}, 5000);
+				} else {
 					ui.hideModal();
-					ui.addNotification(null, E('p', _('Mode switched successfully. Please check your network connection.')), 'info');
-				}, 5000);
-			} else {
+					ui.addNotification(null, E('p', _('Failed to switch mode: %s').format(res.error || 'Unknown error')), 'error');
+				}
+			}).catch(function(err) {
 				ui.hideModal();
-				ui.addNotification(null, E('p', _('Failed to switch mode: %s').format(res.error || 'Unknown error')), 'error');
+				ui.addNotification(null, E('p', _('Error calling RPC: %s').format(err.message)), 'error');
+			});
+		};
+
+		if (target_mode === 'ap') {
+			ui.showModal(null, [
+				E('p', { 'class': 'spinning' }, _('Auto-probing for future AP IP via DHCP on br-lan...')),
+				E('p', {}, _('This ensures you can find your way back to the management panel after the switch.'))
+			]);
+
+			return callProbeIP().then(function(res) {
+				ui.hideModal();
+				var msg = _('Switching to AP mode will bridge the WAN port into "br-lan". The "br-lan" interface will become a DHCP client to your main router.');
+				
+				if (res && res.ip) {
+					msg += '\n\n' + _('Successfully pre-fetched future management IP: %s').format(res.ip);
+					msg += '\n' + _('You can use this IP to access this dashboard after the switch.');
+					msg += '\n\n' + _('Are you sure you want to switch to AP mode and restart network?');
+				} else {
+					msg += '\n\n' + _('WARNING: Failed to pre-fetch IP address via DHCP probe!');
+					msg += '\n' + _('This may be because your LAN port is not connected to the main router.');
+					msg += '\n' + _('If you proceed, you must find the new IP from your main router client list using MAC: %s').format(status.lan_mac || 'N/A');
+					msg += '\n\n' + _('Do you still want to force the switch anyway?');
+				}
+
+				if (confirm(msg)) {
+					return executeSwitch();
+				}
+			}).catch(function(err) {
+				ui.hideModal();
+				var msg = _('Switching to AP mode will bridge the WAN port into "br-lan". The "br-lan" interface will become a DHCP client to your main router.');
+				msg += '\n\n' + _('WARNING: DHCP probe RPC error: %s').format(err.message);
+				msg += '\n' + _('If you proceed, you must find the new IP from your main router client list using MAC: %s').format(status.lan_mac || 'N/A');
+				msg += '\n\n' + _('Do you still want to force the switch anyway?');
+
+				if (confirm(msg)) {
+					return executeSwitch();
+				}
+			});
+		} else {
+			var msg = _('Switching to Router mode will restore the WAN port and local DHCP server. Your device will use the previous static IP address. Are you sure?');
+			if (confirm(msg)) {
+				return executeSwitch();
 			}
-		}).catch(function(err) {
-			ui.hideModal();
-			ui.addNotification(null, E('p', _('Error calling RPC: %s').format(err.message)), 'error');
-		});
+		}
 	}
 });
