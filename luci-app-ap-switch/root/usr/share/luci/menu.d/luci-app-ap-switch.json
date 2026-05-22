@@ -1,5 +1,5 @@
 {
-	"admin/network/ap_switch": {
+	"admin/services/ap_switch": {
 		"title": "AP Switch",
 		"action": {
 			"type": "view",
