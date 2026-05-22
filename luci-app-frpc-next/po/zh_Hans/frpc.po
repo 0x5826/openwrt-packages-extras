@@ -220,8 +220,6 @@ msgstr "列"
 msgid "frpc Version"
 msgstr "frpc 版本"
 
-msgid "Highlight Preview (Read-only)"
-msgstr "高亮预览（只读）"
 
 msgid "frpc config verify failed:\n"
 msgstr "frpc 配置校验失败：\n"
