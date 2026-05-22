@@ -16,6 +16,11 @@ const callServiceAction = rpc.declare({
 	params: [ 'action' ]
 });
 
+const callSsserverLanIp = rpc.declare({
+	object: 'luci.ssserver',
+	method: 'get_lan_ip'
+});
+
 function renderState(status) {
 	let text = _('Stopped');
 	let color = 'red';
@@ -39,13 +44,16 @@ return view.extend({
 	load: function() {
 		return Promise.all([
 			callSsserverStatus(),
-			uci.load('ssserver')
+			uci.load('ssserver'),
+			callSsserverLanIp().catch(function() { return { ip: '' }; })
 		]);
 	},
 
 	render: function(data) {
 		const status = data && data[0] ? data[0] : {};
 		const stateInfo = renderState(status);
+		const lanIpInfo = data && data[2] ? data[2] : { ip: '' };
+		const lanIp = lanIpInfo.ip || '8.8.8.8';
 
 		// Read configurations from UCI
 		const ssserverConfig = uci.get('ssserver', 'main') || {};
@@ -58,7 +66,7 @@ return view.extend({
 		if (ssserverConfig.mode === 'tcp_only') modeText = _('TCP only');
 		if (ssserverConfig.mode === 'udp_only') modeText = _('UDP only');
 
-		const dns = ssserverConfig.dns_resolver || _('Default');
+		const dns = ssserverConfig.dns_resolver || lanIp;
 		const tfo = (ssserverConfig.fast_open === '1') ? _('Enabled') : _('Disabled');
 		const firewall = (ssserverConfig.open_firewall === '1') ? _('Enabled') : _('Disabled');
 
