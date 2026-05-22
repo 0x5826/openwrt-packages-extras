@@ -123,3 +123,34 @@ msgstr "在标准路由器模式与 AP 桥接访问点模式之间平滑切换�
 
 msgid "AP Switch Title"
 msgstr "AP 模式切换"
+
+msgid "Auto-probing for future AP IP via DHCP on br-lan..."
+msgstr "正在通过 br-lan 接口的 DHCP 自动探测未来的 AP 管理 IP 地址..."
+
+msgid "This ensures you can find your way back to the management panel after the switch."
+msgstr "这可以确保您在切换模式后，能够顺利找到并登录新的设备管理后台。"
+
+msgid "Successfully pre-fetched future management IP: %s"
+msgstr "成功预先获取到未来的管理 IP：%s"
+
+msgid "You can use this IP to access this dashboard after the switch."
+msgstr "切换完成后，您可以使用此 IP 地址访问本控制台。"
+
+msgid "Are you sure you want to switch to AP mode and restart network?"
+msgstr "您确定要切换到 AP 模式并重启网络吗？"
+
+msgid "WARNING: Failed to pre-fetch IP address via DHCP probe!"
+msgstr "警告：通过 DHCP 探测预获取 IP 地址失败！"
+
+msgid "This may be because your LAN port is not connected to the main router."
+msgstr "这可能是由于您设备的 LAN 物理端口尚未连接到上层主路由器。"
+
+msgid "If you proceed, you must find the new IP from your main router client list using MAC: %s"
+msgstr "如果您继续，切换后必须通过 MAC 地址在上级主路由的客户端列表中查找新 IP：%s"
+
+msgid "Do you still want to force the switch anyway?"
+msgstr "您是否仍要强制执行切换？"
+
+msgid "WARNING: DHCP probe RPC error: %s"
+msgstr "警告：DHCP 探测 RPC 请求发生错误：%s"
+
