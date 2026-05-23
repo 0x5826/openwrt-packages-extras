@@ -198,3 +198,6 @@ msgstr "IP 伪装 (SNAT)"
 
 msgid "Enable Source NAT (masquerade) on the NetBird interface. Useful if remote subnet routing requires NAT or is not aware of local LAN routes."
 msgstr "在 NetBird 接口上启用源地址转换 (SNAT/Masquerade)。若远端节点无法学习当前本地局域网路由，或需要以接口 IP 身份进行访问，则建议开启。"
+
+msgid "Networks"
+msgstr "网络"

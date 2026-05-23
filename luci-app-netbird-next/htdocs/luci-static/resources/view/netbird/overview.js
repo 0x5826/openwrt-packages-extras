@@ -108,6 +108,7 @@ return view.extend({
                     E('tr', { 'class': 'tr table-titles' }, [
                         E('th', { 'class': 'th' }, _('Name')),
                         E('th', { 'class': 'th' }, _('Virtual IP')),
+                        E('th', { 'class': 'th' }, _('Networks')),
                         E('th', { 'class': 'th' }, _('Status')),
                         E('th', { 'class': 'th' }, _('Connection Type')),
                         E('th', { 'class': 'th' }, _('Last Online'))
@@ -180,8 +181,15 @@ return view.extend({
                                 row.className = 'tr';
                                 row.insertCell(0).textContent = peer.fqdn || peer.hostname || peer.name || _('Unknown');
                                 row.insertCell(1).textContent = peerIp;
-                                row.insertCell(2).textContent = peer.status || _('Unknown');
-                                row.insertCell(3).textContent = peer.connectionType || '-';
+
+                                let networks = '-';
+                                if (Array.isArray(peer.networks) && peer.networks.length > 0) {
+                                    networks = peer.networks.join(', ');
+                                }
+                                row.insertCell(2).textContent = networks;
+
+                                row.insertCell(3).textContent = peer.status || _('Unknown');
+                                row.insertCell(4).textContent = peer.connectionType || '-';
 
                                 let lastOnline = peer.lastStatusUpdate || peer.last_online || _('Never');
                                 if (lastOnline && lastOnline !== _('Never') && lastOnline.includes('T')) {
@@ -189,7 +197,7 @@ return view.extend({
                                         lastOnline = new Date(lastOnline).toLocaleString();
                                     } catch (e) {}
                                 }
-                                row.insertCell(4).textContent = lastOnline;
+                                row.insertCell(5).textContent = lastOnline;
                             });
                         }
                     }
