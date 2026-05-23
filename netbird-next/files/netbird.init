@@ -17,6 +17,7 @@ _LOG_LEVEL="warn"
 _WG_PORT="51820"
 _OPEN_WAN=0
 _CLEANUP=0
+_MASQ=1
 
 load_config() {
 	local section="$1"
@@ -29,6 +30,7 @@ load_config() {
 	config_get _WG_PORT "$section" "wireguard_port" "51820"
 	config_get_bool _OPEN_WAN "$section" "open_wan_port" "0"
 	config_get_bool _CLEANUP "$section" "cleanup_config" "0"
+	config_get_bool _MASQ "$section" "masq" "1"
 }
 
 # Forcefully remove all NetBird-generated rules and tables that shouldn't be there in Passive Mode
@@ -62,7 +64,7 @@ set firewall.netbird_zone.network='netbird'
 set firewall.netbird_zone.input='ACCEPT'
 set firewall.netbird_zone.output='ACCEPT'
 set firewall.netbird_zone.forward='ACCEPT'
-set firewall.netbird_zone.masq='1'
+set firewall.netbird_zone.masq="$_MASQ"
 set firewall.netbird_zone.mtu_fix='1'
 
 set firewall.netbird_lan_fwd=forwarding
@@ -75,6 +77,13 @@ set firewall.netbird_vpn_fwd.dest='lan'
 
 commit firewall
 EOF
+	else
+		# Dynamic alignment if the firewall zone exists but needs masq update
+		local current_masq=$(uci -q get firewall.netbird_zone.masq)
+		if [ "$current_masq" != "$_MASQ" ]; then
+			uci -q set firewall.netbird_zone.masq="$_MASQ"
+			uci -q commit firewall
+		fi
 	fi
 
 	/etc/init.d/network reload

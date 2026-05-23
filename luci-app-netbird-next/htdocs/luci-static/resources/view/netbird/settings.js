@@ -58,6 +58,8 @@ return view.extend({
         o = s.option(form.Flag, 'cleanup_config', _('Cleanup Config'), _('Automatically delete the generated network interface and firewall settings when the service is stopped.'));
         o.default = '0';
 
+        o = s.option(form.Flag, 'masq', _('Masquerade'), _('Enable Source NAT (masquerade) on the NetBird interface. Useful if remote subnet routing requires NAT or is not aware of local LAN routes.'));
+        o.default = '1';
 
         o = s.option(form.ListValue, 'log_level', _('Log Level'), _('Control the verbosity of the NetBird service logs.'));
         o.value('debug', _('Debug'));
