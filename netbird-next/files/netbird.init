@@ -43,8 +43,8 @@ force_purge_legacy_rules() {
 
 	# 2. Remove the priority 105 and 110 ip rules
 	for prio in 105 110; do
-		while ip rule show | grep -q "priority $prio"; do
-			ip rule del priority "$prio"
+		while ip rule show | grep -q -E "^$prio:"; do
+			ip rule del priority "$prio" 2>/dev/null
 		done
 	done
 }
@@ -101,7 +101,7 @@ handle_routing() {
 	
 	# 1. Remove our own custom ip rules (priority 50) with retry limit to prevent infinite loops
 	local ip_rule_retry=0
-	while ip rule show | grep -q "priority 50" && [ $ip_rule_retry -lt 20 ]; do
+	while ip rule show | grep -q -E '^50:' && [ $ip_rule_retry -lt 20 ]; do
 		ip rule del priority 50 2>/dev/null
 		ip_rule_retry=$((ip_rule_retry + 1))
 	done
@@ -283,6 +283,9 @@ start_service() {
 }
 
 stop_service() {
+	config_load 'netbird'
+	config_foreach load_config 'netbird'
+
 	# 1. Standard Cleanup
 	handle_firewall_port stop
 	cleanup_network_interface
