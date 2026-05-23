@@ -63,8 +63,6 @@ define Package/netbird-next/install
 	mv $(1)/usr/bin/client $(1)/usr/bin/netbird
 	$(INSTALL_BIN) $(CURDIR)/files/netbird.init $(1)/etc/init.d/netbird
 	$(INSTALL_CONF) $(CURDIR)/files/netbird.config $(1)/etc/config/netbird
-	$(INSTALL_DIR) $(1)/etc/hotplug.d/iface
-	$(INSTALL_BIN) $(CURDIR)/files/netbird.hotplug $(1)/etc/hotplug.d/iface/95-netbird
 endef
 
 $(eval $(call GoBinPackage,netbird-next))

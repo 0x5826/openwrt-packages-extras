@@ -58,12 +58,6 @@ return view.extend({
         o = s.option(form.Flag, 'cleanup_config', _('Cleanup Config'), _('Automatically delete the generated network interface and firewall settings when the service is stopped.'));
         o.default = '0';
 
-        o = s.option(form.Flag, 'auto_route', _('Auto Route'), _('Automatically configure high-priority routing rules to bypass PBR conflicts.'));
-        o.default = '1';
-
-        o = s.option(form.DynamicList, 'static_subnets', _('Static Subnets'), _('Specify subnets (e.g., 192.168.0.0/24) to automatically route through NetBird.'));
-        o.placeholder = '192.168.0.0/24';
-        o.depends('auto_route', '1');
 
         o = s.option(form.ListValue, 'log_level', _('Log Level'), _('Control the verbosity of the NetBird service logs.'));
         o.value('debug', _('Debug'));

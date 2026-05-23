@@ -5,8 +5,7 @@ STOP=10
 
 USE_PROCD=1
 
-EXTRA_COMMANDS="handle_routing_hotplug"
-EXTRA_HELP="	handle_routing_hotplug Apply static routes and policy rules via hotplug"
+
 
 # Global variables to store config
 _ENABLED=0
@@ -18,8 +17,6 @@ _LOG_LEVEL="warn"
 _WG_PORT="51820"
 _OPEN_WAN=0
 _CLEANUP=0
-_AUTO_ROUTE=1
-_STATIC_SUBNETS=""
 
 load_config() {
 	local section="$1"
@@ -32,22 +29,10 @@ load_config() {
 	config_get _WG_PORT "$section" "wireguard_port" "51820"
 	config_get_bool _OPEN_WAN "$section" "open_wan_port" "0"
 	config_get_bool _CLEANUP "$section" "cleanup_config" "0"
-	config_get_bool _AUTO_ROUTE "$section" "auto_route" "1"
-	config_get _STATIC_SUBNETS "$section" "static_subnets" ""
 }
 
 # Forcefully remove all NetBird-generated rules and tables that shouldn't be there in Passive Mode
-force_purge_legacy_rules() {
-	# 1. Remove the 'ip netbird' nft table
-	nft delete table ip netbird 2>/dev/null
 
-	# 2. Remove the priority 105 and 110 ip rules
-	for prio in 105 110; do
-		while ip rule show | grep -q -E "^$prio:"; do
-			ip rule del priority "$prio" 2>/dev/null
-		done
-	done
-}
 
 # Create a native OpenWrt network interface and an independent firewall zone
 setup_network_interface() {
@@ -96,55 +81,10 @@ EOF
 	/etc/init.d/firewall reload
 }
 
-handle_routing() {
-	local action="$1"
-	
-	# 1. Remove our own custom ip rules (priority 50) with retry limit to prevent infinite loops
-	local ip_rule_retry=0
-	while ip rule show | grep -q -E '^50:' && [ $ip_rule_retry -lt 20 ]; do
-		ip rule del priority 50 2>/dev/null
-		ip_rule_retry=$((ip_rule_retry + 1))
-	done
 
-	# 2. Cleanup custom routing entries in netbird table
-	if [ -n "$_STATIC_SUBNETS" ]; then
-		for subnet in $_STATIC_SUBNETS; do
-			ip route del "$subnet" dev wt0 table netbird 2>/dev/null
-		done
-	fi
-
-	# 3. Add routing entries and policy rules on start
-	if [ "$action" = "start" ] && [ "$_AUTO_ROUTE" -eq 1 ] && [ -n "$_STATIC_SUBNETS" ]; then
-		# Ensure netbird routing table is registered in system
-		if ! grep -q -E "[[:space:]]netbird$" /etc/iproute2/rt_tables; then
-			echo "99 netbird" >> /etc/iproute2/rt_tables
-		fi
-
-		# Prevent timing race: wait up to 10s until wt0 interface becomes active and UP in kernel
-		local retry=0
-		while [ $retry -lt 10 ]; do
-			if [ -d "/sys/class/net/wt0" ] && ip link show wt0 2>/dev/null | grep -q -E "wt0:.*<.*UP.*>"; then
-				break
-			fi
-			sleep 1
-			retry=$((retry + 1))
-		done
-
-		for subnet in $_STATIC_SUBNETS; do
-			# Step A: Add link-scope interface route into netbird table
-			ip route replace "$subnet" dev wt0 table netbird 2>/dev/null
-			# Step B: Add policy rule to lookup netbird table
-			ip rule add to "$subnet" lookup netbird priority 50 2>/dev/null
-		done
-	fi
-}
 
 cleanup_network_interface() {
-	# 1. Cleanup Routing
-	handle_routing stop
-	force_purge_legacy_rules
-
-	# 2. Cleanup UCI Config if requested
+	# 1. Cleanup UCI Config if requested
 	if [ "$_CLEANUP" -eq "1" ]; then
 		uci -q delete network.netbird
 		uci -q delete firewall.netbird_zone
@@ -197,10 +137,7 @@ start_service() {
 	mkdir -p /root/.config/netbird
 	mkdir -p /var/lib/netbird
 
-	# Force purge any legacy rules before starting in Passive Mode
-	force_purge_legacy_rules
-
-	# Setup native interface, firewall and routing
+	# Setup native interface and firewall
 	setup_network_interface
 	handle_firewall_port start "$_WG_PORT"
 
@@ -212,7 +149,6 @@ start_service() {
 	procd_append_param env NB_DISABLE_SSH_CONFIG="1"
 	procd_append_param env NB_DNS_STATE_FILE="/var/lib/netbird/state.json"
 	procd_append_param env NB_DISABLE_DNS="1"
-	procd_append_param env NB_DISABLE_ROUTING="1"
 	procd_append_param env NB_DISABLE_FIREWALL="1"
 	procd_append_param env NB_USE_LEGACY_ROUTING="true"
 	[ -n "$_MANAGEMENT_URL" ] && procd_append_param env NB_MANAGEMENT_URL="$_MANAGEMENT_URL"
@@ -243,7 +179,7 @@ start_service() {
 
 		local last_key_file="/root/.config/netbird/last_setup_key"
 		local last_key=$(cat "$last_key_file" 2>/dev/null)
-		local up_args="--disable-dns --disable-client-routes --disable-server-routes --disable-firewall --wireguard-port $_WG_PORT"
+		local up_args="--disable-dns --disable-server-routes --disable-firewall --wireguard-port $_WG_PORT"
 		
 		[ -n "$_MANAGEMENT_URL" ] && up_args="$up_args --management-url $_MANAGEMENT_URL"
 		[ -n "$_ADMIN_URL" ] && up_args="$up_args --admin-url $_ADMIN_URL"
@@ -272,13 +208,6 @@ start_service() {
 			logger -t netbird "Installation key not configured and no local identity found. Skipping connection."
 			exit 0
 		fi
-
-		# Apply static routing policies after wt0 interface is fully created and connected
-		handle_routing start
-
-		# Post-Up Purge: Final sweep
-		sleep 5
-		force_purge_legacy_rules
 	) &
 }
 
@@ -301,12 +230,4 @@ stop_service() {
 
 service_triggers() {
 	procd_add_reload_trigger "netbird"
-}
-
-handle_routing_hotplug() {
-	config_load 'netbird'
-	config_foreach load_config 'netbird'
-
-	[ "$_ENABLED" -eq "1" ] || return 0
-	handle_routing start
 }
