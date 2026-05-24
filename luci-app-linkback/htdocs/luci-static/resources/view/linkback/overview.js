@@ -157,8 +157,7 @@ return view.extend({
 				E('th', { 'class': 'th', 'width': '20%', 'style': 'text-align:left;' }, _('Link Name')),
 				E('th', { 'class': 'th', 'width': '12%', 'style': 'text-align:left;' }, _('Status')),
 				E('th', { 'class': 'th', 'width': '28%', 'style': 'text-align:left;' }, _('Routing Attributes')),
-				E('th', { 'class': 'th', 'width': '25%', 'style': 'text-align:left;' }, _('Latency Details')),
-				E('th', { 'class': 'th', 'width': '10%', 'style': 'text-align:left;' }, _('Score'))
+				E('th', { 'class': 'th', 'width': '35%', 'style': 'text-align:left;' }, _('Latency Details'))
 			])
 		]);
 
@@ -182,23 +181,21 @@ return view.extend({
 			// Health check indicators
 			var checkBadges = [];
 
-			if (link.ping && link.ping.rtt !== -1) {
+			if (link.check_type === 'ping' && link.ping) {
 				var dotClass = link.ping.ok ? 'linkback-dot-green' : 'linkback-dot-red';
 				checkBadges.push(E('span', { 'class': 'linkback-indicator', 'style': 'margin-bottom:4px; margin-right:6px;' }, [
 					E('span', { 'class': 'linkback-dot ' + dotClass }),
 					'Ping: ' + (link.ping.ok ? link.ping.rtt + 'ms' : _('Failed'))
 				]));
 			}
-
-			if (link.dns && link.dns.rtt !== -1) {
+			else if (link.check_type === 'dns' && link.dns) {
 				var dotClass = link.dns.ok ? 'linkback-dot-green' : 'linkback-dot-red';
 				checkBadges.push(E('span', { 'class': 'linkback-indicator', 'style': 'margin-bottom:4px; margin-right:6px;' }, [
 					E('span', { 'class': 'linkback-dot ' + dotClass }),
 					'DNS: ' + (link.dns.ok ? link.dns.rtt + 'ms' : _('Failed'))
 				]));
 			}
-
-			if (link.tcp && link.tcp.rtt !== -1) {
+			else if (link.check_type === 'tcp' && link.tcp) {
 				var dotClass = link.tcp.ok ? 'linkback-dot-green' : 'linkback-dot-red';
 				checkBadges.push(E('span', { 'class': 'linkback-indicator', 'style': 'margin-bottom:4px; margin-right:6px;' }, [
 					E('span', { 'class': 'linkback-dot ' + dotClass }),
@@ -216,9 +213,6 @@ return view.extend({
 				E('div', {}, E('strong', {}, _('Priority') + ': ') + link.priority + ' | ' + E('strong', {}, _('Metric') + ': ') + link.metric + ' → ' + link.current_metric)
 			]);
 
-			var scoreColor = (link.score >= link.threshold) ? 'green' : 'red';
-			var scoreCheck = (link.score >= link.threshold) ? ' ✓' : ' ✗';
-
 			var row = E('tr', { 'class': 'tr' }, [
 				E('td', { 'class': 'td', 'style': 'text-align:center; font-weight:bold; vertical-align:middle;' }, String(index + 1)),
 				E('td', { 'class': 'td', 'style': 'font-weight:bold; vertical-align:middle;' }, [
@@ -229,10 +223,7 @@ return view.extend({
 					E('span', { 'class': 'linkback-badge ' + roleClass }, roleTitle)
 				]),
 				E('td', { 'class': 'td', 'style': 'vertical-align:middle;' }, routeDetails),
-				E('td', { 'class': 'td', 'style': 'vertical-align:middle;' }, E('div', { 'style': 'display:flex; flex-wrap:wrap; align-items:center;' }, checkBadges)),
-				E('td', { 'class': 'td', 'style': 'vertical-align:middle; font-weight:bold; color:' + scoreColor + ';' }, 
-					link.score + ' / ' + link.threshold + scoreCheck
-				)
+				E('td', { 'class': 'td', 'style': 'vertical-align:middle;' }, E('div', { 'style': 'display:flex; flex-wrap:wrap; align-items:center;' }, checkBadges))
 			]);
 
 			table.appendChild(row);

@@ -612,6 +612,12 @@ static void write_status_json(void) {
 		fprintf(fp, "      \"check_timeout\": %d,\n", link->check_timeout);
 		fprintf(fp, "      \"recovery_delay\": %d,\n", link->recovery_delay);
 		fprintf(fp, "      \"failover_delay\": %d,\n", link->failover_delay);
+		const char *type = "none";
+		if (link->ping_target_count > 0) type = "ping";
+		else if (link->dns_server[0] != '\0') type = "dns";
+		else if (link->tcp_target[0] != '\0') type = "tcp";
+
+		fprintf(fp, "      \"check_type\": \"%s\",\n", type);
 		fprintf(fp, "      \"ping\": {\"ok\": %s, \"rtt\": %d},\n", link->ping_ok ? "true" : "false", link->ping_rtt_ms);
 		fprintf(fp, "      \"dns\": {\"ok\": %s, \"rtt\": %d},\n", link->dns_ok ? "true" : "false", link->dns_rtt_ms);
 		fprintf(fp, "      \"tcp\": {\"ok\": %s, \"rtt\": %d}\n", link->tcp_ok ? "true" : "false", link->tcp_rtt_ms);
