@@ -153,11 +153,11 @@ return view.extend({
 		// Create standard LuCI section table
 		var table = E('table', { 'class': 'table cbi-section-table' }, [
 			E('tr', { 'class': 'tr table-titles' }, [
-				E('th', { 'class': 'th', 'width': '5%', 'style': 'text-align:center;' }, '#'),
-				E('th', { 'class': 'th', 'width': '20%', 'style': 'text-align:left;' }, _('Link Name')),
-				E('th', { 'class': 'th', 'width': '12%', 'style': 'text-align:left;' }, _('Status')),
-				E('th', { 'class': 'th', 'width': '28%', 'style': 'text-align:left;' }, _('Routing Attributes')),
-				E('th', { 'class': 'th', 'width': '35%', 'style': 'text-align:left;' }, _('Latency Details'))
+				E('th', { 'class': 'th', 'style': 'text-align:center; width:5%;' }, '#'),
+				E('th', { 'class': 'th', 'style': 'text-align:left;' }, _('Link Name')),
+				E('th', { 'class': 'th', 'style': 'text-align:left;' }, _('Status')),
+				E('th', { 'class': 'th', 'style': 'text-align:left;' }, _('Routing Attributes')),
+				E('th', { 'class': 'th', 'style': 'text-align:left;' }, _('Latency Details'))
 			])
 		]);
 
@@ -209,8 +209,17 @@ return view.extend({
 
 			// Route and metric attributes
 			var routeDetails = E('div', { 'style': 'font-size:12px; line-height:1.6;' }, [
-				E('div', {}, E('strong', {}, _('Gateway') + ': ') + (link.gateway || '-')),
-				E('div', {}, E('strong', {}, _('Priority') + ': ') + link.priority + ' | ' + E('strong', {}, _('Metric') + ': ') + link.metric + ' → ' + link.current_metric)
+				E('div', {}, [
+					E('strong', {}, _('Gateway') + ': '),
+					link.gateway || '-'
+				]),
+				E('div', {}, [
+					E('strong', {}, _('Priority') + ': '),
+					String(link.priority),
+					' | ',
+					E('strong', {}, _('Metric') + ': '),
+					link.metric + ' → ' + link.current_metric
+				])
 			]);
 
 			var row = E('tr', { 'class': 'tr' }, [

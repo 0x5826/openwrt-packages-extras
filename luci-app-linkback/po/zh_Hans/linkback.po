@@ -295,3 +295,25 @@ msgstr "默认跃点不能为空。"
 msgid "Metric %s conflicts with interface \"%s\". Metrics must be unique."
 msgstr "跃点数 %s 与接口 \"%s\" 冲突。跃点数必须是唯一的。"
 
+msgid "Link Name"
+msgstr "链路名称"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Routing Attributes"
+msgstr "路由属性"
+
+msgid "Latency Details"
+msgstr "时延详情"
+
+msgid "Active"
+msgstr "活跃"
+
+msgid "Standby"
+msgstr "备选"
+
+msgid "Faulted"
+msgstr "故障"
+
+
