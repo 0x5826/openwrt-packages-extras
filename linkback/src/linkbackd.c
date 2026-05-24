@@ -66,9 +66,13 @@ static bool get_interface_ubus_status(const char *ifname, char *device, int dev_
 	// Extract physical device
 	device[0] = '\0';
 	char *p_dev = strstr(buf, "\"l3_device\":");
-	if (!p_dev) p_dev = strstr(buf, "\"device\":");
+	int dev_key_len = 12;
+	if (!p_dev) {
+		p_dev = strstr(buf, "\"device\":");
+		dev_key_len = 9;
+	}
 	if (p_dev) {
-		char *p_start = strchr(p_dev + 9, '"');
+		char *p_start = strchr(p_dev + dev_key_len, '"');
 		if (p_start) {
 			char *p_end = strchr(p_start + 1, '"');
 			if (p_end) {
@@ -86,7 +90,7 @@ static bool get_interface_ubus_status(const char *ifname, char *device, int dev_
 	if (p_route) {
 		char *p_nexthop = strstr(p_route, "\"nexthop\":");
 		if (p_nexthop) {
-			char *p_start = strchr(p_nexthop + 9, '"');
+			char *p_start = strchr(p_nexthop + 10, '"');
 			if (p_start) {
 				char *p_end = strchr(p_start + 1, '"');
 				if (p_end) {
