@@ -739,8 +739,8 @@ int main(int argc, char **argv) {
 				if (!link->healthy && link->consecutive_success >= link->recovery_delay) {
 					// Recovered! Failback!
 					link->healthy = true;
-					syslog(LOG_NOTICE, "Link %s (%s, priority %d) recovered to healthy after %d successes. Score: %d/%d.", 
-					       link->name, link->device, link->priority, link->consecutive_success, current_score, link->weight_threshold);
+					syslog(LOG_NOTICE, "Link %s (%s, priority %d) recovered to healthy after %d successes.", 
+					       link->name, link->device, link->priority, link->consecutive_success);
 					
 					// Restore original metric
 					update_route_metric(link, link->metric);
@@ -752,8 +752,8 @@ int main(int argc, char **argv) {
 				if (link->healthy && link->consecutive_failure >= link->failover_delay) {
 					// Failed! Failover!
 					link->healthy = false;
-					syslog(LOG_WARNING, "Link %s (%s, priority %d) went down after %d failures. Score: %d/%d.", 
-					       link->name, link->device, link->priority, link->consecutive_failure, current_score, link->weight_threshold);
+					syslog(LOG_WARNING, "Link %s (%s, priority %d) went down after %d failures.", 
+					       link->name, link->device, link->priority, link->consecutive_failure);
 					
 					// Push metric out of choice range
 					update_route_metric(link, 1000 + link->metric);
