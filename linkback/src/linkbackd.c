@@ -398,7 +398,7 @@ static bool load_config(void) {
 
 		// Weight threshold
 		const char *thresh = uci_lookup_option_string(ctx, s, "weight_threshold");
-		link->weight_threshold = thresh ? atoi(thresh) : 2;
+		link->weight_threshold = thresh ? atoi(thresh) : -1;
 
 		const char *interval = uci_lookup_option_string(ctx, s, "check_interval");
 		link->check_interval = interval ? atoi(interval) : 5;
@@ -500,6 +500,10 @@ static bool validate_loaded_config(void) {
 		if (max_score <= 0) {
 			syslog(LOG_ERR, "Invalid config: link %s effective max score is %d (must be > 0).", a->name, max_score);
 			return false;
+		}
+
+		if (a->weight_threshold == -1) {
+			a->weight_threshold = (max_score >= 2) ? 2 : max_score;
 		}
 
 		if (a->weight_threshold <= 0 || a->weight_threshold > max_score) {
