@@ -305,6 +305,17 @@ static bool load_config(void) {
 	global_cfg.enabled = false;
 
 	struct uci_section *global_sec = uci_lookup_section(ctx, pkg, "global");
+	if (!global_sec) {
+		struct uci_element *ge;
+		uci_foreach_element(&pkg->sections, ge) {
+			struct uci_section *s = uci_to_section(ge);
+			if (strcmp(s->type, "global") == 0) {
+				global_sec = s;
+				break;
+			}
+		}
+	}
+
 	if (global_sec) {
 		const char *enabled = uci_lookup_option_string(ctx, global_sec, "enabled");
 		global_cfg.enabled = (enabled && strcmp(enabled, "1") == 0);
