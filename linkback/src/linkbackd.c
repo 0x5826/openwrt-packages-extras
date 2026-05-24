@@ -373,9 +373,6 @@ static bool load_config(void) {
 			}
 		}
 
-		const char *ping_w = uci_lookup_option_string(ctx, s, "ping_weight");
-		link->ping_weight = ping_w ? atoi(ping_w) : 1;
-
 		// Parse DNS targets
 		const char *dns_srv = uci_lookup_option_string(ctx, s, "dns_server");
 		if (dns_srv) strncpy(link->dns_server, dns_srv, MAX_IP_LEN - 1);
@@ -383,22 +380,12 @@ static bool load_config(void) {
 		const char *dns_dom = uci_lookup_option_string(ctx, s, "dns_domain");
 		if (dns_dom) strncpy(link->dns_domain, dns_dom, MAX_DOMAIN_LEN - 1);
 
-		const char *dns_w = uci_lookup_option_string(ctx, s, "dns_weight");
-		link->dns_weight = dns_w ? atoi(dns_w) : 1;
-
 		// Parse TCP targets
 		const char *tcp_tgt = uci_lookup_option_string(ctx, s, "tcp_target");
 		if (tcp_tgt) strncpy(link->tcp_target, tcp_tgt, MAX_IP_LEN - 1);
 
 		const char *tcp_p = uci_lookup_option_string(ctx, s, "tcp_port");
 		if (tcp_p) link->tcp_port = atoi(tcp_p);
-
-		const char *tcp_w = uci_lookup_option_string(ctx, s, "tcp_weight");
-		link->tcp_weight = tcp_w ? atoi(tcp_w) : 1;
-
-		// Weight threshold
-		const char *thresh = uci_lookup_option_string(ctx, s, "weight_threshold");
-		link->weight_threshold = thresh ? atoi(thresh) : -1;
 
 		const char *interval = uci_lookup_option_string(ctx, s, "check_interval");
 		link->check_interval = interval ? atoi(interval) : 5;
@@ -473,8 +460,18 @@ static bool validate_loaded_config(void) {
 		bool has_ping = (a->ping_target_count > 0);
 		bool has_dns = (a->dns_server[0] != '\0' && a->dns_domain[0] != '\0');
 		bool has_tcp = (a->tcp_target[0] != '\0' && a->tcp_port > 0);
-		if (!has_ping && !has_dns && !has_tcp) {
+
+		int check_count = 0;
+		if (has_ping) check_count++;
+		if (has_dns) check_count++;
+		if (has_tcp) check_count++;
+
+		if (check_count == 0) {
 			syslog(LOG_ERR, "Invalid config: link %s has no complete health-check probe configured.", a->name);
+			return false;
+		}
+		if (check_count > 1) {
+			syslog(LOG_ERR, "Invalid config: link %s has multiple health-check probes configured. Only one check type is allowed.", a->name);
 			return false;
 		}
 
@@ -485,29 +482,6 @@ static bool validate_loaded_config(void) {
 
 		if ((a->tcp_target[0] != '\0') != (a->tcp_port > 0)) {
 			syslog(LOG_ERR, "Invalid config: link %s TCP probe is incomplete (tcp_target + tcp_port required).", a->name);
-			return false;
-		}
-
-		if (a->ping_weight < 0 || a->dns_weight < 0 || a->tcp_weight < 0) {
-			syslog(LOG_ERR, "Invalid config: link %s has negative probe weight.", a->name);
-			return false;
-		}
-
-		int max_score = 0;
-		if (has_ping) max_score += a->ping_weight;
-		if (has_dns) max_score += a->dns_weight;
-		if (has_tcp) max_score += a->tcp_weight;
-		if (max_score <= 0) {
-			syslog(LOG_ERR, "Invalid config: link %s effective max score is %d (must be > 0).", a->name, max_score);
-			return false;
-		}
-
-		if (a->weight_threshold == -1) {
-			a->weight_threshold = (max_score >= 2) ? 2 : max_score;
-		}
-
-		if (a->weight_threshold <= 0 || a->weight_threshold > max_score) {
-			syslog(LOG_ERR, "Invalid config: link %s threshold %d out of range (1..%d).", a->name, a->weight_threshold, max_score);
 			return false;
 		}
 
@@ -718,51 +692,45 @@ int main(int argc, char **argv) {
 			}
 
 			// 2. Perform health checks
-			int current_score = 0;
+			bool check_success = false;
 
-			// A. Ping Check (any success counts)
-			link->ping_ok = false;
-			link->ping_rtt_ms = -1;
 			if (link->ping_target_count > 0) {
+				link->ping_ok = false;
+				link->ping_rtt_ms = -1;
 				for (int p = 0; p < link->ping_target_count; p++) {
 					int rtt = -1;
 					if (run_ping_check(link->device, link->ping_targets[p], link->check_timeout, &rtt)) {
 						link->ping_ok = true;
 						link->ping_rtt_ms = rtt;
-						break; // At least one host responds
+						break;
 					}
 				}
-				if (link->ping_ok) current_score += link->ping_weight;
+				check_success = link->ping_ok;
 			}
-
-			// B. DNS Check
-			link->dns_ok = false;
-			link->dns_rtt_ms = -1;
-			if (link->dns_server[0] != '\0' && link->dns_domain[0] != '\0') {
+			else if (link->dns_server[0] != '\0' && link->dns_domain[0] != '\0') {
+				link->dns_ok = false;
+				link->dns_rtt_ms = -1;
 				int rtt = -1;
 				if (run_dns_check(link->device, link->dns_server, link->dns_domain, link->check_timeout, &rtt)) {
 					link->dns_ok = true;
 					link->dns_rtt_ms = rtt;
-					current_score += link->dns_weight;
 				}
+				check_success = link->dns_ok;
 			}
-
-			// C. TCP Check
-			link->tcp_ok = false;
-			link->tcp_rtt_ms = -1;
-			if (link->tcp_target[0] != '\0' && link->tcp_port > 0) {
+			else if (link->tcp_target[0] != '\0' && link->tcp_port > 0) {
+				link->tcp_ok = false;
+				link->tcp_rtt_ms = -1;
 				int rtt = -1;
 				if (run_tcp_check(link->device, link->tcp_target, link->tcp_port, link->check_timeout, &rtt)) {
 					link->tcp_ok = true;
 					link->tcp_rtt_ms = rtt;
-					current_score += link->tcp_weight;
 				}
+				check_success = link->tcp_ok;
 			}
 
-			link->current_score = current_score;
+			link->current_score = check_success ? 1 : 0;
 
 			// 3. Evaluate health state changes (filtering and delay)
-			bool check_success = (current_score >= link->weight_threshold);
 
 			if (check_success) {
 				link->consecutive_success++;
