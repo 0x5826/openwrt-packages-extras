@@ -342,32 +342,22 @@ return view.extend({
 				return;
 			}
 
-			// Silently set weight_threshold = 1
-			uci.set('linkback', section_id, 'weight_threshold', '1');
+			// Clear old type's fields and any legacy weights/thresholds
+			uci.remove('linkback', section_id, 'weight_threshold');
+			uci.remove('linkback', section_id, 'ping_weight');
+			uci.remove('linkback', section_id, 'dns_weight');
+			uci.remove('linkback', section_id, 'tcp_weight');
 
-			// Clear old type's fields
 			if (current === 'ping' || current === '') {
-				uci.remove('linkback', section_id, 'ping_weight');
 				uci.remove('linkback', section_id, 'ping_targets');
 			}
 			if (current === 'dns' || current === '') {
-				uci.remove('linkback', section_id, 'dns_weight');
 				uci.remove('linkback', section_id, 'dns_server');
 				uci.remove('linkback', section_id, 'dns_domain');
 			}
 			if (current === 'tcp' || current === '') {
-				uci.remove('linkback', section_id, 'tcp_weight');
 				uci.remove('linkback', section_id, 'tcp_target');
 				uci.remove('linkback', section_id, 'tcp_port');
-			}
-
-			// Set new type's default weight
-			if (next === 'ping') {
-				uci.set('linkback', section_id, 'ping_weight', '1');
-			} else if (next === 'dns') {
-				uci.set('linkback', section_id, 'dns_weight', '1');
-			} else if (next === 'tcp') {
-				uci.set('linkback', section_id, 'tcp_weight', '1');
 			}
 		};
 
