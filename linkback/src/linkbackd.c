@@ -546,10 +546,36 @@ static int compare_links(const void *a, const void *b) {
 }
 
 // Dynamic route update using ip route command
-static void update_route_metric(link_t *link, int new_metric) {
+static void update_route_metric(link_t *link, int new_metric, int old_metric_to_delete) {
 	if (link->device[0] == '\0') return;
 
 	char cmd[512];
+
+	// 1. Delete the specified old metric to prevent duplicate routes
+	if (old_metric_to_delete != -1 && old_metric_to_delete != new_metric) {
+		if (link->gateway[0] != '\0') {
+			snprintf(cmd, sizeof(cmd), "ip route del default via %s dev %s metric %d 2>/dev/null", 
+			         link->gateway, link->device, old_metric_to_delete);
+		} else {
+			snprintf(cmd, sizeof(cmd), "ip route del default dev %s metric %d 2>/dev/null", 
+			         link->device, old_metric_to_delete);
+		}
+		system(cmd);
+	}
+
+	// 2. Delete the current_metric if it is different from new_metric and old_metric_to_delete
+	if (link->current_metric != new_metric && link->current_metric != old_metric_to_delete) {
+		if (link->gateway[0] != '\0') {
+			snprintf(cmd, sizeof(cmd), "ip route del default via %s dev %s metric %d 2>/dev/null", 
+			         link->gateway, link->device, link->current_metric);
+		} else {
+			snprintf(cmd, sizeof(cmd), "ip route del default dev %s metric %d 2>/dev/null", 
+			         link->device, link->current_metric);
+		}
+		system(cmd);
+	}
+
+	// 3. Add/replace with new_metric
 	if (link->gateway[0] != '\0') {
 		snprintf(cmd, sizeof(cmd), "ip route replace default via %s dev %s metric %d 2>/dev/null", 
 		         link->gateway, link->device, new_metric);
@@ -708,7 +734,7 @@ int main(int argc, char **argv) {
 
 				// If it still has low metric, float it
 				if (link->current_metric == link->metric) {
-					update_route_metric(link, 1000 + link->metric);
+					update_route_metric(link, 1000 + link->metric, -1);
 				}
 				continue;
 			}
@@ -765,7 +791,7 @@ int main(int argc, char **argv) {
 					       link->name, link->device, link->priority, link->consecutive_success);
 					
 					// Restore original metric
-					update_route_metric(link, link->metric);
+					update_route_metric(link, link->metric, -1);
 				}
 			} else {
 				link->consecutive_failure++;
@@ -778,7 +804,7 @@ int main(int argc, char **argv) {
 					       link->name, link->device, link->priority, link->consecutive_failure);
 					
 					// Push metric out of choice range
-					update_route_metric(link, 1000 + link->metric);
+					update_route_metric(link, 1000 + link->metric, -1);
 				}
 			}
 
@@ -789,7 +815,7 @@ int main(int argc, char **argv) {
 				if (real_metric != -1 && real_metric != expected_metric) {
 					syslog(LOG_WARNING, "Route metric mismatch detected on %s (%s, priority %d): expected %d, got %d. Correcting...", 
 					       link->name, link->device, link->priority, expected_metric, real_metric);
-					update_route_metric(link, expected_metric);
+					update_route_metric(link, expected_metric, real_metric);
 				}
 			}
 		}
