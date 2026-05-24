@@ -500,7 +500,7 @@ static bool validate_loaded_config(void) {
 }
 
 // Retrieve the real default route metric for a device from /proc/net/route
-static int get_system_route_metric(const char *device) {
+static int get_system_route_metric(const char *device, int expected_metric) {
 	if (device[0] == '\0') return -1;
 	FILE *fp = fopen("/proc/net/route", "r");
 	if (!fp) return -1;
@@ -509,21 +509,33 @@ static int get_system_route_metric(const char *device) {
 	char iface[32];
 	unsigned long dest;
 	int metric = -1;
+	int first_found_metric = -1;
+	bool found_expected = false;
 
 	// Skip header line
 	if (fgets(line, sizeof(line), fp)) {
 		while (fgets(line, sizeof(line), fp)) {
-			// Destination is 2nd column, Metric is 7th column, dest is in hex
-			if (sscanf(line, "%31s %lx %*s %*d %*d %*d %d", iface, &dest, &metric) == 3) {
+			// Destination is 2nd column, Metric is 7th column, dest is in hex.
+			// Use %*s for Gateway and Flags to safely skip non-numeric characters.
+			if (sscanf(line, "%31s %lx %*s %*s %*d %*d %d", iface, &dest, &metric) == 3) {
 				if (strcmp(iface, device) == 0 && dest == 0) {
-					fclose(fp);
-					return metric;
+					if (first_found_metric == -1) {
+						first_found_metric = metric;
+					}
+					if (metric == expected_metric) {
+						found_expected = true;
+						break;
+					}
 				}
 			}
 		}
 	}
 	fclose(fp);
-	return -1;
+
+	if (found_expected) {
+		return expected_metric;
+	}
+	return first_found_metric;
 }
 
 // Compare priority for sorting (lowest priority number is highest precedence)
@@ -773,7 +785,7 @@ int main(int argc, char **argv) {
 			// 4. Active routing metric self-healing to prevent external/netifd interference
 			if (link->device[0] != '\0') {
 				int expected_metric = (link->is_up && link->healthy) ? link->metric : (1000 + link->metric);
-				int real_metric = get_system_route_metric(link->device);
+				int real_metric = get_system_route_metric(link->device, expected_metric);
 				if (real_metric != -1 && real_metric != expected_metric) {
 					syslog(LOG_WARNING, "Route metric mismatch detected on %s (%s, priority %d): expected %d, got %d. Correcting...", 
 					       link->name, link->device, link->priority, expected_metric, real_metric);
