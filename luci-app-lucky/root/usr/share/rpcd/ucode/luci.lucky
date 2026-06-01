@@ -190,7 +190,10 @@ const methods = {
             else if (rogue_pid)
                 state = 'unmanaged';
 
+            let running = (state !== 'stopped');
+
             return {
+                running: running,
                 state: state,
                 pid: procd_st.pid || rogue_pid
             };

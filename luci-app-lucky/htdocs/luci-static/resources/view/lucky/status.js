@@ -32,11 +32,11 @@ return view.extend({
 					return;
 				}
 				callGetStatus().then(function(res) {
-					var isRunning = res && res.running;
+					var isRunning = res && res.state && res.state !== 'stopped';
 					if (shouldBeRunning ? isRunning : !isRunning) {
 						ui.hideModal();
 						ui.addNotification(null, E('p', _('Service action executed successfully')), 'info');
-						self.updateStatus(isRunning);
+						self.updateStatus(res);
 						// 服务刚启动/重启后，异步刷新完整信息
 						if (isRunning) {
 							callGetInfo().then(function(info) {
