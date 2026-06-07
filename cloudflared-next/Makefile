@@ -5,12 +5,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=cloudflared-next
-PKG_VERSION:=2026.5.0
+PKG_VERSION:=2026.5.2
 PKG_RELEASE:=1
 
 PKG_SOURCE:=cloudflared-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/cloudflare/cloudflared/tar.gz/$(PKG_VERSION)?
-PKG_HASH:=21d57fc7da8d83ba9633f79f7593f5898a027f8410fecf5a8c33661090aa7063
+PKG_HASH:=84a439b101b7fda1f5312640d5c2fe0cc37ae43e553e1ab2c71e3d0d9ce54b25
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/cloudflared-$(PKG_VERSION)
 
