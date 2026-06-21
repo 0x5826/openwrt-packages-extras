@@ -71,34 +71,34 @@ config udp_rule
 	option action 'return'
 	option counter '0'
 
-# nftables set 配置
-config nftset 'no_proxy_src_mac'
+# ipset 配置
+config ipset 'no_proxy_src_mac'
 	option enabled '1'
 	option type 'ether_addr'
 
-config nftset 'no_proxy_src_ip_v4'
+config ipset 'no_proxy_src_ip_v4'
 	option enabled '1'
 	option type 'ipv4_addr'
 
-config nftset 'no_proxy_dst_ip_v4'
+config ipset 'no_proxy_dst_ip_v4'
 	option enabled '1'
 	option type 'ipv4_addr'
 
-config nftset 'private_dst_ip_v4'
+config ipset 'private_dst_ip_v4'
 	option enabled '1'
 	option type 'ipv4_addr'
 	option auto_generate '1'
 
-config nftset 'chnroute_dst_ip_v4'
+config ipset 'chnroute_dst_ip_v4'
 	option enabled '1'
 	option type 'ipv4_addr'
 	option file_path '/usr/share/flowproxy/chnroute.txt'
 	option download_url 'https://proxy.seckv.com/https://raw.githubusercontent.com/mayaxcn/china-ip-list/master/chnroute.txt'
 
-config nftset 'no_proxy_dst_tcp_ports'
+config ipset 'no_proxy_dst_tcp_ports'
 	option enabled '1'
 	option type 'inet_service'
 
-config nftset 'no_proxy_dst_udp_ports'
+config ipset 'no_proxy_dst_udp_ports'
 	option enabled '1'
 	option type 'inet_service'

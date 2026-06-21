@@ -24,23 +24,8 @@ local methods = {
 		call = function()
 			local is_running = fs.access(STATE_FILE)
 			
-			local fw_mode = "none"
-			if exec("command -v nft >/dev/null 2>&1") then
-				fw_mode = "nftables"
-			elseif exec("command -v iptables >/dev/null 2>&1") then
-				fw_mode = "iptables"
-			end
-
-			local tcp_active = false
-			local udp_active = false
-
-			if fw_mode == "nftables" then
-				tcp_active = exec("nft list chain inet flowproxy LAN_MARKFLOW_TCP >/dev/null 2>&1")
-				udp_active = exec("nft list chain inet flowproxy LAN_MARKFLOW_UDP >/dev/null 2>&1")
-			elseif fw_mode == "iptables" then
-				tcp_active = exec("iptables -t mangle -L FLOWPROXY_TCP >/dev/null 2>&1")
-				udp_active = exec("iptables -t mangle -L FLOWPROXY_UDP >/dev/null 2>&1")
-			end
+			local tcp_active = exec("iptables -t mangle -L FLOWPROXY_TCP >/dev/null 2>&1")
+			local udp_active = exec("iptables -t mangle -L FLOWPROXY_UDP >/dev/null 2>&1")
 
 			local real_running = (tcp_active or udp_active)
 
@@ -136,24 +121,12 @@ local methods = {
 		end
 	},
 
-	generate_nft_config = {
+	generate_iptables_config = {
 		call = function()
 			os.execute("rm -rf /tmp/flowproxy")
 			os.execute("mkdir -p /tmp/flowproxy && chmod 700 /tmp/flowproxy")
-			local fw_mode = "none"
-			if exec("command -v nft >/dev/null 2>&1") then
-				fw_mode = "nftables"
-			elseif exec("command -v iptables >/dev/null 2>&1") then
-				fw_mode = "iptables"
-			end
-
-			if fw_mode == "iptables" then
-				os.execute("FLOWPROXY_PREVIEW=1 /usr/share/flowproxy/generate_iptables.sh 2>&1")
-				return { config = safe_trim(fs.readfile("/tmp/flowproxy/iptables.rules") or "") }
-			else
-				os.execute("FLOWPROXY_PREVIEW=1 /usr/share/flowproxy/generate_nft.sh 2>&1")
-				return { config = safe_trim(fs.readfile("/tmp/flowproxy/nft.conf") or "") }
-			end
+			os.execute("FLOWPROXY_PREVIEW=1 /usr/share/flowproxy/generate_iptables.sh >/dev/null 2>&1")
+			return { config = safe_trim(fs.readfile("/tmp/flowproxy/iptables.rules") or "") }
 		end
 	},
 
@@ -165,19 +138,8 @@ local methods = {
 			os.execute("rm -rf /tmp/flowproxy")
 			os.execute("mkdir -p /tmp/flowproxy && chmod 700 /tmp/flowproxy")
 			
-			local fw_mode = "none"
-			if exec("command -v nft >/dev/null 2>&1") then
-				fw_mode = "nftables"
-			elseif exec("command -v iptables >/dev/null 2>&1") then
-				fw_mode = "iptables"
-			end
-
-			if fw_mode == "iptables" then
-				os.execute("/usr/share/flowproxy/generate_iptables.sh runtime > " .. res_file .. " 2>&1")
-			else
-				os.execute("/usr/share/flowproxy/generate_nft.sh runtime > " .. res_file .. " 2>&1")
-			end
-			local nft_runtime = fs.readfile(res_file) or "(failed)"
+			os.execute("/usr/share/flowproxy/generate_iptables.sh runtime > " .. res_file .. " 2>&1")
+			local iptables_runtime = fs.readfile(res_file) or "(failed)"
 			os.execute("rm -f " .. res_file)
 			
 			os.execute("uci show dhcp.@dnsmasq[0] | grep -E \"noresolv|dns_redirect|server\" | sed -E \"s/^dhcp\\.[^.]*\\.([^=]*)=(.*)/\\1: \\2/; s/\\x27//g; s/#/:/g\" > " .. dns_file .. " 2>&1")
@@ -187,7 +149,7 @@ local methods = {
 			local dns_runtime = "\n--- [ DNSmasq Runtime Configuration ] ---\n"
 			dns_runtime = dns_runtime .. (dns_out ~= "" and dns_out or "(no active dnsmasq overrides)")
 			
-			return { runtime = safe_trim(nft_runtime .. dns_runtime) }
+			return { runtime = safe_trim(iptables_runtime .. dns_runtime) }
 		end
 	},
 

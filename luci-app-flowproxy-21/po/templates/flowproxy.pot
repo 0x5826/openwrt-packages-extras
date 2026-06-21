@@ -37,7 +37,7 @@ msgstr ""
 msgid "Current Status"
 msgstr ""
 
-msgid "Custom nftables sets"
+msgid "Custom IP sets"
 msgstr ""
 
 msgid "DNS Redirection"
@@ -160,7 +160,7 @@ msgstr ""
 msgid "Traffic Mark"
 msgstr ""
 
-msgid "Traffic diversion based on nftables rules. The service will automatically start/stop when you click \"Save & Apply\"."
+msgid "Traffic diversion based on iptables rules. The service will automatically start/stop when you click \"Save & Apply\"."
 msgstr ""
 
 msgid "UDP Matching Rules"

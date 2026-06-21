@@ -81,10 +81,10 @@ process_rule() {
 	
 	local proto_arg="-p $proto "
 	
-	echo "    -A $chain_name $proto_arg$segment -j $j_action"
+	echo "-A $chain_name $proto_arg$segment -j $j_action"
 }
 
-SECTIONS_SET=$(uci -q show "$CONFIG" | grep "=nftset" | cut -d'.' -f2 | cut -d'=' -f1)
+SECTIONS_SET=$(uci -q show "$CONFIG" | grep "=ipset" | cut -d'.' -f2 | cut -d'=' -f1)
 SECTIONS_TCP=$(uci -q show "$CONFIG" | grep "=tcp_rule" | cut -d'.' -f2 | cut -d'=' -f1)
 SECTIONS_UDP=$(uci -q show "$CONFIG" | grep "=udp_rule" | cut -d'.' -f2 | cut -d'=' -f1)
 

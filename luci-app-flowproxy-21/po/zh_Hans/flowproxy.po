@@ -37,8 +37,8 @@ msgstr "计数器"
 msgid "Current Status"
 msgstr "当前状态"
 
-msgid "Custom nftables sets"
-msgstr "自定义 nftables 集合"
+msgid "Custom IP sets"
+msgstr "自定义 IP 集合"
 
 msgid "DNS Redirection"
 msgstr "DNS 转发"
@@ -166,8 +166,8 @@ msgstr "TCP 匹配规则列表"
 msgid "Traffic Mark"
 msgstr "流量标记"
 
-msgid "Traffic diversion based on nftables rules. The service will automatically start/stop when you click \"Save & Apply\"."
-msgstr "基于 nftables 规则的流量分流。当你点击 “保存并应用” 后，服务将自动启动或停止。"
+msgid "Traffic diversion based on iptables rules. The service will automatically start/stop when you click \"Save & Apply\"."
+msgstr "基于 iptables 规则的流量分流。当你点击 “保存并应用” 后，服务将自动启动或停止。"
 
 msgid "UDP Matching Rules"
 msgstr "UDP 匹配规则列表"

@@ -27,7 +27,7 @@ var callClearLogs = rpc.declare({
 
 var callGenerateNftConfig = rpc.declare({
     object: 'luci.flowproxy',
-    method: 'generate_nft_config'
+    method: 'generate_iptables_config'
 });
 
 var callGetRuntimeConfig = rpc.declare({
@@ -123,8 +123,7 @@ return L.view.extend({
         var status = data[2];
         var m, s, o;
 
-        var desc = _('Traffic diversion based on nftables rules. The service will automatically start/stop when you click "Save & Apply".');
-        if (desc) desc = desc.replace('nftables', 'nftables/iptables');
+        var desc = _('Traffic diversion based on iptables rules. The service will automatically start/stop when you click "Save & Apply".');
         m = new form.Map('flowproxy', _('FlowProxy'), desc);
 
         if (!document.getElementById('flowproxy-style')) {
@@ -171,7 +170,7 @@ return L.view.extend({
         s.taboption('settings', form.Value, 'rule_priority', _('Rule Priority')).datatype = 'and(uinteger,range(0, 4294967295))';
 
         // --- Rules ---
-        var nftsets = uci.sections('flowproxy', 'nftset').map(function(ss) { return '@' + ss['.name']; });
+        var nftsets = uci.sections('flowproxy', 'ipset').map(function(ss) { return '@' + ss['.name']; });
 
         var setupRuleTable = function(type, title, switch_opt) {
             var st = s.taboption('rules', form.SectionValue, '_tab_' + type, form.TableSection, type, title);
@@ -301,7 +300,7 @@ return L.view.extend({
                     var setName = val.substring(1);
                     // 仅当 section 确实存在时才尝试获取 type，否则不进行类型校验
                     var section = uci.get('flowproxy', setName);
-                    var setType = (section && section['.type'] === 'nftset') ? uci.get('flowproxy', setName, 'type') : null;
+                    var setType = (section && section['.type'] === 'ipset') ? uci.get('flowproxy', setName, 'type') : null;
                     if (!setType) return true; 
                     
                     var expectedType = '';
@@ -354,16 +353,16 @@ return L.view.extend({
         // --- Lists ---
         var predefined = [ { id: 'no_proxy_src_mac', name: _('no_proxy_src_mac'), type: 'macaddr' }, { id: 'no_proxy_src_ip_v4', name: _('no_proxy_src_ip_v4'), type: 'or(ip4addr, cidr4)' }, { id: 'no_proxy_dst_ip_v4', name: _('no_proxy_dst_ip_v4'), type: 'or(ip4addr, cidr4)' }, { id: 'no_proxy_dst_tcp_ports', name: _('no_proxy_dst_tcp_ports'), type: 'or(port, portrange)' }, { id: 'no_proxy_dst_udp_ports', name: _('no_proxy_dst_udp_ports'), type: 'or(port, portrange)' } ];
         predefined.forEach(function(p) {
-            var sl = s.taboption('lists', form.SectionValue, '_list_' + p.id, form.NamedSection, p.id, 'nftset', p.name + ' (@' + p.id + ')');
+            var sl = s.taboption('lists', form.SectionValue, '_list_' + p.id, form.NamedSection, p.id, 'ipset', p.name + ' (@' + p.id + ')');
             sl.subsection.option(form.Flag, 'enabled', _('Enabled')).default = '1';
             sl.subsection.option(form.DynamicList, 'elements', _('Elements')).datatype = p.type;
         });
-        var spriv = s.taboption('lists', form.SectionValue, '_list_priv', form.NamedSection, 'private_dst_ip_v4', 'nftset', _('private_dst_ip_v4') + ' (@private_dst_ip_v4)');
+        var spriv = s.taboption('lists', form.SectionValue, '_list_priv', form.NamedSection, 'private_dst_ip_v4', 'ipset', _('private_dst_ip_v4') + ' (@private_dst_ip_v4)');
         spriv.subsection.option(form.Flag, 'enabled', _('Enabled')).default = '1';
         spriv.subsection.option(form.Flag, 'auto_generate', _('auto_generate')).default = '1';
         o = spriv.subsection.option(form.DynamicList, 'elements', _('elements')); o.datatype = 'cidr4'; o.depends('auto_generate', '0');
 
-        var sc = s.taboption('lists', form.SectionValue, '_list_chnroute', form.NamedSection, 'chnroute_dst_ip_v4', 'nftset', _('chnroute_dst_ip_v4') + ' (@chnroute_dst_ip_v4)');
+        var sc = s.taboption('lists', form.SectionValue, '_list_chnroute', form.NamedSection, 'chnroute_dst_ip_v4', 'ipset', _('chnroute_dst_ip_v4') + ' (@chnroute_dst_ip_v4)');
         sc.subsection.option(form.Flag, 'enabled', _('Enabled')).default = '1';
         o = sc.subsection.option(form.Value, 'file_path', _('File Path')); o.default = '/usr/share/flowproxy/chnroute.txt';
         o.render = function(sid) {
@@ -395,7 +394,7 @@ return L.view.extend({
             }).catch(function(e) { ui.hideModal(); ui.addNotification(null, E('p', _('Error: %s').format(e.message)), 'error'); });
         };
 
-        var sg = s.taboption('lists', form.SectionValue, '_list_custom', form.GridSection, 'nftset', _('Custom nftables sets'));
+        var sg = s.taboption('lists', form.SectionValue, '_list_custom', form.GridSection, 'ipset', _('Custom IP sets'));
         sg.subsection.addremove = true; sg.subsection.anonymous = false; sg.subsection.nodescription = true;
         sg.subsection.filter = function(sid) { var pre = predefined.map(function(p){return p.id}); pre.push('private_dst_ip_v4','chnroute_dst_ip_v4'); return pre.indexOf(sid) === -1; };
         sg.subsection.option(form.Flag, 'enabled', _('Enabled')).default = '1';
