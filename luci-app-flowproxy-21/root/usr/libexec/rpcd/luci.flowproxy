@@ -1,0 +1,282 @@
+#!/usr/bin/env lua
+
+local json = require "luci.jsonc"
+local UCI = require "luci.model.uci"
+local fs = require "nixio.fs"
+
+local STATE_FILE = '/var/run/flowproxy.running'
+local IP_CACHE = '/tmp/flowproxy/lan_ip.cache'
+local LOG_FILE = '/var/log/flowproxy.log'
+local UCI_CONFIG = 'flowproxy'
+
+local function safe_trim(str)
+	if type(str) ~= 'string' then return '' end
+	return str:gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local function exec(cmd)
+	local res = os.execute(cmd)
+	return (res == 0 or res == true)
+end
+
+local methods = {
+	get_status = {
+		call = function()
+			local is_running = fs.access(STATE_FILE)
+			
+			local fw_mode = "none"
+			if exec("command -v nft >/dev/null 2>&1") then
+				fw_mode = "nftables"
+			elseif exec("command -v iptables >/dev/null 2>&1") then
+				fw_mode = "iptables"
+			end
+
+			local tcp_active = false
+			local udp_active = false
+
+			if fw_mode == "nftables" then
+				tcp_active = exec("nft list chain inet flowproxy LAN_MARKFLOW_TCP >/dev/null 2>&1")
+				udp_active = exec("nft list chain inet flowproxy LAN_MARKFLOW_UDP >/dev/null 2>&1")
+			elseif fw_mode == "iptables" then
+				tcp_active = exec("iptables -t mangle -L FLOWPROXY_TCP >/dev/null 2>&1")
+				udp_active = exec("iptables -t mangle -L FLOWPROXY_UDP >/dev/null 2>&1")
+			end
+
+			local real_running = (tcp_active or udp_active)
+
+			if real_running and not is_running then
+				fs.writefile(STATE_FILE, "")
+			elseif not real_running and is_running then
+				os.execute("rm -f " .. STATE_FILE)
+			end
+
+			local lan_ip = fs.readfile(IP_CACHE) or ""
+			lan_ip = safe_trim(lan_ip)
+			if lan_ip == "" then
+				local f = io.popen("ubus call network.interface dump")
+				if f then
+					local dump_str = f:read("*a")
+					f:close()
+					local dump = json.parse(dump_str)
+					if dump and type(dump.interface) == "table" then
+						local fallback_ip = ""
+						for _, iface in ipairs(dump.interface) do
+							if iface.interface == "lan" and iface["ipv4-address"] and iface["ipv4-address"][1] and iface["ipv4-address"][1].address then
+								lan_ip = iface["ipv4-address"][1].address
+								break
+							end
+							if fallback_ip == "" and iface.interface ~= "loopback" and iface["ipv4-address"] and iface["ipv4-address"][1] and iface["ipv4-address"][1].address then
+								fallback_ip = iface["ipv4-address"][1].address
+							end
+						end
+						if lan_ip == "" then lan_ip = fallback_ip end
+					end
+				end
+				if lan_ip ~= "" then
+					os.execute("rm -rf /tmp/flowproxy")
+					os.execute("mkdir -p /tmp/flowproxy && chmod 700 /tmp/flowproxy")
+					fs.writefile(IP_CACHE, lan_ip)
+					os.execute("chmod 600 " .. IP_CACHE)
+				end
+			end
+
+			local uci = UCI.cursor()
+			local proxy_server_ip_addr = uci:get(UCI_CONFIG, "global", "proxy_server_ip_addr") or ""
+			local dns_running = uci:get(UCI_CONFIG, "dns_backup") and 1 or 0
+			local enabled_val = uci:get(UCI_CONFIG, "global", "enabled") or "0"
+			local enabled = tonumber(enabled_val) or 0
+			local proxy_server_dns_port = uci:get(UCI_CONFIG, "global", "proxy_server_dns_port") or "5353"
+			local interface = uci:get(UCI_CONFIG, "global", "interface") or "br-lan"
+			local traffic_mark = uci:get(UCI_CONFIG, "global", "traffic_mark") or "0x666"
+
+			return {
+				running = real_running and 1 or 0,
+				dns_running = dns_running,
+				enabled = enabled,
+				proxy_server_ip_addr = proxy_server_ip_addr,
+				proxy_server_dns_port = proxy_server_dns_port,
+				lan_ip = lan_ip,
+				interface = interface,
+				traffic_mark = traffic_mark,
+				nft = { tcp = tcp_active and 1 or 0, udp = udp_active and 1 or 0 }
+			}
+		end
+	},
+
+	get_logs = {
+		args = { lines = 100 },
+		call = function(args)
+			local lines = tonumber(args and args.lines) or 100
+			local logs = {}
+			if fs.access(LOG_FILE) then
+				local log_stat = fs.stat(LOG_FILE)
+				local content = ""
+				if log_stat and log_stat.size > 65536 then
+					local fd = io.popen("tail -c 65536 " .. LOG_FILE)
+					if fd then
+						content = fd:read("*a")
+						fd:close()
+					end
+				else
+					content = fs.readfile(LOG_FILE) or ""
+				end
+				if content ~= "" then
+					local log_lines = {}
+					for line in string.gmatch(content, "[^\r\n]+") do
+						table.insert(log_lines, line)
+					end
+					local total = #log_lines
+					local start_idx = (total > lines) and (total - lines + 1) or 1
+					for i = start_idx, total do
+						table.insert(logs, log_lines[i])
+					end
+				end
+			end
+			return { logs = logs }
+		end
+	},
+
+	generate_nft_config = {
+		call = function()
+			os.execute("rm -rf /tmp/flowproxy")
+			os.execute("mkdir -p /tmp/flowproxy && chmod 700 /tmp/flowproxy")
+			local fw_mode = "none"
+			if exec("command -v nft >/dev/null 2>&1") then
+				fw_mode = "nftables"
+			elseif exec("command -v iptables >/dev/null 2>&1") then
+				fw_mode = "iptables"
+			end
+
+			if fw_mode == "iptables" then
+				os.execute("FLOWPROXY_PREVIEW=1 /usr/share/flowproxy/generate_iptables.sh 2>&1")
+				return { config = safe_trim(fs.readfile("/tmp/flowproxy/iptables.rules") or "") }
+			else
+				os.execute("FLOWPROXY_PREVIEW=1 /usr/share/flowproxy/generate_nft.sh 2>&1")
+				return { config = safe_trim(fs.readfile("/tmp/flowproxy/nft.conf") or "") }
+			end
+		end
+	},
+
+	get_runtime_config = {
+		call = function()
+			local res_file = '/tmp/flowproxy/runtime.tmp'
+			local dns_file = '/tmp/flowproxy/dns_runtime.tmp'
+			
+			os.execute("rm -rf /tmp/flowproxy")
+			os.execute("mkdir -p /tmp/flowproxy && chmod 700 /tmp/flowproxy")
+			
+			local fw_mode = "none"
+			if exec("command -v nft >/dev/null 2>&1") then
+				fw_mode = "nftables"
+			elseif exec("command -v iptables >/dev/null 2>&1") then
+				fw_mode = "iptables"
+			end
+
+			if fw_mode == "iptables" then
+				os.execute("/usr/share/flowproxy/generate_iptables.sh runtime > " .. res_file .. " 2>&1")
+			else
+				os.execute("/usr/share/flowproxy/generate_nft.sh runtime > " .. res_file .. " 2>&1")
+			end
+			local nft_runtime = fs.readfile(res_file) or "(failed)"
+			os.execute("rm -f " .. res_file)
+			
+			os.execute("uci show dhcp.@dnsmasq[0] | grep -E \"noresolv|dns_redirect|server\" | sed -E \"s/^dhcp\\.[^.]*\\.([^=]*)=(.*)/\\1: \\2/; s/\\x27//g; s/#/:/g\" > " .. dns_file .. " 2>&1")
+			local dns_out = fs.readfile(dns_file) or ""
+			os.execute("rm -f " .. dns_file)
+			
+			local dns_runtime = "\n--- [ DNSmasq Runtime Configuration ] ---\n"
+			dns_runtime = dns_runtime .. (dns_out ~= "" and dns_out or "(no active dnsmasq overrides)")
+			
+			return { runtime = safe_trim(nft_runtime .. dns_runtime) }
+		end
+	},
+
+	get_interfaces = {
+		call = function()
+			local interfaces = {}
+			local f = io.popen("ubus call network.device status")
+			if f then
+				local out = f:read("*a")
+				f:close()
+				local dev_status = json.parse(out)
+				if dev_status and type(dev_status) == "table" then
+					for name, _ in pairs(dev_status) do
+						table.insert(interfaces, { name = name })
+					end
+				end
+			end
+			return { interfaces = interfaces }
+		end
+	},
+
+	start_service = { call = function() return { result = exec("/etc/init.d/flowproxy start >/dev/null 2>&1") } end },
+	stop_service = { call = function() return { result = exec("/etc/init.d/flowproxy stop >/dev/null 2>&1") } end },
+	restart_service = { call = function() return { result = exec("/etc/init.d/flowproxy restart >/dev/null 2>&1") } end },
+	clear_logs = {
+		call = function()
+			local ok = fs.writefile(LOG_FILE, "")
+			return { result = not not ok }
+		end
+	}
+}
+
+local function parseInput()
+	local parse = json.new()
+	local done, err
+
+	while true do
+		local chunk = io.read(4096)
+		if not chunk then
+			break
+		elseif not done and not err then
+			done, err = parse:parse(chunk)
+		end
+	end
+
+	if not done then
+		print(json.stringify({ error = err or "Incomplete input" }))
+		os.exit(1)
+	end
+
+	return parse:get()
+end
+
+local function validateArgs(func, uargs)
+	local method = methods[func]
+	if not method then
+		print(json.stringify({ error = "Method not found" }))
+		os.exit(1)
+	end
+
+	if type(uargs) ~= "table" then
+		print(json.stringify({ error = "Invalid arguments" }))
+		os.exit(1)
+	end
+
+	uargs.ubus_rpc_session = nil
+
+	local k, v
+	local margs = method.args or {}
+	for k, v in pairs(uargs) do
+		if margs[k] == nil or
+		   (v ~= nil and type(v) ~= type(margs[k]))
+		then
+			print(json.stringify({ error = "Invalid arguments" }))
+			os.exit(1)
+		end
+	end
+
+	return method
+end
+
+if arg[1] == "list" then
+	local _, method, rv = nil, nil, {}
+	for _, method in pairs(methods) do rv[_] = method.args or {} end
+	print((json.stringify(rv):gsub(":%[%]", ":{}")))
+elseif arg[1] == "call" then
+	local args = parseInput()
+	local method = validateArgs(arg[2], args)
+	local result, code = method.call(args)
+	print((json.stringify(result):gsub("^%[%]$", "{}")))
+	os.exit(code or 0)
+end
