@@ -1,0 +1,361 @@
+#!/usr/bin/env lua
+
+local json = require "luci.jsonc"
+local UCI = require "luci.model.uci"
+local fs = require "nixio.fs"
+
+local STATE_FILE = '/var/run/lucky.running'
+local CACHE_FILE = '/tmp/lucky_info_cache'
+
+local function trim(s)
+	if type(s) ~= 'string' then return '' end
+	return s:gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local function shellquote(s)
+	if not s then return "''" end
+	return "'" .. s:gsub("'", "'\\''") .. "'"
+end
+
+local function exec(cmd)
+	local res = os.execute(cmd)
+	return (res == 0 or res == true)
+end
+
+local function get_configdir()
+	local uci = UCI.cursor()
+	local dir = uci:get("lucky", "@lucky[0]", "configdir") or ""
+	return trim(dir)
+end
+
+local function get_procd_status()
+	local f = io.popen("ubus call service list '{\"name\": \"lucky\"}'")
+	if not f then return { running = false } end
+	local out = f:read("*a")
+	f:close()
+	
+	local res = json.parse(out)
+	if res and res.lucky and res.lucky.instances then
+		local instances = res.lucky.instances
+		for name, inst in pairs(instances) do
+			if inst and inst.running then
+				return { running = true, pid = inst.pid }
+			end
+		end
+	end
+	return { running = false }
+end
+
+local function get_rogue_pid(managed_pid)
+	local f = io.popen("pidof /usr/bin/lucky")
+	if not f then return nil end
+	local pid_str = f:read("*a")
+	f:close()
+	
+	pid_str = trim(pid_str)
+	if pid_str == "" then return nil end
+	
+	for pid in string.gmatch(pid_str, "%S+") do
+		if pid ~= "" and (managed_pid == nil or tonumber(pid) ~= tonumber(managed_pid)) then
+			return pid
+		end
+	end
+	return nil
+end
+
+local function get_pid()
+	local procd_st = get_procd_status()
+	local rogue_pid = get_rogue_pid(procd_st.pid)
+	return tostring(procd_st.pid or rogue_pid or "")
+end
+
+-- 读取缓存，仅在 PID 未变（包括停止状态 pid==""）时返回有效数据
+local function get_cache()
+	local content = fs.readfile(CACHE_FILE)
+	if content then
+		local cache = json.parse(content)
+		local currentPid = get_pid()
+		if cache and cache.pid == currentPid and cache.data then
+			return cache.data
+		end
+	end
+	return nil
+end
+
+-- 写入缓存，绑定当前 PID
+local function set_cache(data)
+	local pid = get_pid()
+	if data then
+		fs.writefile(CACHE_FILE, json.stringify({ pid = pid, data = data }))
+	end
+end
+
+-- 清除缓存
+local function clear_cache()
+	os.execute("rm -f " .. CACHE_FILE)
+end
+
+local methods = {
+	-- 合并接口：一次返回运行状态 + 程序信息 + 管理信息
+	get_info = {
+		call = function()
+			local configPath = get_configdir()
+
+			-- 1. 检测运行状态
+			local procd_st = get_procd_status()
+			local rogue_pid = get_rogue_pid(procd_st.pid)
+
+			local state = 'stopped'
+			if procd_st.running then
+				state = 'managed'
+			elseif rogue_pid then
+				state = 'unmanaged'
+			end
+
+			local running = (state ~= 'stopped')
+			local pid = procd_st.pid or rogue_pid or ""
+
+			-- 2. 程序信息（从缓存或实时获取）
+			local luckyInfo = ""
+			local luckyArch = ""
+			local adminPort = ""
+			local adminSafeUrl = ""
+			local adminAllowInternet = false
+
+			local cached = get_cache()
+			if cached then
+				luckyInfo = cached.luckyInfo or ""
+				luckyArch = cached.luckyArch or ""
+				adminPort = cached.adminPort or ""
+				adminSafeUrl = cached.adminSafeUrl or ""
+				adminAllowInternet = not not cached.adminAllowInternet
+			else
+				local cmd = "/usr/bin/lucky -info"
+				if configPath ~= "" then
+					cmd = "/usr/bin/lucky -info -cd " .. shellquote(configPath)
+				end
+				local fd = io.popen(cmd)
+				if fd then
+					luckyInfo = trim(fd:read('*a'))
+					fd:close()
+				end
+
+				fd = io.popen("/usr/bin/luckyarch")
+				if fd then
+					luckyArch = trim(fd:read('*a'))
+					fd:close()
+				end
+
+				local cmd2 = "/usr/bin/lucky -baseConfInfo"
+				if configPath ~= "" then
+					cmd2 = "/usr/bin/lucky -baseConfInfo -cd " .. shellquote(configPath)
+				end
+				fd = io.popen(cmd2)
+				if fd then
+					local confStr = trim(fd:read('*a'))
+					fd:close()
+					if confStr ~= "" then
+						local obj = json.parse(confStr)
+						if obj and obj.BaseConfigure then
+							adminPort = tostring(obj.BaseConfigure.AdminWebListenPort or "")
+							adminSafeUrl = obj.BaseConfigure.SafeURL or ""
+							adminAllowInternet = not not obj.BaseConfigure.AllowInternetaccess
+						end
+					end
+				end
+
+				set_cache({ 
+					luckyInfo = luckyInfo, 
+					luckyArch = luckyArch,
+					adminPort = adminPort,
+					adminSafeUrl = adminSafeUrl,
+					adminAllowInternet = adminAllowInternet
+				})
+			end
+
+			return {
+				running = running,
+				state = state,
+				pid = tostring(pid),
+				luckyInfo = luckyInfo,
+				luckyArch = luckyArch,
+				adminPort = adminPort,
+				adminSafeUrl = adminSafeUrl,
+				adminAllowInternet = adminAllowInternet
+			}
+		end
+	},
+	get_status = {
+		call = function()
+			local procd_st = get_procd_status()
+			local rogue_pid = get_rogue_pid(procd_st.pid)
+
+			local state = 'stopped'
+			if procd_st.running then
+				state = 'managed'
+			elseif rogue_pid then
+				state = 'unmanaged'
+			end
+
+			local running = (state ~= 'stopped')
+
+			return {
+				running = running,
+				state = state,
+				pid = tostring(procd_st.pid or rogue_pid or "")
+			}
+		end
+	},
+
+	get_log = {
+		call = function()
+			local fd = io.popen("logread -e lucky | tail -n 100")
+			local log = fd and fd:read('*a') or ""
+			if fd then fd:close() end
+			return { log = log }
+		end
+	},
+	set_config = {
+		args = { key = 'key', value = 'value' },
+		call = function(req)
+			if not req or not req.key then
+				return { ret = 1 }
+			end
+			local key = req.key
+			local value = req.value
+			if type(value) == "boolean" then
+				value = value and "true" or "false"
+			elseif value == nil then
+				value = ""
+			else
+				value = tostring(value)
+			end
+			local ret = 1
+			local configPath = get_configdir()
+
+			if key == "admin_http_port" or key == "admin_safe_url" or key == "switch_Internetaccess" then
+				local realKey = key
+				local cmd = ""
+
+				if key == "admin_http_port" then realKey = "AdminWebListenPort"
+				elseif key == "admin_safe_url" then realKey = "SafeURL"
+				elseif key == "switch_Internetaccess" then realKey = "AllowInternetaccess" end
+
+				if key == "admin_safe_url" and value == "" then
+					cmd = "/usr/bin/lucky -rCancelSafeURL"
+				else
+					cmd = "/usr/bin/lucky -setconf -key " .. shellquote(realKey) .. " -value " .. shellquote(value)
+				end
+
+				if configPath ~= "" then
+					cmd = cmd .. " -cd " .. shellquote(configPath)
+				end
+				os.execute(cmd)
+				clear_cache()
+				ret = 0
+			elseif key == "configdir" then
+				local uci = UCI.cursor()
+				uci:set("lucky", "@lucky[0]", "configdir", value)
+				uci:commit("lucky")
+				clear_cache()
+				ret = 0
+			elseif key == "reset_auth_info" then
+				local cmd1 = "/usr/bin/lucky -setconf -key AdminAccount -value 666"
+				local cmd2 = "/usr/bin/lucky -setconf -key AdminPassword -value 666"
+				if configPath ~= "" then
+					cmd1 = cmd1 .. " -cd " .. shellquote(configPath)
+					cmd2 = cmd2 .. " -cd " .. shellquote(configPath)
+				end
+				os.execute(cmd1)
+				os.execute(cmd2)
+				clear_cache()
+				ret = 0
+			end
+
+			return { ret = ret }
+		end
+	},
+	service = {
+		args = { action = 'action' },
+		call = function(req)
+			if not req or not req.action then
+				return { success = false }
+			end
+			local action = req.action
+			local applied = true
+			if action == "start" or action == "restart" or action == "stop" then
+				-- 停止时清除缓存
+				if action == "stop" then
+					clear_cache()
+				end
+				if action == "restart" then
+					-- 重启前，强制强杀所有可能残留的 lucky 野进程，确保重新由 procd 唯一受控拉起
+					os.execute("killall -9 lucky 2>/dev/null")
+				end
+				local rc = os.execute("/etc/init.d/lucky " .. action .. " >/dev/null 2>&1")
+				applied = (rc == 0 or rc == true)
+				os.execute("sleep 2")
+			end
+			return { success = true, applied = applied }
+		end
+	}
+}
+
+local function parseInput()
+	local parse = json.new()
+	local done, err
+
+	while true do
+		local chunk = io.read(4096)
+		if not chunk then
+			break
+		elseif not done and not err then
+			done, err = parse:parse(chunk)
+		end
+	end
+
+	if not done then
+		print(json.stringify({ error = err or "Incomplete input" }))
+		os.exit(1)
+	end
+
+	return parse:get()
+end
+
+local function validateArgs(func, uargs)
+	local method = methods[func]
+	if not method then
+		print(json.stringify({ error = "Method not found" }))
+		os.exit(1)
+	end
+
+	if type(uargs) ~= "table" then
+		print(json.stringify({ error = "Invalid arguments" }))
+		os.exit(1)
+	end
+
+	uargs.ubus_rpc_session = nil
+
+	local k, v
+	local margs = method.args or {}
+	for k, v in pairs(uargs) do
+		if margs[k] == nil then
+			print(json.stringify({ error = "Invalid arguments" }))
+			os.exit(1)
+		end
+	end
+
+	return method
+end
+
+if arg[1] == "list" then
+	local _, method, rv = nil, nil, {}
+	for _, method in pairs(methods) do rv[_] = method.args or {} end
+	print((json.stringify(rv):gsub(":%[%]", ":{}")))
+elseif arg[1] == "call" then
+	local args = parseInput()
+	local method = validateArgs(arg[2], args)
+	local result, code = method.call(args)
+	print((json.stringify(result):gsub("^%[%]$", "{}")))
+	os.exit(code or 0)
+end

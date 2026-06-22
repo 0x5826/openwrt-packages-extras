@@ -1,0 +1,403 @@
+#!/usr/bin/env lua
+
+local json = require "luci.jsonc"
+local ubus = require "ubus"
+local fs = require "nixio.fs"
+
+local PROCD_SERVICE_NAME = 'frpc'
+local CONFIG_FILE = '/etc/config/frpc.toml'
+local RUNTIME_CONFIG_FILE = '/etc/config/frpc.toml'
+
+local function trim(s)
+	if type(s) ~= 'string' then return '' end
+	return s:gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local function get_procd_status()
+	local conn = ubus.connect()
+	if not conn then
+		return { running = false }
+	end
+
+	local res = conn:call('service', 'list', { name = PROCD_SERVICE_NAME })
+	conn:close()
+
+	if res and res[PROCD_SERVICE_NAME] and res[PROCD_SERVICE_NAME].instances then
+		local inst = res[PROCD_SERVICE_NAME].instances.instance1
+		if inst and inst.running then
+			return { running = true, pid = inst.pid }
+		end
+	end
+
+	return { running = false }
+end
+
+local function get_rogue_pid(managed_pid)
+	local fd = io.popen('pgrep -x frpc')
+	if not fd then
+		return nil
+	end
+
+	local pid_str = fd:read('*a')
+	fd:close()
+
+	if not pid_str then
+		return nil
+	end
+
+	pid_str = trim(pid_str)
+	if pid_str == "" then
+		return nil
+	end
+
+	for pid in string.gmatch(pid_str, "%S+") do
+		if pid ~= "" and (managed_pid == nil or tonumber(pid) ~= tonumber(managed_pid)) then
+			return pid
+		end
+	end
+
+	return nil
+end
+
+local function count_proxies(config)
+	if not config then return 0 end
+	local count = 0
+	local start = 1
+	while true do
+		local pos = config:find("[[proxies]]", start, true)
+		if not pos then break end
+		count = count + 1
+		start = pos + 11
+	end
+	return count
+end
+
+local function verify_config(config)
+	fs.writefile('/tmp/frpc_test.toml', config or '')
+	local fd = io.popen("/usr/bin/frpc verify -c /tmp/frpc_test.toml 2>&1")
+	if not fd then
+		fs.unlink('/tmp/frpc_test.toml')
+		return { success = false, error = 'failed to validate config' }
+	end
+
+	local output = fd:read('*a') or ''
+	local rc = fd:close()
+	fs.unlink('/tmp/frpc_test.toml')
+
+	local code = 0
+	if type(rc) == "boolean" then
+		code = rc and 0 or 1
+	else
+		code = tonumber(rc) or 0
+	end
+
+	if code ~= 0 then
+		return { success = false, error = output ~= "" and output or 'verify failed' }
+	end
+
+	return { success = true }
+end
+
+local function get_frpc_version()
+	local fd = io.popen("/usr/bin/frpc --version 2>&1 || /usr/bin/frpc -v 2>&1")
+	if not fd then return '' end
+	local out = fd:read('*a') or ''
+	fd:close()
+
+	if out == "" then
+		return ''
+	end
+
+	local line = out:match("[^\r\n]+") or ''
+	return trim(line)
+end
+
+local function get_enabled()
+	local fd = io.popen("uci -q get frpc.main.enabled 2>/dev/null || echo 0")
+	if not fd then return 0 end
+	local out = fd:read('*a') or '0'
+	fd:close()
+	out = trim(out)
+	return (out == '1') and 1 or 0
+end
+
+local function toml_get(key, defv)
+	local content = fs.readfile(CONFIG_FILE)
+	if not content then return defv end
+
+	local field = key:match("^webServer%.(.+)$")
+
+	local webserver_section = false
+	for line in string.gmatch(content, "[^\r\n]+") do
+		local clean_line = trim(line)
+		if clean_line:match("^%[webServer%]$") then
+			webserver_section = true
+		elseif clean_line:match("^%[.+%]$") then
+			webserver_section = false
+		end
+
+		if webserver_section then
+			if field then
+				local k, v = clean_line:match("^([%w_]+)%s*=%s*(.+)$")
+				if k == field then
+					v = trim(v):gsub('^"', ''):gsub('"$', ''):gsub("^'", ""):gsub("'$", "")
+					return v
+				end
+			end
+		else
+			local k, v = clean_line:match("^([%w_%.]+)%s*=%s*(.+)$")
+			if k == key then
+				v = trim(v):gsub('^"', ''):gsub('"$', ''):gsub("^'", ""):gsub("'$", "")
+				return v
+			end
+		end
+	end
+	return defv
+end
+
+local function get_runtime_info()
+	local status = get_procd_status()
+	if not status.running then
+		return { running = false }
+	end
+
+	local addr = toml_get('webServer.addr', '127.0.0.1')
+	local port = toml_get('webServer.port', '7400')
+	local user = toml_get('webServer.user', '')
+	local pass = toml_get('webServer.password', '')
+	local auth = (user ~= '' and pass ~= '') and ("-u '" .. user .. ":" .. pass .. "' ") or ''
+
+	os.execute("rm -f /tmp/frpc_web_status.json /tmp/frpc_web_config.txt /tmp/frpc_web_err")
+	os.execute("curl -s " .. auth .. "http://" .. addr .. ":" .. port .. "/api/status >/tmp/frpc_web_status.json 2>/tmp/frpc_web_err")
+	os.execute("curl -s " .. auth .. "http://" .. addr .. ":" .. port .. "/api/config >/tmp/frpc_web_config.txt 2>>/tmp/frpc_web_err")
+
+	local raw_status = fs.readfile('/tmp/frpc_web_status.json') or ''
+	local raw_config = fs.readfile('/tmp/frpc_web_config.txt') or ''
+	local raw_err = fs.readfile('/tmp/frpc_web_err') or ''
+
+	os.execute("rm -f /tmp/frpc_web_status.json /tmp/frpc_web_config.txt /tmp/frpc_web_err")
+
+	local status_obj = {}
+	if raw_status ~= "" then
+		status_obj = json.parse(raw_status) or {}
+	end
+
+	local server_addr = ''
+	local server_port = ''
+	if raw_config ~= "" then
+		server_addr = raw_config:match('serverAddr%s*=%s*"([^"]+)"') or ''
+		server_port = raw_config:match('serverPort%s*=%s*(%d+)') or ''
+	end
+
+	local lan_ip = ''
+	local conn = ubus.connect()
+	if conn then
+		local lan_st = conn:call('network.interface.lan', 'status', {})
+		if lan_st and lan_st['ipv4-address'] and #lan_st['ipv4-address'] > 0 then
+			lan_ip = lan_st['ipv4-address'][1].address or ''
+		end
+		conn:close()
+	end
+
+	local web_host = addr
+	if addr == '0.0.0.0' or addr == '127.0.0.1' or addr == '::' then
+		web_host = lan_ip ~= "" and lan_ip or '127.0.0.1'
+	end
+	local web_url = 'http://' .. web_host .. ':' .. port
+
+	return {
+		running = true,
+		web_addr = addr,
+		web_port = tonumber(port) or 0,
+		web_url = web_url,
+		server_addr = server_addr,
+		server_port = tonumber(server_port) or 0,
+		raw_status = raw_status,
+		status = status_obj,
+		error = raw_err
+	}
+end
+
+local methods = {
+	get_status = {
+		call = function()
+			local procd_st = get_procd_status()
+			local rogue_pid = get_rogue_pid(procd_st.pid)
+
+			local state = 'stopped'
+			if procd_st.running then
+				state = 'managed'
+			elseif rogue_pid then
+				state = 'unmanaged'
+			end
+
+			local config = fs.readfile(CONFIG_FILE) or ''
+
+			return {
+				state = state,
+				pid = procd_st.pid or rogue_pid or nil,
+				config_exists = not not fs.stat(CONFIG_FILE),
+				runtime_config = RUNTIME_CONFIG_FILE,
+				proxy_count = count_proxies(config),
+				version = get_frpc_version(),
+				enabled = get_enabled()
+			}
+		end
+	},
+
+	adopt_process = {
+		call = function()
+			local fd = io.popen('killall -9 frpc')
+			if fd then fd:close() end
+			local rc = os.execute('/etc/init.d/frpc start >/dev/null 2>&1')
+			local success = (rc == 0 or rc == true)
+			return { success = success }
+		end
+	},
+
+	get_log = {
+		call = function()
+			local fd = io.popen('logread -e frpc | tail -n 100')
+			local log = fd and fd:read('*a') or ""
+			if fd then fd:close() end
+			return { log = log }
+		end
+	},
+
+	get_runtime_info = {
+		call = function()
+			return get_runtime_info()
+		end
+	},
+
+	get_config = {
+		call = function()
+			if not fs.stat(CONFIG_FILE) then
+				return { config = '' }
+			end
+			return { config = fs.readfile(CONFIG_FILE) or '' }
+		end
+	},
+
+	validate_config = {
+		args = { config = '' },
+		call = function(req)
+			local config = req and req.config or ''
+			return verify_config(config)
+		end
+	},
+
+	set_enabled = {
+		args = { enabled = 0 },
+		call = function(req)
+			local enabled_val = req and req.enabled
+			local enabled
+			if type(enabled_val) == "boolean" then
+				enabled = enabled_val and '1' or '0'
+			else
+				local num = tonumber(enabled_val) or 0
+				enabled = (num == 1) and '1' or '0'
+			end
+			local rc = os.execute("uci -q set frpc.main.enabled=" .. enabled .. " && uci -q commit frpc")
+			local success = (rc == 0 or rc == true)
+			return { success = success, enabled = tonumber(enabled) or 0 }
+		end
+	},
+
+	service_action = {
+		args = { action = '' },
+		call = function(req)
+			if not req or not req.action then
+				return { success = false, error = 'invalid action' }
+			end
+			local action = req.action
+			if action ~= 'start' and action ~= 'stop' and action ~= 'restart' and action ~= 'reload' then
+				return { success = false, error = 'invalid action' }
+			end
+			local rc = os.execute('/etc/init.d/frpc ' .. action .. ' >/dev/null 2>&1')
+			local success = (rc == 0 or rc == true)
+			return { success = success, applied = success }
+		end
+	},
+
+	save_config = {
+		args = { config = '' },
+		call = function(req)
+			local config = req and req.config or ''
+			local vr = verify_config(config)
+			if not vr.success then
+				return vr
+			end
+
+			if not fs.writefile(CONFIG_FILE, config) then
+				return { success = false, error = 'unable to write config file (/etc/config/frpc.toml)' }
+			end
+
+			local rc = os.execute('/etc/init.d/frpc reload >/dev/null 2>&1')
+			local success = (rc == 0 or rc == true)
+			return {
+				success = true,
+				saved = true,
+				applied = success
+			}
+		end
+	}
+}
+
+local function parseInput()
+	local parse = json.new()
+	local done, err
+
+	while true do
+		local chunk = io.read(4096)
+		if not chunk then
+			break
+		elseif not done and not err then
+			done, err = parse:parse(chunk)
+		end
+	end
+
+	if not done then
+		print(json.stringify({ error = err or "Incomplete input" }))
+		os.exit(1)
+	end
+
+	return parse:get()
+end
+
+local function validateArgs(func, uargs)
+	local method = methods[func]
+	if not method then
+		print(json.stringify({ error = "Method not found" }))
+		os.exit(1)
+	end
+
+	if type(uargs) ~= "table" then
+		print(json.stringify({ error = "Invalid arguments" }))
+		os.exit(1)
+	end
+
+	uargs.ubus_rpc_session = nil
+
+	local margs = method.args or {}
+	for k, v in pairs(uargs) do
+		if margs[k] == nil then
+			print(json.stringify({ error = "Invalid arguments" }))
+			os.exit(1)
+		end
+	end
+
+	return method
+end
+
+if arg[1] == "list" then
+	local rv = {}
+	for name, method in pairs(methods) do rv[name] = method.args or {} end
+	print((json.stringify(rv):gsub(":%[%]", ":{}")))
+elseif arg[1] == "call" then
+	local args = parseInput()
+	local method = validateArgs(arg[2], args)
+	local result, code = method.call(args)
+	print((json.stringify(result):gsub("^%[%]$", "{}")))
+	os.exit(code or 0)
+end

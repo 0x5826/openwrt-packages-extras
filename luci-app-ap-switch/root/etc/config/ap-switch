@@ -1,0 +1,5 @@
+
+config global 'settings'
+	option mode 'router'
+	option wan_device ''
+	option lan_ip ''

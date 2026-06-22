@@ -1,0 +1,153 @@
+#!/usr/bin/env lua
+
+local json = require "luci.jsonc"
+local uci = require "luci.model.uci"
+local fs = require "nixio.fs"
+
+local UCI_CONFIG = 'netbird'
+
+local function trim(s)
+	if type(s) ~= 'string' then return '' end
+	return s:gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local methods = {
+	get_status = {
+		call = function()
+			local status_json = {}
+			
+			-- Check if daemon is likely running by looking for its socket
+			local daemon_running = fs.access('/var/run/netbird.sock')
+			
+			if daemon_running then
+				local fd = io.popen('/usr/bin/netbird status --json 2>/dev/null')
+				if fd then
+					local content = fd:read('*a')
+					fd:close()
+					if content and content ~= "" then
+						status_json = json.parse(content) or {}
+					end
+				end
+			end
+			
+			-- Always try to get version if not provided by status
+			if not status_json.daemon_version and not status_json.cli_version then
+				local fd = io.popen('/usr/bin/netbird version 2>/dev/null')
+				if fd then
+					local vline = fd:read('*a')
+					fd:close()
+					if vline then
+						vline = trim(vline)
+						local version = vline:match("^(%S+)") or vline
+						if version ~= "" then
+							status_json.cli_version = version
+						end
+					end
+				end
+			end
+			
+			local cursor = uci.cursor()
+			local enabled_val = cursor:get(UCI_CONFIG, '@netbird[0]', 'enabled') or '0'
+			local exit_node_val = cursor:get(UCI_CONFIG, '@netbird[0]', 'exit_node') or '0'
+
+			local config = {
+				enabled = tonumber(enabled_val) or 0,
+				setup_key = cursor:get(UCI_CONFIG, '@netbird[0]', 'setup_key') or '',
+				management_url = cursor:get(UCI_CONFIG, '@netbird[0]', 'management_url') or '',
+				admin_url = cursor:get(UCI_CONFIG, '@netbird[0]', 'admin_url') or 'https://app.netbird.io/',
+				exit_node = tonumber(exit_node_val) or 0,
+				identity_exists = not not fs.access('/root/.config/netbird/default.json')
+			}
+			
+			return {
+				config = config,
+				status = status_json
+			}
+		end
+	},
+
+	get_logs = {
+		args = { lines = 100 },
+		call = function(req)
+			local lines = tonumber(req and req.lines) or 100
+			local cmd = 'logread -e netbird | tail -n ' .. lines .. " | sed 's/^.*netbird\\[[0-9]*\\]: //'"
+			local fd = io.popen(cmd)
+			local logs = fd and fd:read('*a') or ""
+			if fd then fd:close() end
+			return { logs = logs }
+		end
+	},
+
+	connect = {
+		args = { setup_key = "string" },
+		call = function(req)
+			return { result = true }
+		end
+	},
+
+	disconnect = {
+		call = function()
+			local rc = os.execute('/usr/bin/netbird down >/dev/null 2>&1')
+			local success = (rc == 0 or rc == true)
+			return { result = success }
+		end
+	}
+}
+
+local function parseInput()
+	local parse = json.new()
+	local done, err
+
+	while true do
+		local chunk = io.read(4096)
+		if not chunk then
+			break
+		elseif not done and not err then
+			done, err = parse:parse(chunk)
+		end
+	end
+
+	if not done then
+		print(json.stringify({ error = err or "Incomplete input" }))
+		os.exit(1)
+	end
+
+	return parse:get()
+end
+
+local function validateArgs(func, uargs)
+	local method = methods[func]
+	if not method then
+		print(json.stringify({ error = "Method not found" }))
+		os.exit(1)
+	end
+
+	if type(uargs) ~= "table" then
+		print(json.stringify({ error = "Invalid arguments" }))
+		os.exit(1)
+	end
+
+	uargs.ubus_rpc_session = nil
+
+	local margs = method.args or {}
+	for k, v in pairs(uargs) do
+		if margs[k] == nil then
+			print(json.stringify({ error = "Invalid arguments" }))
+			os.exit(1)
+		end
+	end
+
+	return method
+end
+
+if arg[1] == "list" then
+	local rv = {}
+	for name, method in pairs(methods) do rv[name] = method.args or {} end
+	print((json.stringify(rv):gsub(":%[%]", ":{}")))
+elseif arg[1] == "call" then
+	local args = parseInput()
+	local method = validateArgs(arg[2], args)
+	local result, code = method.call(args)
+	print((json.stringify(result):gsub("^%[%]$", "{}")))
+	os.exit(code or 0)
+end

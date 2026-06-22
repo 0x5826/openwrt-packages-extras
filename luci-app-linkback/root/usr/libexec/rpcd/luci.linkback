@@ -1,0 +1,120 @@
+#!/usr/bin/env lua
+
+local json = require "luci.jsonc"
+local fs = require "nixio.fs"
+
+local STATUS_FILE = '/var/run/linkback.json'
+
+local function trim(s)
+	if type(s) ~= 'string' then return '' end
+	return s:gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local methods = {
+	get_status = {
+		call = function()
+			local content = fs.readfile(STATUS_FILE)
+			local status = nil
+
+			if content then
+				status = json.parse(content)
+			end
+
+			if not status then
+				status = {
+					enabled = false,
+					check_interval = 5,
+					active_link = "none",
+					links = {}
+				}
+			end
+
+			return status
+		end
+	},
+
+	get_log = {
+		call = function()
+			local fd = io.popen('logread -e linkbackd | tail -n 100')
+			local log_content = fd and fd:read('*a') or ""
+			if fd then fd:close() end
+			if log_content == "" then log_content = 'No logs available.' end
+			return { log = log_content }
+		end
+	},
+
+	manage_service = {
+		args = { action = 'string' },
+		call = function(req)
+			if not req or not req.action then
+				return { success = false, error = 'Invalid action' }
+			end
+			local action = req.action
+			if action ~= 'start' and action ~= 'stop' and action ~= 'restart' then
+				return { success = false, error = 'Invalid action' }
+			end
+
+			local rc = os.execute('/etc/init.d/linkback ' .. action .. ' >/dev/null 2>&1')
+			local success = (rc == 0 or rc == true)
+			return { success = success }
+		end
+	}
+}
+
+local function parseInput()
+	local parse = json.new()
+	local done, err
+
+	while true do
+		local chunk = io.read(4096)
+		if not chunk then
+			break
+		elseif not done and not err then
+			done, err = parse:parse(chunk)
+		end
+	end
+
+	if not done then
+		print(json.stringify({ error = err or "Incomplete input" }))
+		os.exit(1)
+	end
+
+	return parse:get()
+end
+
+local function validateArgs(func, uargs)
+	local method = methods[func]
+	if not method then
+		print(json.stringify({ error = "Method not found" }))
+		os.exit(1)
+	end
+
+	if type(uargs) ~= "table" then
+		print(json.stringify({ error = "Invalid arguments" }))
+		os.exit(1)
+	end
+
+	uargs.ubus_rpc_session = nil
+
+	local margs = method.args or {}
+	for k, v in pairs(uargs) do
+		if margs[k] == nil then
+			print(json.stringify({ error = "Invalid arguments" }))
+			os.exit(1)
+		end
+	end
+
+	return method
+end
+
+if arg[1] == "list" then
+	local rv = {}
+	for name, method in pairs(methods) do rv[name] = method.args or {} end
+	print((json.stringify(rv):gsub(":%[%]", ":{}")))
+elseif arg[1] == "call" then
+	local args = parseInput()
+	local method = validateArgs(arg[2], args)
+	local result, code = method.call(args)
+	print((json.stringify(result):gsub("^%[%]$", "{}")))
+	os.exit(code or 0)
+end

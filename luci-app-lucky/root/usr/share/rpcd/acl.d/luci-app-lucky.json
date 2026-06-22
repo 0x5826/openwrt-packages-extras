@@ -1,0 +1,23 @@
+{
+	"luci-app-lucky": {
+		"description": "Grant UCI and UBUS access for luci-app-lucky",
+		"read": {
+			"ubus": {
+				"luci.lucky": [ "get_info", "get_status", "get_log" ]
+			},
+			"uci": [ "lucky" ],
+			"file": {
+				"/etc/init.d/lucky": [ "exec" ]
+			}
+		},
+		"write": {
+			"ubus": {
+				"luci.lucky": [ "set_config", "service" ]
+			},
+			"uci": [ "lucky" ],
+			"file": {
+				"/tmp/lucky_info_cache": [ "write" ]
+			}
+		}
+	}
+}

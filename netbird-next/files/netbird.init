@@ -1,0 +1,242 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=10
+
+USE_PROCD=1
+
+
+
+# Global variables to store config
+_ENABLED=0
+_MANAGEMENT_URL=""
+_ADMIN_URL=""
+_EXIT_NODE=0
+_SETUP_KEY=""
+_LOG_LEVEL="warn"
+_WG_PORT="51820"
+_OPEN_WAN=0
+_CLEANUP=0
+_MASQ=1
+
+load_config() {
+	local section="$1"
+	config_get_bool _ENABLED "$section" "enabled" "0"
+	config_get _MANAGEMENT_URL "$section" "management_url"
+	config_get _ADMIN_URL "$section" "admin_url"
+	config_get_bool _EXIT_NODE "$section" "exit_node" "0"
+	config_get _SETUP_KEY "$section" "setup_key"
+	config_get _LOG_LEVEL "$section" "log_level" "warn"
+	config_get _WG_PORT "$section" "wireguard_port" "51820"
+	config_get_bool _OPEN_WAN "$section" "open_wan_port" "0"
+	config_get_bool _CLEANUP "$section" "cleanup_config" "0"
+	config_get_bool _MASQ "$section" "masq" "1"
+}
+
+# Forcefully remove all NetBird-generated rules and tables that shouldn't be there in Passive Mode
+
+
+# Create a native OpenWrt network interface and an independent firewall zone
+setup_network_interface() {
+	# 1. Create Network Interface
+	if ! uci -q get network.netbird >/dev/null; then
+		uci -q batch <<EOF
+set network.netbird=interface
+set network.netbird.proto='none'
+set network.netbird.device='wt0'
+commit network
+EOF
+	fi
+
+	# 2. Cleanup: Remove netbird from LAN zone if it was added previously
+	local lan_networks=$(uci -q get firewall.@zone[0].network)
+	if echo "$lan_networks" | grep -q "netbird"; then
+		uci -q del_list firewall.@zone[0].network='netbird'
+		uci -q commit firewall
+	fi
+
+	# 3. Create Dedicated NetBird Firewall Zone
+	if ! uci -q get firewall.netbird_zone >/dev/null; then
+		uci -q batch <<EOF
+set firewall.netbird_zone=zone
+set firewall.netbird_zone.name='netbird'
+set firewall.netbird_zone.network='netbird'
+set firewall.netbird_zone.input='ACCEPT'
+set firewall.netbird_zone.output='ACCEPT'
+set firewall.netbird_zone.forward='ACCEPT'
+set firewall.netbird_zone.masq="$_MASQ"
+set firewall.netbird_zone.mtu_fix='1'
+
+set firewall.netbird_lan_fwd=forwarding
+set firewall.netbird_lan_fwd.src='lan'
+set firewall.netbird_lan_fwd.dest='netbird'
+
+set firewall.netbird_vpn_fwd=forwarding
+set firewall.netbird_vpn_fwd.src='netbird'
+set firewall.netbird_vpn_fwd.dest='lan'
+
+commit firewall
+EOF
+	else
+		# Dynamic alignment if the firewall zone exists but needs masq update
+		local current_masq=$(uci -q get firewall.netbird_zone.masq)
+		if [ "$current_masq" != "$_MASQ" ]; then
+			uci -q set firewall.netbird_zone.masq="$_MASQ"
+			uci -q commit firewall
+		fi
+	fi
+
+	/etc/init.d/network reload
+	/etc/init.d/firewall reload
+}
+
+
+
+cleanup_network_interface() {
+	# 1. Cleanup UCI Config if requested
+	if [ "$_CLEANUP" -eq "1" ]; then
+		uci -q delete network.netbird
+		uci -q delete firewall.netbird_zone
+		uci -q delete firewall.netbird_lan_fwd
+		uci -q delete firewall.netbird_vpn_fwd
+		uci -q commit network
+		uci -q commit firewall
+		/etc/init.d/network reload
+		/etc/init.d/firewall reload
+	fi
+}
+
+handle_firewall_port() {
+	local action="$1"
+	local port="$2"
+
+	uci -q delete firewall.netbird_wan_port
+
+	if [ "$action" = "start" ] && [ "$_OPEN_WAN" -eq 1 ]; then
+		uci -q batch <<EOF
+set firewall.netbird_wan_port=rule
+set firewall.netbird_wan_port.name='Allow-NetBird-P2P'
+set firewall.netbird_wan_port.src='wan'
+set firewall.netbird_wan_port.dest_port="$port"
+set firewall.netbird_wan_port.proto='udp'
+set firewall.netbird_wan_port.target='ACCEPT'
+commit firewall
+EOF
+		/etc/init.d/firewall reload >/dev/null 2>&1
+	fi
+}
+
+start_service() {
+	config_load 'netbird'
+	config_foreach load_config 'netbird'
+
+	if [ "$_ENABLED" -eq "0" ]; then
+		# Service disabled: Ensure everything is stopped and cleaned up
+		stop_service
+		return 1
+	fi
+
+	# Precise cleanup of stale daemon process only to avoid port/socket binding conflicts and crash loops
+	local daemon_pid=$(pgrep -f "netbird service run")
+	if [ -n "$daemon_pid" ]; then
+		kill -9 $daemon_pid >/dev/null 2>&1
+		sleep 1
+	fi
+
+	mkdir -p /root/.config/netbird
+	mkdir -p /var/lib/netbird
+
+	# Setup native interface and firewall
+	setup_network_interface
+	handle_firewall_port start "$_WG_PORT"
+
+	procd_open_instance
+	# Use sh -c to redirect stderr to stdout
+	procd_set_param command /bin/sh -c "exec /usr/bin/netbird service run --log-file console --log-level $_LOG_LEVEL 2>&1"
+
+	procd_set_param env NB_STATE_DIR="/root/.config/netbird"
+	procd_append_param env NB_DISABLE_SSH_CONFIG="1"
+	procd_append_param env NB_DNS_STATE_FILE="/var/lib/netbird/state.json"
+	procd_append_param env NB_DISABLE_DNS="1"
+	procd_append_param env NB_DISABLE_FIREWALL="1"
+	procd_append_param env NB_USE_LEGACY_ROUTING="true"
+	[ -n "$_MANAGEMENT_URL" ] && procd_append_param env NB_MANAGEMENT_URL="$_MANAGEMENT_URL"
+
+	procd_set_param pidfile /var/run/netbird.pid
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param respawn
+	procd_close_instance
+
+	# Registration and Connection logic
+	(
+		# Wait up to 10 seconds for the NetBird daemon socket to become available
+		local socket_retry=0
+		while [ ! -S "/var/run/netbird.sock" ] && [ $socket_retry -lt 10 ]; do
+			sleep 1
+			socket_retry=$((socket_retry + 1))
+		done
+
+		if [ ! -S "/var/run/netbird.sock" ]; then
+			logger -t netbird "Error: Daemon socket not found. NetBird service may have failed to start."
+			exit 1
+		fi
+
+		# Safety check: ensure service is still enabled
+		local current_enabled=$(uci -q get netbird.@netbird[0].enabled)
+		[ "$current_enabled" = "1" ] || exit 0
+
+		local last_key_file="/root/.config/netbird/last_setup_key"
+		local last_key=$(cat "$last_key_file" 2>/dev/null)
+		local up_args="--disable-dns --disable-server-routes --disable-firewall --wireguard-port $_WG_PORT"
+		
+		[ -n "$_MANAGEMENT_URL" ] && up_args="$up_args --management-url $_MANAGEMENT_URL"
+		[ -n "$_ADMIN_URL" ] && up_args="$up_args --admin-url $_ADMIN_URL"
+
+		if [ -n "$_SETUP_KEY" ]; then
+			if [ "$_SETUP_KEY" != "$last_key" ]; then
+				/usr/bin/netbird deregister >/dev/null 2>&1
+				# Only save setup key upon successful connection to prevent self-healing deadlocks
+				if /usr/bin/netbird up $up_args --setup-key "$_SETUP_KEY" >/dev/null 2>&1; then
+					echo "$_SETUP_KEY" > "${last_key_file}.tmp" && mv "${last_key_file}.tmp" "$last_key_file"
+				fi
+			else
+				# If setup_key matches last_key, first try regular up without key
+				if ! /usr/bin/netbird up $up_args >/dev/null 2>&1; then
+					# If regular up fails, fallback to up with setup-key to recover from unexpected session loss or remote deletion
+					logger -t netbird "Regular connection failed. Retrying with setup-key..."
+					/usr/bin/netbird up $up_args --setup-key "$_SETUP_KEY" >/dev/null 2>&1
+				fi
+			fi
+		elif [ -f "/root/.config/netbird/default.json" ]; then
+			# Erase last key history if key is cleared in front-end, allowing seamless re-activation
+			rm -f "$last_key_file"
+			/usr/bin/netbird up $up_args >/dev/null 2>&1
+		else
+			rm -f "$last_key_file"
+			logger -t netbird "Installation key not configured and no local identity found. Skipping connection."
+			exit 0
+		fi
+	) &
+}
+
+stop_service() {
+	config_load 'netbird'
+	config_foreach load_config 'netbird'
+
+	# 1. Standard Cleanup
+	handle_firewall_port stop
+	cleanup_network_interface
+	
+	# 2. Precise and complete termination of the daemon process only
+	local daemon_pid=$(pgrep -f "netbird service run")
+	if [ -n "$daemon_pid" ]; then
+		kill $daemon_pid 2>/dev/null
+		sleep 1
+		kill -9 $daemon_pid 2>/dev/null
+	fi
+}
+
+service_triggers() {
+	procd_add_reload_trigger "netbird"
+}

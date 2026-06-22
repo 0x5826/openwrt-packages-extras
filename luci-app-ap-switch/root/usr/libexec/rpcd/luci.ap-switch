@@ -1,0 +1,263 @@
+#!/usr/bin/env lua
+
+local json = require "luci.jsonc"
+local uci = require "luci.model.uci"
+local ubus = require "ubus"
+local fs = require "nixio.fs"
+
+local UCI_CONFIG = 'ap-switch'
+local PROBE_FILE = '/tmp/ap_switch_probed_ip'
+
+local function trim(s)
+	if type(s) ~= 'string' then return '' end
+	return s:gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local methods = {
+	get_status = {
+		call = function()
+			local cursor = uci.cursor()
+			local mode = cursor:get(UCI_CONFIG, 'settings', 'mode') or 'router'
+			
+			local lan_proto = cursor:get('network', 'lan', 'proto') or 'static'
+			local lan_ip = ''
+			local lan_mac = ''
+			local wan_mac = ''
+			local wan_ip = ''
+
+			local conn = ubus.connect()
+			if conn then
+				-- 1. Get real-time LAN IP and MAC
+				local lan_status = conn:call('network.interface.lan', 'status', {})
+				if lan_status and type(lan_status['ipv4-address']) == 'table' and #lan_status['ipv4-address'] > 0 then
+					lan_ip = lan_status['ipv4-address'][1].address or ''
+				end
+				
+				local lan_dev = conn:call('network.device', 'status', { name = 'br-lan' })
+				if lan_dev and lan_dev.macaddr then
+					lan_mac = lan_dev.macaddr
+				end
+
+				-- 2. Get current WAN interface status and its physical device MAC
+				local wan_status = conn:call('network.interface.wan', 'status', {})
+				local wan_device_name = wan_status and wan_status.device or ''
+				if wan_device_name ~= '' then
+					local wan_dev = conn:call('network.device', 'status', { name = wan_device_name })
+					if wan_dev and wan_dev.macaddr then
+						wan_mac = wan_dev.macaddr
+					end
+				end
+
+				-- 3. Get current WAN IP
+				if wan_status and type(wan_status['ipv4-address']) == 'table' and #wan_status['ipv4-address'] > 0 then
+					wan_ip = wan_status['ipv4-address'][1].address or ''
+				end
+				conn:close()
+			end
+			
+			local probed_ip = trim(fs.readfile(PROBE_FILE) or '')
+			
+			return {
+				mode = mode,
+				lan_proto = lan_proto,
+				lan_ip = lan_ip,
+				lan_mac = lan_mac,
+				wan_mac = wan_mac,
+				wan_ip = wan_ip,
+				probed_ip = probed_ip
+			}
+		end
+	},
+
+	probe_ip = {
+		call = function()
+			fs.unlink(PROBE_FILE)
+			-- Run udhcpc on br-lan with a short timeout and our probe script
+			local rc = os.execute('udhcpc -i br-lan -n -q -t 3 -T 2 -s /usr/share/luci-app-ap-switch/dhcp-probe.sh >/dev/null 2>&1')
+			local success = (rc == 0 or rc == true)
+			local ip = trim(fs.readfile(PROBE_FILE) or '')
+			return { success = success, ip = ip }
+		end
+	},
+
+	set_mode = {
+		args = { mode = 'string' },
+		call = function(req)
+			if not req or not req.mode then
+				return { error = 'Invalid mode' }
+			end
+			local target_mode = req.mode
+			if target_mode ~= 'router' and target_mode ~= 'ap' then
+				return { error = 'Invalid mode' }
+			end
+
+			local cursor = uci.cursor()
+			local current_mode = cursor:get(UCI_CONFIG, 'settings', 'mode') or 'router'
+
+			if target_mode == current_mode then
+				return { result = 'Already in target mode' }
+			end
+
+			if target_mode == 'ap' then
+				-- --- Switch to AP Mode ---
+				
+				-- 1. Identify WAN device
+				local wan_device = cursor:get('network', 'wan', 'device')
+				if not wan_device then
+					wan_device = cursor:get('network', 'wan', 'ifname')
+				end
+
+				-- 2. Backup current settings
+				local original_lan_ip = cursor:get('network', 'lan', 'ipaddr')
+				cursor:set(UCI_CONFIG, 'settings', 'wan_device', wan_device or '')
+				cursor:set(UCI_CONFIG, 'settings', 'lan_ip', original_lan_ip or '')
+				cursor:set(UCI_CONFIG, 'settings', 'mode', 'ap')
+
+				-- 3. Bridge WAN device to LAN
+				if wan_device and wan_device ~= '' then
+					cursor:foreach('network', 'device', function(s)
+						if s.name == 'br-lan' then
+							local ports = s.ports or {}
+							if type(ports) == 'string' then
+								ports = { ports }
+							end
+							local exists = false
+							for _, p in ipairs(ports) do
+								if p == wan_device then
+									exists = true
+									break
+								end
+							end
+							if not exists then
+								table.insert(ports, wan_device)
+								cursor:set('network', s['.name'], 'ports', ports)
+							end
+						end
+					end)
+				end
+
+				-- 4. Set LAN to DHCP
+				cursor:set('network', 'lan', 'proto', 'dhcp')
+				cursor:delete('network', 'lan', 'ipaddr')
+				cursor:delete('network', 'lan', 'netmask')
+				cursor:delete('network', 'lan', 'gateway')
+				cursor:delete('network', 'lan', 'dns')
+
+				-- 5. Disable WAN interface
+				cursor:set('network', 'wan', 'disabled', '1')
+				cursor:set('network', 'wan6', 'disabled', '1')
+
+				-- 6. Disable DHCP Server
+				cursor:set('dhcp', 'lan', 'ignore', '1')
+
+			else
+				-- --- Switch to Router Mode ---
+
+				-- 1. Restore settings
+				local wan_device = cursor:get(UCI_CONFIG, 'settings', 'wan_device')
+				local lan_ip = cursor:get(UCI_CONFIG, 'settings', 'lan_ip') or '192.168.1.1'
+
+				cursor:set(UCI_CONFIG, 'settings', 'mode', 'router')
+
+				-- 2. Remove WAN device from LAN bridge
+				if wan_device and wan_device ~= '' then
+					cursor:foreach('network', 'device', function(s)
+						if s.name == 'br-lan' then
+							local ports = s.ports or {}
+							if type(ports) == 'string' then
+								ports = { ports }
+							end
+							local new_ports = {}
+							for _, p in ipairs(ports) do
+								if p ~= wan_device then
+									table.insert(new_ports, p)
+								end
+							end
+							cursor:set('network', s['.name'], 'ports', new_ports)
+						end
+					end)
+				end
+
+				-- 3. Restore LAN to Static
+				cursor:set('network', 'lan', 'proto', 'static')
+				cursor:set('network', 'lan', 'ipaddr', lan_ip)
+				cursor:set('network', 'lan', 'netmask', '255.255.255.0')
+
+				-- 4. Enable WAN interface
+				cursor:delete('network', 'wan', 'disabled')
+				cursor:delete('network', 'wan6', 'disabled')
+
+				-- 5. Enable DHCP Server
+				cursor:delete('dhcp', 'lan', 'ignore')
+			end
+
+			cursor:commit('ap-switch')
+			cursor:commit('network')
+			cursor:commit('dhcp')
+
+			-- Apply changes in background
+			os.execute('/etc/init.d/network restart &')
+			os.execute('/etc/init.d/dnsmasq restart &')
+
+			return { success = true }
+		end
+	}
+}
+
+local function parseInput()
+	local parse = json.new()
+	local done, err
+
+	while true do
+		local chunk = io.read(4096)
+		if not chunk then
+			break
+		elseif not done and not err then
+			done, err = parse:parse(chunk)
+		end
+	end
+
+	if not done then
+		print(json.stringify({ error = err or "Incomplete input" }))
+		os.exit(1)
+	end
+
+	return parse:get()
+end
+
+local function validateArgs(func, uargs)
+	local method = methods[func]
+	if not method then
+		print(json.stringify({ error = "Method not found" }))
+		os.exit(1)
+	end
+
+	if type(uargs) ~= "table" then
+		print(json.stringify({ error = "Invalid arguments" }))
+		os.exit(1)
+	end
+
+	uargs.ubus_rpc_session = nil
+
+	local margs = method.args or {}
+	for k, v in pairs(uargs) do
+		if margs[k] == nil then
+			print(json.stringify({ error = "Invalid arguments" }))
+			os.exit(1)
+		end
+	end
+
+	return method
+end
+
+if arg[1] == "list" then
+	local rv = {}
+	for name, method in pairs(methods) do rv[name] = method.args or {} end
+	print((json.stringify(rv):gsub(":%[%]", ":{}")))
+elseif arg[1] == "call" then
+	local args = parseInput()
+	local method = validateArgs(arg[2], args)
+	local result, code = method.call(args)
+	print((json.stringify(result):gsub("^%[%]$", "{}")))
+	os.exit(code or 0)
+end

@@ -1,0 +1,173 @@
+#!/usr/bin/env lua
+
+local json = require "luci.jsonc"
+local ubus = require "ubus"
+local fs = require "nixio.fs"
+
+local function trim(s)
+	if type(s) ~= 'string' then return '' end
+	return s:gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local methods = {
+	get_log = {
+		call = function()
+			local fd = io.popen('logread -e ssserver')
+			local log = fd and fd:read('*a') or ""
+			if fd then fd:close() end
+			return { log = log }
+		end
+	},
+
+	get_ciphers = {
+		call = function()
+			local ciphers = {}
+			local fd = io.popen('/usr/bin/ssserver --help 2>&1')
+			if fd then
+				local output = fd:read('*a') or ""
+				fd:close()
+				local start_idx = output:find("--encrypt-method", 1, true)
+				if start_idx then
+					local sub = output:sub(start_idx)
+					local possible_values = sub:match("possible values: ([^%]]+)")
+					if possible_values then
+						for val in string.gmatch(possible_values, "[^,]+") do
+							local clean_val = trim(val):gsub("%s+", "")
+							if clean_val ~= "" then
+								table.insert(ciphers, clean_val)
+							end
+						end
+					end
+				end
+			end
+			-- Fallback if parsing fails or returns nothing
+			if #ciphers == 0 then
+				ciphers = {
+					'chacha20-ietf-poly1305',
+					'aes-256-gcm',
+					'aes-128-gcm',
+					'2022-blake3-aes-128-gcm',
+					'2022-blake3-aes-256-gcm',
+					'2022-blake3-chacha20-poly1305'
+				}
+			end
+			return { ciphers = ciphers }
+		end
+	},
+
+	get_tfo_status = {
+		call = function()
+			local val = trim(fs.readfile('/proc/sys/net/ipv4/tcp_fastopen') or '0')
+			return { value = tonumber(val) or 0 }
+		end
+	},
+
+	get_lan_ip = {
+		call = function()
+			local conn = ubus.connect()
+			local ip = ''
+			if conn then
+				local status = conn:call('network.interface.lan', 'status', {})
+				if status and type(status['ipv4-address']) == 'table' and #status['ipv4-address'] > 0 then
+					ip = status['ipv4-address'][1].address or ''
+				end
+				conn:close()
+			end
+			return { ip = ip }
+		end
+	},
+
+	get_status = {
+		call = function()
+			local conn = ubus.connect()
+			local running = false
+			local pid = nil
+			if conn then
+				local res = conn:call('service', 'list', { name = 'ssserver' })
+				if res and res.ssserver and res.ssserver.instances and res.ssserver.instances.instance1 then
+					local inst = res.ssserver.instances.instance1
+					if inst.running then
+						running = true
+						pid = inst.pid
+					end
+				end
+				conn:close()
+			end
+			return { running = running, pid = pid }
+		end
+	},
+
+	service_action = {
+		args = { action = '' },
+		call = function(req)
+			if not req or not req.action then
+				return { success = false, error = 'invalid action' }
+			end
+			local action = req.action
+			if action ~= 'start' and action ~= 'stop' and action ~= 'restart' and action ~= 'reload' then
+				return { success = false, error = 'invalid action' }
+			end
+			local rc = os.execute('/etc/init.d/ssserver ' .. action .. ' >/dev/null 2>&1')
+			local success = (rc == 0 or rc == true)
+			return { success = success, applied = success }
+		end
+	}
+}
+
+local function parseInput()
+	local parse = json.new()
+	local done, err
+
+	while true do
+		local chunk = io.read(4096)
+		if not chunk then
+			break
+		elseif not done and not err then
+			done, err = parse:parse(chunk)
+		end
+	end
+
+	if not done then
+		print(json.stringify({ error = err or "Incomplete input" }))
+		os.exit(1)
+	end
+
+	return parse:get()
+end
+
+local function validateArgs(func, uargs)
+	local method = methods[func]
+	if not method then
+		print(json.stringify({ error = "Method not found" }))
+		os.exit(1)
+	end
+
+	if type(uargs) ~= "table" then
+		print(json.stringify({ error = "Invalid arguments" }))
+		os.exit(1)
+	end
+
+	uargs.ubus_rpc_session = nil
+
+	local margs = method.args or {}
+	for k, v in pairs(uargs) do
+		if margs[k] == nil then
+			print(json.stringify({ error = "Invalid arguments" }))
+			os.exit(1)
+		end
+	end
+
+	return method
+end
+
+if arg[1] == "list" then
+	local rv = {}
+	for name, method in pairs(methods) do rv[name] = method.args or {} end
+	print((json.stringify(rv):gsub(":%[%]", ":{}")))
+elseif arg[1] == "call" then
+	local args = parseInput()
+	local method = validateArgs(arg[2], args)
+	local result, code = method.call(args)
+	print((json.stringify(result):gsub("^%[%]$", "{}")))
+	os.exit(code or 0)
+end
