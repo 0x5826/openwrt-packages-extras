@@ -281,7 +281,7 @@ return L.view.extend({
             var match_type = ss.option(form.ListValue, 'match_type', _('Match Type'));
             match_type.value('dst_ip', 'dest ip'); match_type.value('src_ip', 'src ip'); match_type.value('src_mac', 'src mac');
             match_type.value('dst_port', 'dest port'); match_type.value('src_port', 'src port'); match_type.value('custom', 'custom (raw)');
-            match_type.default = 'dst_ip'; match_type.width = '15%';
+            match_type.default = 'dst_ip'; match_type.rmempty = false; match_type.width = '15%';
 
             var match_value = ss.option(form.Value, 'match_value', _('Match Value')); 
             match_value.rmempty = false; match_value.width = '45%'; 

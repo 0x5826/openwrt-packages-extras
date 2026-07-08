@@ -112,6 +112,7 @@ process_rule() {
     
     enabled=$(uci -q get "$CONFIG.$section.enabled"); [ "$enabled" = "0" ] && { log_debug "Rule $section is disabled, skipping"; return; }
     match_type=$(uci -q get "$CONFIG.$section.match_type")
+    [ -z "$match_type" ] && match_type="dst_ip"
     match_value=$(uci -q get "$CONFIG.$section.match_value")
     
     log_debug "Processing $proto rule: $section ($match_type=$match_value)"
