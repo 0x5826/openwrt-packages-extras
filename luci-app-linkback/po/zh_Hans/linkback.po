@@ -316,4 +316,7 @@ msgstr "备选"
 msgid "Faulted"
 msgstr "故障"
 
+msgid "Comma-separated list of IPs to ping (e.g., 223.5.5.5,8.8.8.8)."
+msgstr "通过逗号分隔的 Ping 目标 IP 地址列表 (例如：223.5.5.5,8.8.8.8)。"
+
 
