@@ -35,6 +35,11 @@ var callGetRuntimeConfig = rpc.declare({
     method: 'get_runtime_config'
 });
 
+var callRestartService = rpc.declare({
+    object: 'luci.flowproxy',
+    method: 'restart_service'
+});
+
 return L.view.extend({
     load: function() {
         return Promise.all([
@@ -82,7 +87,12 @@ return L.view.extend({
                     content.push(E('span', { 'style': 'color: green; font-weight: bold;' }, [ _('running') ]));
                     content.push(' (' + ip + ':');
                     content.push(E('span', { 'style': 'color: #FF9800; font-weight: bold;' }, [ chains.join('+') || '-' ]));
-                    content.push(')');
+                    content.push(') ');
+                    content.push(E('button', {
+                        'class': 'btn cbi-button cbi-button-apply',
+                        'style': 'margin-left: 10px;',
+                        'click': ui.createHandlerFn(this, 'handleRestart')
+                    }, [ _('Restart') ]));
                 } else {
                     content.push(E('span', { 'style': 'color: red; font-weight: bold;' }, [ _('stopped') ]));
                 }
@@ -116,6 +126,27 @@ return L.view.extend({
                 if (logs.length > 0) logEl.scrollTop = logEl.scrollHeight;
             }
         }, this));
+    },
+
+    handleRestart: function() {
+        ui.showModal(null, [
+            E('p', { 'class': 'spinning' }, _('Restarting FlowProxy service...'))
+        ]);
+
+        return callRestartService().then(L.bind(function(res) {
+            ui.hideModal();
+            if (res && res.result) {
+                ui.addNotification(null, E('p', _('FlowProxy service restarted successfully.')), 'info');
+                window.setTimeout(function() {
+                    location.reload();
+                }, 1500);
+            } else {
+                ui.addNotification(null, E('p', _('Failed to restart FlowProxy service.')), 'error');
+            }
+        }, this)).catch(function(err) {
+            ui.hideModal();
+            ui.addNotification(null, E('p', _('RPC error: %s').format((err && (err.message || String(err))) || 'Unknown error')), 'error');
+        });
     },
     render: function(data) {
         var self = this;
