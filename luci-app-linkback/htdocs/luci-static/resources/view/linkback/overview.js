@@ -241,7 +241,7 @@ return view.extend({
 		dom.content(box, [ table ]);
 	},
 
-	handleServiceAction: function(ev, action) {
+	handleServiceAction: function(action) {
 		ui.showModal(null, [
 			E('p', { 'class': 'spinning' }, _('Executing service action: %s ...').format(action))
 		]);
