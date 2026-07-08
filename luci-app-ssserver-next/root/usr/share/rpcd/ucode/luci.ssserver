@@ -26,7 +26,7 @@ const methods = {
 				let start = index(output, '--encrypt-method');
 				if (start >= 0) {
 					let sub = substr(output, start);
-					let res = match(sub, /possible values: ([^\]]+)/);
+					let res = match(sub, /possible values: ([^\]]+)/s);
 					if (res) {
 						let list = split(res[1], /,\s*/);
 						for (let c in list) {
