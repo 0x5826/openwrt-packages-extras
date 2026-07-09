@@ -247,3 +247,6 @@ msgstr "重启 FlowProxy 服务失败。"
 msgid "RPC error: %s"
 msgstr "RPC 错误: %s"
 
+msgid "The proxy server IP address must be within the subnet of the selected interface (%s)."
+msgstr "代理服务器 IP 地址必须在所选网络接口的子网网段之内 (%s)。"
+
