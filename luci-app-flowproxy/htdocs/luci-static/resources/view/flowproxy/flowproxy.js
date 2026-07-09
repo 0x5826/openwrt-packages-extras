@@ -35,12 +35,18 @@ var callGetRuntimeConfig = rpc.declare({
     method: 'get_runtime_config'
 });
 
+var callRestartService = rpc.declare({
+    object: 'luci.flowproxy',
+    method: 'restart_service'
+});
+
 return L.view.extend({
     load: function() {
         return Promise.all([
             uci.load('flowproxy').catch(function() { return {}; }),
             network.getDevices(),
-            callGetStatus().catch(function() { return {}; })
+            callGetStatus().catch(function() { return {}; }),
+            network.getInterfaces().catch(function() { return []; })
         ]);
     },
 
@@ -82,7 +88,12 @@ return L.view.extend({
                     content.push(E('span', { 'style': 'color: green; font-weight: bold;' }, [ _('running') ]));
                     content.push(' (' + ip + ':');
                     content.push(E('span', { 'style': 'color: #FF9800; font-weight: bold;' }, [ chains.join('+') || '-' ]));
-                    content.push(')');
+                    content.push(') ');
+                    content.push(E('button', {
+                        'class': 'btn cbi-button cbi-button-apply',
+                        'style': 'margin-left: 10px;',
+                        'click': ui.createHandlerFn(this, 'handleRestart')
+                    }, [ _('Restart') ]));
                 } else {
                     content.push(E('span', { 'style': 'color: red; font-weight: bold;' }, [ _('stopped') ]));
                 }
@@ -117,10 +128,32 @@ return L.view.extend({
             }
         }, this));
     },
+
+    handleRestart: function() {
+        ui.showModal(null, [
+            E('p', { 'class': 'spinning' }, _('Restarting FlowProxy service...'))
+        ]);
+
+        return callRestartService().then(L.bind(function(res) {
+            ui.hideModal();
+            if (res && res.result) {
+                ui.addNotification(null, E('p', _('FlowProxy service restarted successfully.')), 'info');
+                window.setTimeout(function() {
+                    location.reload();
+                }, 1500);
+            } else {
+                ui.addNotification(null, E('p', _('Failed to restart FlowProxy service.')), 'error');
+            }
+        }, this)).catch(function(err) {
+            ui.hideModal();
+            ui.addNotification(null, E('p', _('RPC error: %s').format((err && (err.message || String(err))) || 'Unknown error')), 'error');
+        });
+    },
     render: function(data) {
         var self = this;
         var devices = data[1];
         var status = data[2];
+        var ifaces = data[3] || [];
         var m, s, o;
 
         var desc = _('Traffic diversion based on iptables rules. The service will automatically start/stop when you click "Save & Apply".');
@@ -157,6 +190,62 @@ return L.view.extend({
         
         o = s.taboption('settings', form.Value, 'proxy_server_ip_addr', _('Proxy server IP address'));
         o.datatype = 'ip4addr'; o.rmempty = false;
+        o.validate = function(section_id, value) {
+            var ipInCidr = function(ipStr, cidrStr) {
+                if (!cidrStr || cidrStr.indexOf(':') !== -1) return false;
+                var parts = cidrStr.split('/');
+                var cidrIp = parts[0];
+                var maskBits = parseInt(parts[1] || '32', 10);
+                
+                var ipToNum = function(s) {
+                    var p = s.split('.');
+                    if (p.length !== 4) return 0;
+                    return (((parseInt(p[0], 10) << 24) |
+                             (parseInt(p[1], 10) << 16) |
+                             (parseInt(p[2], 10) << 8) |
+                             parseInt(p[3], 10)) >>> 0);
+                };
+
+                var ipNum = ipToNum(ipStr);
+                var cidrNum = ipToNum(cidrIp);
+                
+                if (maskBits === 0) return true;
+                
+                var mask = (0xffffffff << (32 - maskBits)) >>> 0;
+                return (ipNum & mask) === (cidrNum & mask);
+            };
+
+            var selected_interface = s.formvalue(section_id, 'interface');
+            if (!value || !selected_interface) return true;
+
+            var target_iface = null;
+            for (var i = 0; i < ifaces.length; i++) {
+                var dev = ifaces[i].getL3Device();
+                if (dev && dev.getName() === selected_interface) {
+                    target_iface = ifaces[i];
+                    break;
+                }
+            }
+
+            if (!target_iface) return true;
+
+            var ips = target_iface.getIPAddrs();
+            if (!ips || ips.length === 0) return true;
+
+            var inSubnet = false;
+            for (var j = 0; j < ips.length; j++) {
+                if (ipInCidr(value, ips[j])) {
+                    inSubnet = true;
+                    break;
+                }
+            }
+
+            if (!inSubnet) {
+                return _('The proxy server IP address must be within the subnet of the selected interface (%s).').format(ips.join(', '));
+            }
+
+            return true;
+        };
 
         o = s.taboption('settings', form.Value, 'proxy_server_dns_port', _('Proxy server DNS port'));
         o.datatype = 'port'; o.default = '5353'; o.rmempty = false;
@@ -281,7 +370,7 @@ return L.view.extend({
             var match_type = ss.option(form.ListValue, 'match_type', _('Match Type'));
             match_type.value('dst_ip', 'dest ip'); match_type.value('src_ip', 'src ip'); match_type.value('src_mac', 'src mac');
             match_type.value('dst_port', 'dest port'); match_type.value('src_port', 'src port'); match_type.value('custom', 'custom (raw)');
-            match_type.default = 'dst_ip'; match_type.width = '15%';
+            match_type.default = 'dst_ip'; match_type.rmempty = false; match_type.width = '15%';
 
             var match_value = ss.option(form.Value, 'match_value', _('Match Value')); 
             match_value.rmempty = false; match_value.width = '45%'; 

@@ -232,3 +232,21 @@ msgstr "已停止"
 msgid "this will delete ALL current %s rules and generate default templates. are you sure?"
 msgstr "这将删除当前所有 %s 规则并加载推荐的默认模版。确定吗？"
 
+msgid "Restart"
+msgstr "重启"
+
+msgid "Restarting FlowProxy service..."
+msgstr "正在重启 FlowProxy 服务..."
+
+msgid "FlowProxy service restarted successfully."
+msgstr "FlowProxy 服务重启成功。"
+
+msgid "Failed to restart FlowProxy service."
+msgstr "重启 FlowProxy 服务失败。"
+
+msgid "RPC error: %s"
+msgstr "RPC 错误: %s"
+
+msgid "The proxy server IP address must be within the subnet of the selected interface (%s)."
+msgstr "代理服务器 IP 地址必须在所选网络接口的子网网段之内 (%s)。"
+
