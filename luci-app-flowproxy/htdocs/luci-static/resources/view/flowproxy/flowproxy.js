@@ -192,6 +192,7 @@ return L.view.extend({
         o.datatype = 'ip4addr'; o.rmempty = false;
         o.validate = function(section_id, value) {
             var ipInCidr = function(ipStr, cidrStr) {
+                if (!cidrStr || cidrStr.indexOf(':') !== -1) return false;
                 var parts = cidrStr.split('/');
                 var cidrIp = parts[0];
                 var maskBits = parseInt(parts[1] || '32', 10);
