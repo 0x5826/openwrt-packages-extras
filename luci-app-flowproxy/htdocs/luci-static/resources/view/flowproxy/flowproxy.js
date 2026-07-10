@@ -46,7 +46,7 @@ return L.view.extend({
             uci.load('flowproxy').catch(function() { return {}; }),
             network.getDevices(),
             callGetStatus().catch(function() { return {}; }),
-            network.getInterfaces().catch(function() { return []; })
+            network.getNetworks().catch(function() { return []; })
         ]);
     },
 
