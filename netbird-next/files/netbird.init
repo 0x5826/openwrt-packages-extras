@@ -159,6 +159,8 @@ start_service() {
 	procd_append_param env NB_DNS_STATE_FILE="/var/lib/netbird/state.json"
 	procd_append_param env NB_DISABLE_DNS="1"
 	procd_append_param env NB_DISABLE_FIREWALL="1"
+	procd_append_param env NB_DISABLE_CUSTOM_ROUTING="true"
+	procd_append_param env NB_SKIP_SOCKET_MARK="true"
 	procd_append_param env NB_USE_LEGACY_ROUTING="true"
 	[ -n "$_MANAGEMENT_URL" ] && procd_append_param env NB_MANAGEMENT_URL="$_MANAGEMENT_URL"
 
@@ -188,7 +190,12 @@ start_service() {
 
 		local last_key_file="/root/.config/netbird/last_setup_key"
 		local last_key=$(cat "$last_key_file" 2>/dev/null)
-		local up_args="--disable-dns --disable-server-routes --disable-firewall --wireguard-port $_WG_PORT"
+		local up_args="--disable-dns --disable-firewall --wireguard-port $_WG_PORT"
+		if [ "$_EXIT_NODE" -eq 1 ]; then
+			up_args="$up_args --allow-server-routes"
+		else
+			up_args="$up_args --disable-server-routes"
+		fi
 		
 		[ -n "$_MANAGEMENT_URL" ] && up_args="$up_args --management-url $_MANAGEMENT_URL"
 		[ -n "$_ADMIN_URL" ] && up_args="$up_args --admin-url $_ADMIN_URL"
