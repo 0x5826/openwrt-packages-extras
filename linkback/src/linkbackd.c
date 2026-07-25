@@ -345,10 +345,10 @@ static bool load_config(void) {
 		link->enabled = true;
 
 		const char *priority = uci_lookup_option_string(ctx, s, "priority");
-		link->priority = priority ? atoi(priority) : 10;
+		int prio_val = priority ? atoi(priority) : 1;
+		link->priority = (prio_val > 0) ? prio_val : 1;
 
-		const char *metric = uci_lookup_option_string(ctx, s, "metric");
-		link->metric = metric ? atoi(metric) : (link->priority * 10);
+		link->metric = link->priority * 10;
 		link->current_metric = link->metric;
 
 		// Parse ping targets (split by comma or space)

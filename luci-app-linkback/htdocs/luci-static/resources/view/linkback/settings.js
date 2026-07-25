@@ -57,8 +57,7 @@ return view.extend({
 		var is_zh = (_('Base Metric') === '默认跃点' || _('Base Metric') === '默认跃点 (Metric)');
 		var t_priority_empty = is_zh ? '优先级不能为空。' : _('Priority must not be empty.');
 		var t_priority_conflict = is_zh ? '优先级 %s 与接口 "%s" 冲突。优先级必须是唯一的。' : _('Priority %s conflicts with interface "%s". Priorities must be unique.');
-		var t_metric_empty = is_zh ? '默认跃点不能为空。' : _('Metric must not be empty.');
-		var t_metric_conflict = is_zh ? '跃点数 %s 与接口 "%s" 冲突。跃点数必须是唯一的。' : _('Metric %s conflicts with interface "%s". Metrics must be unique.');
+
 
 		// Helper function to expand table column controls and eliminate right empty space
 		var makeTableColumnExpand = function(opt, width) {
@@ -260,39 +259,19 @@ return view.extend({
 		};
 		makeTableColumnExpand(o, '15%');
 
-		// 4. Metric (No description for main column)
+		// 4. Metric (Read-only, generated from priority * 10)
 		var metric_title = _('Base Metric');
 		if (metric_title === '默认跃点 (Metric)') {
 			metric_title = '默认跃点';
 		}
-		o = s.option(form.Value, 'metric', metric_title);
-		o.datatype = 'uinteger';
-		o.default = '10';
-		o.rmempty = false;
-		o.validate = function(section_id, value) {
-			if (value == null || value === '') {
-				return t_metric_empty;
+		o = s.option(form.DummyValue, 'metric', metric_title);
+		o.cfgvalue = function(section_id) {
+			var prio = uci.get('linkback', section_id, 'priority');
+			var prio_val = parseInt(prio, 10);
+			if (isNaN(prio_val) || prio_val <= 0) {
+				prio_val = 1;
 			}
-			var self_opt = this;
-			var has_conflict = false;
-			var conflicting_iface = '';
-			uci.sections('linkback', 'link').forEach(function(sec) {
-				var sid = sec['.name'];
-				if (sid !== section_id) {
-					var other_val = self_opt.formvalue(sid);
-					if (other_val == null || other_val === '') {
-						other_val = uci.get('linkback', sid, 'metric');
-					}
-					if (other_val != null && other_val !== '' && String(other_val) === String(value)) {
-						has_conflict = true;
-						conflicting_iface = uci.get('linkback', sid, 'name') || sid;
-					}
-				}
-			});
-			if (has_conflict) {
-				return t_metric_conflict.format(value, conflicting_iface);
-			}
-			return true;
+			return prio_val * 10;
 		};
 		makeTableColumnExpand(o, '15%');
 
