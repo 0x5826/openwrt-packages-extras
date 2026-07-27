@@ -240,8 +240,8 @@ return view.extend({
 
 			const webNode = document.getElementById('frpc-web-api');
 			if (webNode) {
-				webNode.innerHTML = '';
 				if (r.web_url) {
+					webNode.innerHTML = '';
 					webNode.appendChild(E('a', {
 						'class': 'btn cbi-button',
 						href: r.web_url,
