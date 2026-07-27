@@ -152,13 +152,16 @@ return view.extend({
 				E('table', { 'class': 'table cbi-section-table' }, [
 					E('tr', { 'class': 'tr' }, [
 						E('td', { 'class': 'td left', 'width': '33%' }, _('Web Panel')),
-						E('td', { 'class': 'td left', id: 'frpc-web-api' }, 
-							(runtime.web_url ? E('a', {
-								'class': 'btn cbi-button',
-								href: runtime.web_url,
-								target: '_blank',
-								rel: 'noopener noreferrer'
-							}, _('Open')) : '-'))
+						E('td', { 'class': 'td left' }, [
+							E('span', { id: 'frpc-web-api' }, [
+								runtime.web_url ? E('a', {
+									'class': 'btn cbi-button',
+									href: runtime.web_url,
+									target: '_blank',
+									rel: 'noopener noreferrer'
+								}, _('Open')) : '-'
+							])
+						])
 					]),
 					E('tr', { 'class': 'tr' }, [
 						E('td', { 'class': 'td left' }, _('Connected Server')),
@@ -237,21 +240,15 @@ return view.extend({
 
 			const webNode = document.getElementById('frpc-web-api');
 			if (webNode) {
-				if (r.web_url && webNode.tagName === 'A') {
-					webNode.href = r.web_url;
-				} else if (r.web_url && webNode.tagName !== 'A') {
-					const btn = E('a', {
-						id: 'frpc-web-api',
+				if (r.web_url) {
+					webNode.innerHTML = '';
+					webNode.appendChild(E('a', {
 						'class': 'btn cbi-button',
 						href: r.web_url,
 						target: '_blank',
 						rel: 'noopener noreferrer'
-					}, _('Open'));
-					webNode.parentNode.replaceChild(btn, webNode);
-				} else if (!r.web_url && webNode.tagName === 'A') {
-					const span = E('span', { id: 'frpc-web-api' }, '-');
-					webNode.parentNode.replaceChild(span, webNode);
-				} else if (!r.web_url && webNode.tagName !== 'A') {
+					}, _('Open')));
+				} else {
 					webNode.textContent = '-';
 				}
 			}
