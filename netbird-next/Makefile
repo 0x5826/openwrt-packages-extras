@@ -1,12 +1,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=netbird-next
-PKG_VERSION:=0.76.1
+PKG_VERSION:=0.77.0
 PKG_RELEASE:=1
 
 PKG_SOURCE:=netbird-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/netbirdio/netbird/tar.gz/v$(PKG_VERSION)?
-PKG_HASH:=5c6fd84e19e751f1450aa9110b7819c89f7d6ed3ce3768f50379755df37c49c9
+PKG_HASH:=f27f5f5f853b74891838a781eb7a18ba7475375cbf69e9f3bf5c3721a7f0a4c2
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/netbird-$(PKG_VERSION)
 
