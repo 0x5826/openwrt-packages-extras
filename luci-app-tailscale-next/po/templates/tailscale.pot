@@ -550,3 +550,6 @@ msgstr ""
 
 msgid "Optional: Specify an authentication key for the custom control server (--auth-key). Leave blank if not required."
 msgstr ""
+
+msgid "Tailscale is a mesh VPN solution that makes it easy to connect your devices securely. This configuration page allows you to manage Tailscale settings on your OpenWrt device."
+msgstr ""

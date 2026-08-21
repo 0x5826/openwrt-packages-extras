@@ -503,9 +503,12 @@ return view.extend({
 					});
 				}, 10);
 
-			return E('div', { 'id': 'service_status_display', 'class': 'cbi-value' },
-				_('Collecting data ...')
-			);
+			return E('div', {}, [
+				E('hr', { 'style': 'margin: 5px 0 15px 0; border: 0; border-top: 1px solid #e5e5e5;' }),
+				E('div', { 'id': 'service_status_display', 'class': 'cbi-value' },
+					_('Collecting data ...')
+				)
+			]);
 		}
 
 		// Bind settings to the 'settings' section of uci

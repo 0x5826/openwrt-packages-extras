@@ -550,3 +550,6 @@ msgstr "可選：指定自訂控制伺服器位址（例如 Headscale 實例，-
 
 msgid "Optional: Specify an authentication key for the custom control server (--auth-key). Leave blank if not required."
 msgstr "可選：指定自訂控制伺服器的預認證密鑰（--auth-key）。留空則無需認證密鑰。"
+
+msgid "Tailscale is a mesh VPN solution that makes it easy to connect your devices securely. This configuration page allows you to manage Tailscale settings on your OpenWrt device."
+msgstr "Tailscale 是一種網狀 Mesh VPN 解決方案，可讓您安全輕鬆地連接各類裝置。此頁面用於管理 OpenWrt 上的 Tailscale 服務設定。"
