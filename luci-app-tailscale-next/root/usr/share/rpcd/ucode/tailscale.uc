@@ -104,12 +104,12 @@ methods.get_status = {
 				}
 				data.health = status_data?.Health || '';
 				data.TUNMode = (status_data?.TUN == false ? 'false' : 'true');
-				if (status_data?.BackendState == 'Running' || status_data?.BackendState == 'Starting') {
+				if (status_data?.BackendState == 'NeedsLogin' || status_data?.AuthURL || status_data?.BackendState == 'NoState' || (status_data?.HaveNodeKey == false && status_data?.BackendState != 'Running')) {
+					data.status = 'logout';
+				} else if (status_data?.BackendState == 'Running' && status_data?.HaveNodeKey == true) {
 					data.status = 'running';
 				} else if (status_data?.HaveNodeKey == true) {
-					data.status = (status_data?.BackendState == 'Running') ? 'running' : 'stopped';
-				} else if (status_data?.BackendState == 'NeedsLogin' || status_data?.BackendState == 'NoState') {
-					data.status = 'logout';
+					data.status = 'stopped';
 				} else {
 					data.status = (status_data?.BackendState == 'Stopped') ? 'stopped' : 'logout';
 				}
