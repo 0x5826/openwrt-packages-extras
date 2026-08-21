@@ -7,6 +7,15 @@ PKG_MAINTAINER:=Tokisaki-Galaxy <moebest@outlook.jp>
 LUCI_DEPENDS:=+tailscale-next +ip-full +luci-base +luci-compat +luci-lib-jsonc
 LUCI_PKGARCH:=all
 
+define Package/luci-app-tailscale-next/postinst
+#!/bin/sh
+[ -n "$${IPKG_INSTROOT}" ] || {
+	rm -f /tmp/luci-indexcache.* /tmp/luci-modulecache/* 2>/dev/null
+	/etc/init.d/rpcd restart 2>/dev/null || true
+}
+exit 0
+endef
+
 define Package/luci-app-tailscale-next/prerm
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
