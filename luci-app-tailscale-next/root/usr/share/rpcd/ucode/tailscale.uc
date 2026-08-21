@@ -34,7 +34,11 @@ function shell_quote(s) {
 }
 
 function get_connectivity_data() {
-	let res = exec('if [ ! -f /tmp/tailscale_netcheck.json ] || [ $(($(date +%s) - $(date -r /tmp/tailscale_netcheck.json +%s 2>/dev/null || stat -c %Y /tmp/tailscale_netcheck.json 2>/dev/null || echo 0))) -gt 60 ]; then tailscale netcheck --format=json > /tmp/tailscale_netcheck.tmp 2>/dev/null && mv /tmp/tailscale_netcheck.tmp /tmp/tailscale_netcheck.json; fi; cat /tmp/tailscale_netcheck.json 2>/dev/null');
+	let ts_cmd = 'tailscale';
+	if (access('/usr/sbin/tailscale')) ts_cmd = '/usr/sbin/tailscale';
+	else if (access('/usr/bin/tailscale')) ts_cmd = '/usr/bin/tailscale';
+
+	let res = exec('if [ ! -f /tmp/tailscale_netcheck.json ] || [ $(($(date +%s) - $(date -r /tmp/tailscale_netcheck.json +%s 2>/dev/null || stat -c %Y /tmp/tailscale_netcheck.json 2>/dev/null || echo 0))) -gt 60 ]; then ' + ts_cmd + ' netcheck --format=json > /tmp/tailscale_netcheck.tmp 2>/dev/null && mv /tmp/tailscale_netcheck.tmp /tmp/tailscale_netcheck.json; fi; cat /tmp/tailscale_netcheck.json 2>/dev/null');
 	if (res.code == 0 && length(res.stdout) > 0) {
 		try {
 			return json(join('', res.stdout));
@@ -58,41 +62,61 @@ methods.get_status = {
 			peers: [],
 			connectivity: null
 		};
-		if (access('/usr/sbin/tailscale')==true || access('/usr/bin/tailscale')==true){ }else{
+
+		if (!access('/usr/sbin/tailscale') && !access('/usr/bin/tailscale')) {
 			data.status = 'not_installed';
 			return data;
 		}
 
-		let status_json_output = exec('tailscale status --json');
+		let status_out = exec('tailscale status --json 2>/dev/null');
 		let peer_map = {};
-		if (status_json_output.code == 0 && length(status_json_output.stdout) > 0) {
+
+		if (status_out.code == 0 && length(status_out.stdout) > 0) {
 			try {
-				let status_data = json(join('',status_json_output.stdout));
+				let status_data = json(join('', status_out.stdout));
 				data.version = status_data?.Version || 'Unknown';
 				data.health = status_data?.Health || '';
-				data.TUNMode = status_data?.TUN || 'true';
-				if (status_data?.BackendState == 'Running') { data.status =  'running'; }
-				if (status_data?.BackendState == 'NeedsLogin') { data.status =  'logout'; }
+				data.TUNMode = (status_data?.TUN == false ? 'false' : 'true');
+				if (status_data?.BackendState == 'Running') {
+					data.status = 'running';
+				} else if (status_data?.BackendState == 'NeedsLogin') {
+					data.status = 'logout';
+				}
 
-				data.ipv4 = status_data?.Self?.TailscaleIPs?.[0] || 'No IP assigned';
-				data.ipv6 = status_data?.Self?.TailscaleIPs?.[1] || null;
-				data.domain_name = status_data?.CurrentTailnet?.Name || '';
+				if (status_data?.Self?.TailscaleIPs) {
+					data.ipv4 = status_data.Self.TailscaleIPs[0] || 'No IP assigned';
+					data.ipv6 = status_data.Self.TailscaleIPs[1] || null;
+				}
 
-				// peers list
-				for (let p in status_data?.Peer) {
-					p = status_data.Peer[p];
-					peer_map[p.ID] = {
-						ip: join('<br>', p?.TailscaleIPs) || '',
-						hostname: split(p?.DNSName || '','.')[0] || '',
-						ostype: p?.OS,
-						online: p?.Online,
-						linkadress: (!p?.CurAddr) ? p?.Relay : p?.CurAddr,
-						lastseen: p?.LastSeen,
-						exit_node: !!p?.ExitNode,
-						exit_node_option: !!p?.ExitNodeOption,
-						tx: p?.TxBytes || '',
-						rx: p?.RxBytes || ''
-					};
+				if (status_data?.CurrentTailnet) {
+					data.domain_name = status_data.CurrentTailnet.Name || '';
+				}
+
+				if (status_data?.Peer) {
+					for (let id, p in status_data.Peer) {
+						let ips = '';
+						if (p?.TailscaleIPs) {
+							ips = join('<br>', p.TailscaleIPs);
+						}
+						let hostname = p?.DNSName || '';
+						if (hostname != '') {
+							let parts = split(hostname, '.');
+							hostname = parts[0];
+						}
+
+						peer_map[id] = {
+							ip: ips,
+							hostname: hostname,
+							ostype: p?.OS,
+							online: p?.Online || false,
+							linkadress: (!p?.CurAddr || p?.CurAddr == '') ? p?.Relay : p?.CurAddr,
+							lastseen: p?.LastSeen,
+							exit_node: !(!p?.ExitNode),
+							exit_node_option: !(!p?.ExitNodeOption),
+							tx: p?.TxBytes || '',
+							rx: p?.RxBytes || ''
+						};
+					}
 				}
 
 				if (data.status == 'running') {
@@ -100,8 +124,8 @@ methods.get_status = {
 					let derp_lat_str = '';
 					let pref_derp = netcheck?.PreferredDERP || 0;
 					if (pref_derp > 0 && netcheck?.DERPLatencies) {
-						let lat = netcheck.DERPLatencies[sprintf('%d', pref_derp)];
-						if (lat != null) {
+						let lat = netcheck.DERPLatencies[tostring(pref_derp)];
+						if (lat) {
 							derp_lat_str = sprintf('%d ms', int(lat * 1000));
 						}
 					}
@@ -109,8 +133,12 @@ methods.get_status = {
 					let ep_list = [];
 					if (status_data?.Self?.Endpoints && length(status_data.Self.Endpoints) > 0) {
 						ep_list = status_data.Self.Endpoints;
-					} else if (netcheck?.GlobalAddrs && length(netcheck.GlobalAddrs) > 0) {
-						ep_list = netcheck.GlobalAddrs;
+					} else if (netcheck) {
+						if (netcheck.GlobalV4) push(ep_list, netcheck.GlobalV4);
+						if (netcheck.GlobalV6) push(ep_list, netcheck.GlobalV6);
+						if (netcheck.GlobalAddrs && length(netcheck.GlobalAddrs) > 0) {
+							for (let a in netcheck.GlobalAddrs) push(ep_list, a);
+						}
 					}
 
 					data.connectivity = {
