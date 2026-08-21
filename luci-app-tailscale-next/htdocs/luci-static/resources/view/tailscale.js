@@ -326,7 +326,6 @@ function renderStatus(status) {
 
 		connSection = E('div', { 'style': 'margin-top: 12px; padding-top: 10px; border-top: 1px dashed #ccc;' }, [
 			E('div', { 'style': 'font-weight: bold; margin-bottom: 8px; font-size: 14px;' }, [
-				E('span', { 'style': 'margin-right: 5px;' }, '🌐'),
 				_('Client Connectivity')
 			]),
 			E('div', { 'style': 'margin-bottom: 8px; font-size: 13px;' }, [

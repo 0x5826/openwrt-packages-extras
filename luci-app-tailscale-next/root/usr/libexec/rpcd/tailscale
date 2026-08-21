@@ -117,12 +117,12 @@ methods.get_status = {
 				end
 				data.health = status_data.Health or ''
 				data.TUNMode = (status_data.TUN == false and 'false') or 'true'
-				if status_data.BackendState == 'Running' or status_data.BackendState == 'Starting' then
+				if status_data.BackendState == 'NeedsLogin' or (status_data.AuthURL and status_data.AuthURL ~= '') or status_data.BackendState == 'NoState' or status_data.HaveNodeKey == false then
+					data.status = 'logout'
+				elseif status_data.BackendState == 'Running' and status_data.HaveNodeKey == true and (not status_data.AuthURL or status_data.AuthURL == '') then
 					data.status = 'running'
 				elseif status_data.HaveNodeKey == true then
-					data.status = (status_data.BackendState == 'Running') and 'running' or 'stopped'
-				elseif status_data.BackendState == 'NeedsLogin' or status_data.BackendState == 'NoState' then
-					data.status = 'logout'
+					data.status = 'stopped'
 				else
 					data.status = (status_data.BackendState == 'Stopped') and 'stopped' or 'logout'
 				end
