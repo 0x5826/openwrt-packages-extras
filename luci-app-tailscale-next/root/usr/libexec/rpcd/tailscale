@@ -512,7 +512,6 @@ methods.setup_firewall = {
 		if changed_network then
 			uci:save('network')
 			uci:commit('network')
-			os.execute('/etc/init.d/network reload')
 		end
 
 		if changed_firewall then

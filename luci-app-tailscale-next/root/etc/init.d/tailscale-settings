@@ -170,7 +170,6 @@ setup_firewall_rules() {
 
 	if [ "$changed_net" = "1" ]; then
 		uci -q commit network
-		/etc/init.d/network reload 2>/dev/null
 		logger -t "$NAME" "Auto configured tailscale network interface (tailscale0)"
 	fi
 
@@ -232,7 +231,6 @@ clean_firewall_rules() {
 
 	if [ "$changed_net" = "1" ]; then
 		uci -q commit network
-		/etc/init.d/network reload 2>/dev/null
 		logger -t "$NAME" "Cleaned tailscale network interface"
 	fi
 
