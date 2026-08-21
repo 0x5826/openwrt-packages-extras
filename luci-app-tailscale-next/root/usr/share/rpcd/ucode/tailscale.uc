@@ -10,7 +10,6 @@ const uci = cursor();
 function exec(command) {
 	let stdout_content = '';
 	let p = popen(command, 'r');
-	sleep(100);
 	if (p == null) {
 		return { code: -1, stdout: '', stderr: `Failed to execute: ${command}` };
 	}
@@ -125,7 +124,7 @@ methods.get_status = {
 					account_str = status_data.CurrentTailnet.Name;
 				}
 				if (status_data?.Self?.UserID && status_data?.User) {
-					let uid = tostring(status_data.Self.UserID);
+					let uid = '' + status_data.Self.UserID;
 					let uinfo = status_data.User[uid];
 					if (uinfo) {
 						let login_name = uinfo?.LoginName || uinfo?.Username || '';
@@ -177,7 +176,7 @@ methods.get_status = {
 					let derp_lat_str = '';
 					let pref_derp = netcheck?.PreferredDERP || status_data?.Self?.Relay || 0;
 					if (pref_derp != 0 && pref_derp != '' && netcheck?.DERPLatencies) {
-						let lat = netcheck.DERPLatencies[tostring(pref_derp)];
+						let lat = netcheck.DERPLatencies['' + pref_derp];
 						if (lat) {
 							derp_lat_str = sprintf('%d ms', lat * 1000);
 						}
