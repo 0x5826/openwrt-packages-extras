@@ -553,3 +553,9 @@ msgstr ""
 
 msgid "Tailscale is a mesh VPN solution that makes it easy to connect your devices securely. This configuration page allows you to manage Tailscale settings on your OpenWrt device."
 msgstr ""
+
+msgid "Advertise Subnet Routes"
+msgstr ""
+
+msgid "Enabling this option can reduce memory usage, but it may sacrifice some performance (set GOGC=10)."
+msgstr ""

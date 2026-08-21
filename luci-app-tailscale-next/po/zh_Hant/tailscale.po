@@ -553,3 +553,9 @@ msgstr "可選：指定自訂控制伺服器的預認證密鑰（--auth-key）�
 
 msgid "Tailscale is a mesh VPN solution that makes it easy to connect your devices securely. This configuration page allows you to manage Tailscale settings on your OpenWrt device."
 msgstr "Tailscale 是一種網狀 Mesh VPN 解決方案，可讓您安全輕鬆地連接各類裝置。此頁面用於管理 OpenWrt 上的 Tailscale 服務設定。"
+
+msgid "Advertise Subnet Routes"
+msgstr "通告子網路由"
+
+msgid "Enabling this option can reduce memory usage, but it may sacrifice some performance (set GOGC=10)."
+msgstr "啟用此選項可以減少記憶體佔用，但可能會犧牲部分效能（設定 GOGC=10）。"
