@@ -505,3 +505,48 @@ msgstr ""
 
 msgid "Could not open a new tab. Please check if your browser or an extension blocked the pop-up."
 msgstr ""
+
+msgid "Enable or disable the Tailscale background service (/etc/init.d/tailscale)."
+msgstr ""
+
+msgid "Expose a local web interface on port 5252 for managing this node over Tailscale (--webclient)."
+msgstr ""
+
+msgid "Select the firewall backend for Tailscale (TS_DEBUG_FIREWALL_MODE=auto/nftables/iptables). Requires service restart to take effect."
+msgstr ""
+
+msgid "Allow accepting subnet routes announced by other nodes (--accept-routes)."
+msgstr ""
+
+msgid "Declare this device as an exit node, allowing other nodes to route all traffic through it (--advertise-exit-node)."
+msgstr ""
+
+msgid "When using or advertising the exit node, allow access to the local LAN (--exit-node-allow-lan-access)."
+msgstr ""
+
+msgid "Allow connecting to this device through the native SSH function of Tailscale (--ssh)."
+msgstr ""
+
+msgid "When enabled, blocks all inbound connections from the Tailscale network (--shields-up)."
+msgstr ""
+
+msgid "Controls how Tailscale DNS is handled (--accept-dns)."
+msgstr ""
+
+msgid "Enable this device as a Peer Relay server (--peer-relay). Requires a public IP and an UDP port open on the router."
+msgstr ""
+
+msgid "UDP port for the Peer Relay service (--peer-relay-port). Open this port on your router firewall/NAT."
+msgstr ""
+
+msgid "Select an exit node from the list (--exit-node). If enabled, Allow LAN Access is enabled implicitly."
+msgstr ""
+
+msgid "Announce subnet routes behind this device (--advertise-routes). Select from the detected subnets below or enter custom routes (comma-separated)."
+msgstr ""
+
+msgid "Optional: Specify a custom control server URL (e.g., a Headscale instance, --login-server). Leave blank for default Tailscale control plane."
+msgstr ""
+
+msgid "Optional: Specify an authentication key for the custom control server (--auth-key). Leave blank if not required."
+msgstr ""

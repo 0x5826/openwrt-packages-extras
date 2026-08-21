@@ -16,17 +16,17 @@ const callReloadSettings = rpc.declare({ object: 'tailscale', method: 'reload_se
 let map;
 
 const tailscaleSettingsConf = [
-	[form.Flag, 'service_enabled', _('Enable Tailscale Service'), _('Enable or disable the Tailscale service. When disabled, the service will be stopped and the process will be killed.'), { rmempty: false }],
-	[form.Flag, 'runwebclient', _('Enable Web Interface'), _('Expose a web interface on port 5252 for managing this node over Tailscale.'), { rmempty: false }],
-	[form.ListValue, 'fw_mode', _('Firewall Mode'), _('Select the firewall backend for Tailscale to use. Requires service restart to take effect.'), { values: ['nftables', 'iptables'], rmempty: false }],
+	[form.Flag, 'service_enabled', _('Enable Tailscale Service'), _('Enable or disable the Tailscale background service (/etc/init.d/tailscale).'), { rmempty: false }],
+	[form.Flag, 'runwebclient', _('Enable Web Interface'), _('Expose a local web interface on port 5252 for managing this node over Tailscale (--webclient).'), { rmempty: false }],
+	[form.ListValue, 'fw_mode', _('Firewall Mode'), _('Select the firewall backend for Tailscale (TS_DEBUG_FIREWALL_MODE=auto/nftables/iptables). Requires service restart to take effect.'), { values: ['nftables', 'iptables'], rmempty: false }],
 	[form.Flag, 'disable_fw_config', _('Disable Firewall Auto Configuration'), _('Disable Tailscale netfilter auto-configuration (--netfilter-mode=off).'), { rmempty: false }],
-	[form.Flag, 'accept_routes', _('Accept Routes'), _('Allow accepting routes announced by other nodes.'), { rmempty: false }],
-	[form.Flag, 'advertise_exit_node', _('Advertise Exit Node'), _('Declare this device as an Exit Node.'), { rmempty: false }],
-	[form.Flag, 'exit_node_allow_lan_access', _('Allow LAN Access'), _('When using or advertising the exit node, allow access to the local LAN.'), { rmempty: false, depends: { 'advertise_exit_node': '1' } }],
-	[form.Flag, 'ssh', _('Enable Tailscale SSH'), _('Allow connecting to this device through the SSH function of Tailscale.'), { rmempty: false }],
-	[form.Flag, 'shields_up', _('Shields Up'), _('When enabled, blocks all inbound connections from the Tailscale network.'), { rmempty: false }],
-	[form.ListValue, 'dns_mode', _('DNS Mode'), _('Controls how Tailscale DNS is handled.') + '<br>' + _('Disabled: system DNS only.') + '<br>' + _('MagicDNS: Tailscale overrides resolv.conf.') + '<br>' + _('OpenWrt Forward: MagicDNS via dnsmasq forwarding.(Only support ts.net)'), { values: [['disabled', _('Disabled')], ['magicdns', 'MagicDNS'], ['openwrt_forward', _('OpenWrt Forward')]], rmempty: false }],
-	[form.Flag, 'enable_relay', _('Enable Peer Relay'), _('Enable this device as a Peer Relay server. Requires a public IP and an UDP port open on the router.'), { rmempty: false }]
+	[form.Flag, 'accept_routes', _('Accept Routes'), _('Allow accepting subnet routes announced by other nodes (--accept-routes).'), { rmempty: false }],
+	[form.Flag, 'advertise_exit_node', _('Advertise Exit Node'), _('Declare this device as an exit node, allowing other nodes to route all traffic through it (--advertise-exit-node).'), { rmempty: false }],
+	[form.Flag, 'exit_node_allow_lan_access', _('Allow LAN Access'), _('When using or advertising the exit node, allow access to the local LAN (--exit-node-allow-lan-access).'), { rmempty: false, depends: { 'advertise_exit_node': '1' } }],
+	[form.Flag, 'ssh', _('Enable Tailscale SSH'), _('Allow connecting to this device through the native SSH function of Tailscale (--ssh).'), { rmempty: false }],
+	[form.Flag, 'shields_up', _('Shields Up'), _('When enabled, blocks all inbound connections from the Tailscale network (--shields-up).'), { rmempty: false }],
+	[form.ListValue, 'dns_mode', _('DNS Mode'), _('Controls how Tailscale DNS is handled (--accept-dns).') + '<br>' + _('Disabled: system DNS only.') + '<br>' + _('MagicDNS: Tailscale overrides resolv.conf.') + '<br>' + _('OpenWrt Forward: MagicDNS via dnsmasq forwarding.(Only support ts.net)'), { values: [['disabled', _('Disabled')], ['magicdns', 'MagicDNS'], ['openwrt_forward', _('OpenWrt Forward')]], rmempty: false }],
+	[form.Flag, 'enable_relay', _('Enable Peer Relay'), _('Enable this device as a Peer Relay server (--peer-relay). Requires a public IP and an UDP port open on the router.'), { rmempty: false }]
 ];
 
 const daemonConf = [
@@ -518,14 +518,14 @@ return view.extend({
 		defTabOpts(s, 'general', tailscaleSettingsConf, { optional: false });
 
 		const relayPort = s.taboption('general', form.Value, 'relay_server_port', _('Peer Relay Port'),
-			_('UDP port for the Peer Relay service. Open this port on your router firewall/NAT.')
+			_('UDP port for the Peer Relay service (--peer-relay-port). Open this port on your router firewall/NAT.')
 		);
 		relayPort.datatype = 'port';
 		relayPort.placeholder = '40000';
 		relayPort.rmempty = false;
 		relayPort.depends('enable_relay', '1');
 
-		const en = s.taboption('general', form.ListValue, 'exit_node', _('Exit Node'), _('Select an exit node from the list. If enabled, Allow LAN Access is enabled implicitly.'));
+		const en = s.taboption('general', form.ListValue, 'exit_node', _('Exit Node'), _('Select an exit node from the list (--exit-node). If enabled, Allow LAN Access is enabled implicitly.'));
 		en.value('', _('None'));
 		if (status.peers) {
 			Object.values(status.peers).forEach(function(peer) {
@@ -550,7 +550,7 @@ return view.extend({
 		};
 
 		const o = s.taboption('general', form.DynamicList, 'advertise_routes', _('Advertise Subnet Routes'),
-			_('Announce subnet routes behind this device. Select from the detected subnets below or enter custom routes (comma-separated).')
+			_('Announce subnet routes behind this device (--advertise-routes). Select from the detected subnets below or enter custom routes (comma-separated).')
 		);
 		if (subroutes.length > 0) {
 			subroutes.forEach(function(subnet) {
@@ -566,14 +566,14 @@ return view.extend({
 
 		const customLoginUrl = s.taboption('general', form.Value, 'custom_login_url',
 			_('Custom Control Server'),
-			_('Optional: Specify a custom control server URL (e.g., a Headscale instance). Leave blank for default Tailscale control plane.')
+			_('Optional: Specify a custom control server URL (e.g., a Headscale instance, --login-server). Leave blank for default Tailscale control plane.')
 		);
 		customLoginUrl.placeholder = '';
 		customLoginUrl.rmempty = true;
 
 		const customLoginAuthKey = s.taboption('general', form.Value, 'custom_login_AuthKey',
 			_('Custom Server Auth Key'),
-			_('Optional: Specify an authentication key for the custom control server. Leave blank if not required.')
+			_('Optional: Specify an authentication key for the custom control server (--auth-key). Leave blank if not required.')
 		);
 		customLoginAuthKey.placeholder = '';
 		customLoginAuthKey.rmempty = true;

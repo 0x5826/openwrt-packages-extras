@@ -506,37 +506,47 @@ msgstr "此操作將中斷本裝置與 Tailnet 的連線，下次使用需重新
 msgid "Could not open a new tab. Please check if your browser or an extension blocked the pop-up."
 msgstr "無法開啟新分頁，請檢查瀏覽器是否封鎖了彈出式視窗。"
 
-#~ msgid ""
-#~ "Completely disable all Tailscale firewall auto-configuration, including "
-#~ "zone creation, forwarding rules, and netfilter settings."
-#~ msgstr ""
-#~ "完全停用所有 Tailscale 防火牆自動配置，包括區域建立、轉發規則和 netfilter "
-#~ "設定。"
+msgid "Enable or disable the Tailscale background service (/etc/init.d/tailscale)."
+msgstr "啟用或停用 Tailscale 背景守護程序 (/etc/init.d/tailscale)。"
 
-#~ msgid ""
-#~ "Optional: Specify a custom control server URL (e.g., a Headscale "
-#~ "instance, https://example.com)."
-#~ msgstr ""
-#~ "可選：指定一個自定義控制伺服器 URL (例如，一個 Headscale 例項，https://"
-#~ "example.com)。"
+msgid "Expose a local web interface on port 5252 for managing this node over Tailscale (--webclient)."
+msgstr "在本地 5252 連接埠啟用用於管理此節點的 Tailscale 網頁控制台 (--webclient)。"
 
-#~ msgid "Applying changes..."
-#~ msgstr "正在應用更改..."
+msgid "Select the firewall backend for Tailscale (TS_DEBUG_FIREWALL_MODE=auto/nftables/iptables). Requires service restart to take effect."
+msgstr "選擇 Tailscale 使用的底層防火牆驅動 (TS_DEBUG_FIREWALL_MODE=auto/nftables/iptables)。需要重啟服務以生效。"
 
-#~ msgid "Error applying settings: %s"
-#~ msgstr "應用設定時出錯: %s"
+msgid "Allow accepting subnet routes announced by other nodes (--accept-routes)."
+msgstr "允許接受由 Tailnet 中其他節點通告的子網路由 (--accept-routes)。"
 
-#~ msgid "Error saving settings: %s"
-#~ msgstr "儲存設定時出錯: %s"
+msgid "Declare this device as an exit node, allowing other nodes to route all traffic through it (--advertise-exit-node)."
+msgstr "將此裝置宣告為出口節點，允許其他節點透過本裝置轉發所有流量 (--advertise-exit-node)。"
 
-#~ msgid "Failed to save settings: %s"
-#~ msgstr "儲存設定失敗: %s"
+msgid "When using or advertising the exit node, allow access to the local LAN (--exit-node-allow-lan-access)."
+msgstr "在使用或通告出口節點時，允許存取本地區域網路裝置 (--exit-node-allow-lan-access)。"
 
-#~ msgid "Network Devices"
-#~ msgstr "網路裝置"
+msgid "Allow connecting to this device through the native SSH function of Tailscale (--ssh)."
+msgstr "允許透過 Tailscale 的原生 SSH 功能安全連線到此裝置 (--ssh)。"
 
-#~ msgid "Settings"
-#~ msgstr "設定"
+msgid "When enabled, blocks all inbound connections from the Tailscale network (--shields-up)."
+msgstr "啟用後，封鎖來自 Tailnet 網路的所有主動入站連線 (--shields-up)。"
 
-#~ msgid "Tailscale settings applied successfully."
-#~ msgstr "Tailscale 設定已成功應用。"
+msgid "Controls how Tailscale DNS is handled (--accept-dns)."
+msgstr "控制 Tailscale MagicDNS 與本地 DNS 的處理方式 (--accept-dns)。"
+
+msgid "Enable this device as a Peer Relay server (--peer-relay). Requires a public IP and an UDP port open on the router."
+msgstr "啟用本裝置作為 Peer Relay 節點 (--peer-relay)。需要公網 IP 並開放路由器的 UDP 連接埠。"
+
+msgid "UDP port for the Peer Relay service (--peer-relay-port). Open this port on your router firewall/NAT."
+msgstr "Peer Relay 服務的 UDP 監聽連接埠 (--peer-relay-port)。請在路由器防火牆或 NAT 中放行該連接埠。"
+
+msgid "Select an exit node from the list (--exit-node). If enabled, Allow LAN Access is enabled implicitly."
+msgstr "從清單中選擇要連線的出口節點 (--exit-node)。如果啟用，將隱式允許存取本地區域網路。"
+
+msgid "Announce subnet routes behind this device (--advertise-routes). Select from the detected subnets below or enter custom routes (comma-separated)."
+msgstr "向 Tailnet 通告本裝置後方的子網路由 (--advertise-routes)。從下方偵測到的子網中選擇或手動輸入自訂路由（逗號分隔）。"
+
+msgid "Optional: Specify a custom control server URL (e.g., a Headscale instance, --login-server). Leave blank for default Tailscale control plane."
+msgstr "可選：指定自訂控制伺服器位址（例如 Headscale 實例，--login-server）。留空則使用 Tailscale 官方伺服器。"
+
+msgid "Optional: Specify an authentication key for the custom control server (--auth-key). Leave blank if not required."
+msgstr "可選：指定自訂控制伺服器的預認證密鑰（--auth-key）。留空則無需認證密鑰。"

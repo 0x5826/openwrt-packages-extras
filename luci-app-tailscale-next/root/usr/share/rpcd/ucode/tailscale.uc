@@ -68,6 +68,14 @@ methods.get_status = {
 			return data;
 		}
 
+		let ver_res = exec('tailscale version 2>/dev/null');
+		if (ver_res.code == 0 && length(ver_res.stdout) > 0) {
+			let ver_line = trim(ver_res.stdout[0]);
+			if (ver_line != '') {
+				data.version = ver_line;
+			}
+		}
+
 		let status_out = exec('tailscale status --json 2>/dev/null');
 		let peer_map = {};
 
