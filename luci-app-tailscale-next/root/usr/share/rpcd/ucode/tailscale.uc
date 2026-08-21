@@ -2,7 +2,7 @@
 
 'use strict';
 
-import { access, popen, readfile, writefile, unlink } from 'fs';
+import { access, popen, readfile, writefile, unlink, stat } from 'fs';
 import { cursor } from 'uci';
 
 const uci = cursor();
@@ -168,6 +168,14 @@ methods.get_status = {
 					};
 				}
 			} catch (e) { /* ignore */ }
+		} else {
+			uci.load('tailscale');
+			let state_file_path = uci.get('tailscale', 'settings', 'state_file') || "/etc/tailscale/tailscaled.state";
+			if (access(state_file_path) && stat(state_file_path)?.size > 0) {
+				data.status = 'stopped';
+			} else {
+				data.status = 'logout';
+			}
 		}
 
 		data.peers = peer_map;
@@ -302,8 +310,9 @@ methods.do_logout = {
 				let res = exec('tailscale logout 2>/dev/null');
 				if (res.code == 0) break;
 			}
-			exec('/etc/init.d/tailscale stop >/dev/null 2>&1');
 		}
+
+		exec('/etc/init.d/tailscale stop >/dev/null 2>&1');
 
 		if (access(state_file_path)) {
 			unlink(state_file_path);
