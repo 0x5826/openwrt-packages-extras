@@ -503,7 +503,7 @@ return view.extend({
 							devicesView.replaceChildren(renderDevices(res));
 						}
 					});
-				}, 10);
+				}, 5);
 
 			return E('div', {}, [
 				E('hr', { 'style': 'margin: 5px 0 15px 0; border: 0; border-top: 1px solid #e5e5e5;' }),
@@ -587,6 +587,25 @@ return view.extend({
 
 		// Tab 2: Devices List
 		s.tab('devices', _('Devices List'));
+
+		const refreshDevicesBtn = s.taboption('devices', form.Button, '_refresh_devices', _('Refresh'));
+		refreshDevicesBtn.inputstyle = 'action';
+		refreshDevicesBtn.onclick = function() {
+			const display = document.getElementById('tailscale_devices_display');
+			if (display) {
+				display.replaceChildren(E('em', {}, _('Collecting data ...')));
+			}
+			return getRunningStatus().then(function(res) {
+				if (display) {
+					display.replaceChildren(renderDevices(res));
+				}
+			}).catch(function(err) {
+				if (display) {
+					display.replaceChildren(E('em', {}, _('Failed to load devices: %s').format(err.message || _('Unknown error'))));
+				}
+			});
+		};
+
 		const devicesSection = s.taboption('devices', form.DummyValue, '_devices');
 		devicesSection.render = function () {
 			return E('div', { 'id': 'tailscale_devices_display', 'class': 'cbi-value' }, renderDevices(status));
