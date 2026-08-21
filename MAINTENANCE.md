@@ -9,7 +9,6 @@
 | 包名 | 上游项目名称 | 源码托管地址 |
 | :--- | :--- | :--- |
 | `cloudflared-next` | cloudflared | `cloudflare/cloudflared` |
-| `netbird-next` | netbird | `netbirdio/netbird` |
 | `frpc-next` | frp | `fatedier/frp` |
 | `shadowsocks-rust-next` | shadowsocks-rust | `shadowsocks/shadowsocks-rust` |
 
@@ -45,16 +44,7 @@ curl -sL "https://codeload.github.com/cloudflare/cloudflared/tar.gz/2026.7.2" | 
 
 ---
 
-## 3. 上游配置项与参数变动检查规范
-
-对于 `netbird-next` 等直接控制底层路由和防火墙的特殊软件包，虽然已在启动脚本中做好了防冲突处理，但后续升级版本时的核心维护任务之一是**检查上游官方配置项及参数的变动**：
-
-1. **环境变量与启动参数审查**：在升级版本时，需同步阅读上游的 Release Notes 或相关源码，检查上游关于网络接口接管、路由表注入（如 `NB_DISABLE_CUSTOM_ROUTING` 等）和防火墙屏蔽的控制标志是否发生更新、更名或废弃。
-2. **防冲突配置同步**：确保本地 init 启动脚本（`files/netbird.init`）中传递的防冲突环境变量和参数与上游最新版本的规范一致，防止新版本因配置项重构导致防冲突优化失效。
-
----
-
-## 4. 提交与推送规范
+## 3. 提交与推送规范
 
 1. **Commit 格式**：
    符合历史 Commit 风格：`[<包名>] 更新版本至 <版本号>`

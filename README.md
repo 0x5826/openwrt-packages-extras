@@ -1,6 +1,6 @@
 # OpenWrt Packages Extras
 
-这是一个集成了 Cloudflared, frp, Netbird, FlowProxy, 和 Lucky 等增强工具的 OpenWrt 软件包仓库（Feed）。本项目侧重于提供最新版本（Next 系列）的客户端及其配套的 LuCI 界面，并支持自动化版本更新。
+这是一个集成了 Cloudflared, frp, FlowProxy, 和 Lucky 等增强工具的 OpenWrt 软件包仓库（Feed）。本项目侧重于提供最新版本（Next 系列）的客户端及其配套的 LuCI 界面，并支持自动化版本更新。
 
 ## 🚀 快速开始
 
@@ -32,23 +32,17 @@ src-git dante_extras https://git.seckv.com/dante/openwrt-packages-extras.git
 - **luci-app-frpc-next**: 全新的 LuCI 界面，支持高级配置与 Admin API 热重载。
 - **稳健性**: `init` 脚本经过优化，具备完善的配置校验、特殊字符转义及容错处理。
 
-### 3. Netbird Next
-基于 WireGuard 的零信任网络连接平台。
-- **netbird-next**: 包含 `netbird` 客户端。
-- **luci-app-netbird-next**: 对应的 LuCI 管理界面。
-- **更新脚本**: 支持通过 `./update.sh` 一键同步官方最新版本。
-
-### 4. FlowProxy
+### 3. FlowProxy
 基于 `nftables` 的高性能流量分流应用，专为实现精准的旁路由引流/透明代理而设计。
 - **最新架构**: 全面适配 `nftables (inet family)`，完美兼容 OpenWrt 23.05+ 执行环境。
 - **核心功能**: 实时状态监控、双栈兼容规则引擎、DNS 强制上游。
 
-### 5. Lucky
+### 4. Lucky
 功能强大的网络工具，支持多种端口管理与动态服务。
 - **核心功能**: IPv4/IPv6 端口转发、DDNS (动态域名)、HTTP/HTTPS 反向代理、WOL (网络唤醒)。
 - **默认信息**: 管理端口 `16601`，初始账号密码 `666`。
 
-### 6. 其他组件
+### 5. 其他组件
 - **Shadowsocks-rust Next**: 提供高性能的加密代理支持，增加 `-next` 后缀以避免冲突。
 - **luci-app-ap-switch**: AP 模式切换辅助工具。
 - **luci-app-ssserver-next**: Shadowsocks 服务端管理界面。
@@ -68,6 +62,5 @@ src-git dante_extras https://git.seckv.com/dante/openwrt-packages-extras.git
 
 - **Cloudflared**: [cloudflare/cloudflared](https://github.com/cloudflare/cloudflared)
 - **frp**: [fatedier/frp](https://github.com/fatedier/frp)
-- **Netbird**: [netbirdio/netbird](https://github.com/netbirdio/netbird)
 - **FlowProxy**: Apache License 2.0
 - **Lucky**: [gdy666/lucky](https://github.com/gdy666/lucky)
