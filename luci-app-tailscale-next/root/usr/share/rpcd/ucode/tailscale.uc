@@ -33,17 +33,33 @@ function shell_quote(s) {
 }
 
 function get_connectivity_data() {
-	let ts_cmd = 'tailscale';
-	if (access('/usr/sbin/tailscale')) ts_cmd = '/usr/sbin/tailscale';
-	else if (access('/usr/bin/tailscale')) ts_cmd = '/usr/bin/tailscale';
+	let ts_cmd = access('/usr/sbin/tailscale') ? '/usr/sbin/tailscale' : '/usr/bin/tailscale';
+	if (!access(ts_cmd)) return null;
 
-	let res = exec('if [ ! -f /tmp/tailscale_netcheck.json ] || [ $(($(date +%s) - $(date -r /tmp/tailscale_netcheck.json +%s 2>/dev/null || stat -c %Y /tmp/tailscale_netcheck.json 2>/dev/null || echo 0))) -gt 60 ]; then ' + ts_cmd + ' netcheck --format=json > /tmp/tailscale_netcheck.tmp 2>/dev/null && mv /tmp/tailscale_netcheck.tmp /tmp/tailscale_netcheck.json; fi; cat /tmp/tailscale_netcheck.json 2>/dev/null');
-	if (res.code == 0 && length(res.stdout) > 0) {
+	const cache_file = '/tmp/tailscale_netcheck.json';
+	const lock_file = '/tmp/tailscale_netcheck.lock';
+
+	let cached_data = null;
+	if (access(cache_file)) {
 		try {
-			return json(join('', res.stdout));
+			let content = readfile(cache_file);
+			if (content != null && content != '') {
+				cached_data = json(content);
+			}
 		} catch(e) { /* ignore */ }
 	}
-	return null;
+
+	let cache_st = access(cache_file) ? stat(cache_file) : null;
+	let now = time();
+	if (!cache_st || (now - cache_st.mtime) > 60) {
+		let lock_st = access(lock_file) ? stat(lock_file) : null;
+		if (!lock_st || (now - lock_st.mtime) > 30) {
+			writefile(lock_file, '' + now);
+			system('(' + ts_cmd + ' netcheck --format=json > /tmp/tailscale_netcheck.tmp 2>/dev/null && mv /tmp/tailscale_netcheck.tmp /tmp/tailscale_netcheck.json; rm -f ' + lock_file + ') >/dev/null 2>&1 &');
+		}
+	}
+
+	return cached_data;
 }
 
 function get_cached_version() {

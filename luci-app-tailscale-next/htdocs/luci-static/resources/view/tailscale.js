@@ -33,9 +33,6 @@ const daemonConf = [
 	[form.Flag, 'daemon_reduce_memory', _('(Experimental) Reduce Memory Usage'), _('Enabling this option can reduce memory usage, but it may sacrifice some performance (set GOGC=10).'), { rmempty: false }]
 ];
 
-const derpMapUrl = 'https://controlplane.tailscale.com/derpmap/default';
-let regionCodeMap = {};
-
 // this function copy from luci-app-frpc. thx
 function setParams(o, params) {
 	if (!params) return;
@@ -101,56 +98,35 @@ function formatLastSeen(d) {
 	return t.toISOString().slice(0, 10);
 }
 
-async function initializeRegionMap() {
-	const cacheKey = 'tailscale_derp_map_cache';
-	const ttl = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-
-	try {
-		const cachedItem = localStorage.getItem(cacheKey);
-		if (cachedItem) {
-			const cached = JSON.parse(cachedItem);
-			// Check if the cached data is still valid (not expired)
-			if (Date.now() - cached.timestamp < ttl) {
-				regionCodeMap = cached.data;
-				return;
-			}
-		}
-	} catch (e) {
-		ui.addTimeLimitedNotification(null, [ E('p', _('Error reading cached DERP region map: %s').format(e.message || _('Unknown error'))) ], 7000, 'error');
-	}
-
-	// If no valid cache, fetch from the network
-	try {
-		const response = await fetch(derpMapUrl);
-		if (!response.ok) {
-			return;
-		}
-		const data = await response.json();
-		const newRegionMap = {};
-		for (const regionId in data.Regions) {
-			const region = data.Regions[regionId];
-			const code = (region.RegionCode || '').toLowerCase();
-			const name = region.RegionName || region.RegionCode || `Region ${regionId}`;
-			if (code) newRegionMap[code] = name;
-			newRegionMap[regionId] = name;
-			if (region.RegionID) newRegionMap[region.RegionID] = name;
-		}
-		regionCodeMap = newRegionMap;
-
-		// Save the newly fetched data to the cache
-		try {
-			const itemToCache = {
-				timestamp: Date.now(),
-				data: regionCodeMap
-			};
-			localStorage.setItem(cacheKey, JSON.stringify(itemToCache));
-		} catch (e) {
-			ui.addTimeLimitedNotification(null, [ E('p', _('Error caching DERP region map: %s').format(e.message || _('Unknown error'))) ], 7000, 'error');
-		}
-	} catch (error) {
-		ui.addTimeLimitedNotification(null, [ E('p', _('Error fetching DERP region map: %s').format(error.message || _('Unknown error'))) ], 7000, 'error');
-	}
-}
+const defaultDerpRegions = {
+	"1": "NYC", "nyc": "NYC",
+	"2": "SFO", "sfo": "SFO",
+	"3": "SIN", "sin": "SIN",
+	"4": "FRA", "fra": "FRA",
+	"5": "SYD", "syd": "SYD",
+	"6": "BLR", "blr": "BLR",
+	"7": "NRT", "nrt": "NRT",
+	"8": "LHR", "lhr": "LHR",
+	"9": "DFW", "dfw": "DFW",
+	"10": "SEA", "sea": "SEA",
+	"11": "MIA", "mia": "MIA",
+	"12": "ORD", "ord": "ORD",
+	"13": "MAD", "mad": "MAD",
+	"14": "AMS", "ams": "AMS",
+	"15": "WAW", "waw": "WAW",
+	"16": "YUL", "yul": "YUL",
+	"17": "LAX", "lax": "LAX",
+	"18": "SCL", "scl": "SCL",
+	"19": "DXB", "dxb": "DXB",
+	"20": "DEN", "den": "DEN",
+	"21": "JNB", "jnb": "JNB",
+	"22": "GRU", "gru": "GRU",
+	"23": "DUB", "dub": "DUB",
+	"24": "MAN", "man": "MAN",
+	"25": "HND", "hnd": "HND",
+	"26": "YYZ", "yyz": "YYZ"
+};
+let regionCodeMap = Object.assign({}, defaultDerpRegions);
 
 function getRegionName(idOrCode) {
 	if (!idOrCode) return '';
@@ -240,10 +216,6 @@ function renderStatus(status) {
 	// If status object is not yet available, show a loading message.
 	if (!status || !status.hasOwnProperty('status')) {
 		return E('em', {}, _('Collecting data ...'));
-	}
-
-	if (Object.keys(regionCodeMap).length === 0) {
-		initializeRegionMap();
 	}
 
 	const customServerUrl = uci.get('tailscale', 'settings', 'custom_login_url');
@@ -372,10 +344,6 @@ function renderDevices(status) {
 
 	if (status.status !== 'running') {
 		return E('em', {}, _('Tailscale is not running.'));
-	}
-
-	if (Object.keys(regionCodeMap).length === 0) {
-		initializeRegionMap();
 	}
 
 	const peers = status.peers;
