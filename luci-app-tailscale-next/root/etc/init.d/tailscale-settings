@@ -434,7 +434,9 @@ handle_service_state() {
 	else
 		logger -t "$NAME" "Service is enabled, ensuring tailscale is running"
 		/etc/init.d/tailscale enable 2>/dev/null
-		/etc/init.d/tailscale start 2>/dev/null
+		if ! /usr/sbin/tailscale status >/dev/null 2>&1 && ! /usr/bin/tailscale status >/dev/null 2>&1; then
+			/etc/init.d/tailscale start 2>/dev/null
+		fi
 		apply_settings
 	fi
 }
