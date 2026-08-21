@@ -553,3 +553,15 @@ msgid ""
 "and enables Masquerading and MSS Clamping (MTU fix) to ensure stable "
 "connections."
 msgstr ""
+
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:274
+msgid "Client Connectivity"
+msgstr ""
+
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:277
+msgid "Nearest Relay"
+msgstr ""
+
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:280
+msgid "Public Endpoints"
+msgstr ""

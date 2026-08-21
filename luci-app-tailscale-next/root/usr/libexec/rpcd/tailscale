@@ -41,6 +41,17 @@ local function b64decode(str)
 	return nixio.bin.b64decode(str)
 end
 
+local function get_connectivity_data()
+	local res = exec_cmd('if [ ! -f /tmp/tailscale_netcheck.json ] || [ $(($(date +%s) - $(date -r /tmp/tailscale_netcheck.json +%s 2>/dev/null || stat -c %Y /tmp/tailscale_netcheck.json 2>/dev/null || echo 0))) -gt 60 ]; then tailscale netcheck --format=json > /tmp/tailscale_netcheck.tmp 2>/dev/null && mv /tmp/tailscale_netcheck.tmp /tmp/tailscale_netcheck.json; fi; cat /tmp/tailscale_netcheck.json 2>/dev/null')
+	if res.raw and #res.raw > 0 then
+		local parsed = json.parse(res.raw)
+		if type(parsed) == "table" then
+			return parsed
+		end
+	end
+	return nil
+end
+
 local methods = {}
 
 methods.get_status = {
@@ -53,7 +64,8 @@ methods.get_status = {
 			ipv4 = "Not running",
 			ipv6 = json.null,
 			domain_name = '',
-			peers = {}
+			peers = {},
+			connectivity = json.null
 		}
 
 		if not fs.access('/usr/sbin/tailscale') and not fs.access('/usr/bin/tailscale') then
@@ -111,6 +123,39 @@ methods.get_status = {
 							}
 						end
 					end
+				end
+
+				if data.status == 'running' then
+					local netcheck = get_connectivity_data()
+					local derp_lat_str = ''
+					local pref_derp = (netcheck and netcheck.PreferredDERP) or 0
+					if pref_derp > 0 and netcheck and netcheck.DERPLatencies then
+						local lat = netcheck.DERPLatencies[tostring(pref_derp)]
+						if lat then
+							derp_lat_str = string.format("%d ms", math.floor(lat * 1000))
+						end
+					end
+
+					local ep_list = {}
+					if status_data.Self and status_data.Self.Endpoints and #status_data.Self.Endpoints > 0 then
+						ep_list = status_data.Self.Endpoints
+					elseif netcheck and netcheck.GlobalAddrs and #netcheck.GlobalAddrs > 0 then
+						ep_list = netcheck.GlobalAddrs
+					end
+
+					data.connectivity = {
+						varies = (netcheck and netcheck.MappingVariesByDestIP == true) and 'Yes' or 'No',
+						ipv4 = (netcheck and netcheck.IPv4 == true) and 'Yes' or 'No',
+						ipv6 = (netcheck and netcheck.IPv6 == true) and 'Yes' or 'No',
+						udp = (netcheck and netcheck.UDP == true) and 'Yes' or 'No',
+						upnp = (netcheck and netcheck.UPnP == true) and 'Yes' or 'No',
+						pcp = (netcheck and netcheck.PCP == true) and 'Yes' or 'No',
+						pmp = (netcheck and netcheck.PMP == true) and 'Yes' or 'No',
+						hairpinning = (netcheck and netcheck.HairPinning == true) and 'Yes' or 'No',
+						preferred_derp = pref_derp,
+						derp_latency = derp_lat_str,
+						endpoints = ep_list
+					}
 				end
 			end
 		end
