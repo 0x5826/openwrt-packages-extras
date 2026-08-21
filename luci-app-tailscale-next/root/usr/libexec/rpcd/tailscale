@@ -252,8 +252,18 @@ methods.do_login = {
 		local loginargs = {}
 
 		local status = methods.get_status.call()
-		if status.status ~= 'logout' then
+		if status.status == 'running' then
 			return { error = 'Tailscale is already logged in and running.' }
+		end
+
+		local status_test = exec_cmd('tailscale status 2>&1')
+		if status_test.code ~= 0 then
+			exec_cmd('/etc/init.d/tailscale start >/dev/null 2>&1')
+			for _ = 1, 3 do
+				nixio.nanosleep(1, 0)
+				local res = exec_cmd('tailscale status 2>&1')
+				if res.code == 0 then break end
+			end
 		end
 
 		local loginserver = trim(form_data.loginserver or '')
