@@ -561,6 +561,18 @@ msgid ""
 "connections."
 msgstr "並啟用地址偽裝和 MSS鉗制確保連線穩定。"
 
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:274
+msgid "Client Connectivity"
+msgstr "用戶端連通性"
+
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:277
+msgid "Nearest Relay"
+msgstr "最近中繼節點"
+
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:280
+msgid "Public Endpoints"
+msgstr "公網打洞端點"
+
 #~ msgid ""
 #~ "Completely disable all Tailscale firewall auto-configuration, including "
 #~ "zone creation, forwarding rules, and netfilter settings."

@@ -136,7 +136,9 @@ async function initializeRegionMap() {
 			const region = data.Regions[regionId];
 			const code = (region.RegionCode || '').toLowerCase();
 			const name = region.RegionName || region.RegionCode || `Region ${regionId}`;
-			newRegionMap[code] = name;
+			if (code) newRegionMap[code] = name;
+			newRegionMap[regionId] = name;
+			if (region.RegionID) newRegionMap[region.RegionID] = name;
 		}
 		regionCodeMap = newRegionMap;
 
@@ -153,6 +155,11 @@ async function initializeRegionMap() {
 	} catch (error) {
 		ui.addTimeLimitedNotification(null, [ E('p', _('Error fetching DERP region map: %s').format(error.message || _('Unknown error'))) ], 7000, 'error');
 	}
+}
+
+function getRegionName(idOrCode) {
+	if (!idOrCode) return '';
+	return regionCodeMap[idOrCode] || regionCodeMap[String(idOrCode).toLowerCase()] || '';
 }
 
 function formatConnectionInfo(info) {
@@ -239,7 +246,53 @@ function renderStatus(status) {
 		E('tr', {}, statusData.map(item => E('td', { 'style': 'padding-right: 20px;' }, item.value)))
 	]);
 
-	return statusTable;
+	let connSection = null;
+	if (status.connectivity) {
+		const conn = status.connectivity;
+		const badges = [
+			{ name: 'Varies', val: conn.varies, ok: (conn.varies === 'No') },
+			{ name: 'IPv4', val: conn.ipv4, ok: (conn.ipv4 === 'Yes') },
+			{ name: 'IPv6', val: conn.ipv6, ok: (conn.ipv6 === 'Yes') },
+			{ name: 'UDP', val: conn.udp, ok: (conn.udp === 'Yes') },
+			{ name: 'UPnP', val: conn.upnp, ok: (conn.upnp === 'Yes') },
+			{ name: 'PCP', val: conn.pcp, ok: (conn.pcp === 'Yes') },
+			{ name: 'NAT-PMP', val: conn.pmp, ok: (conn.pmp === 'Yes') },
+			{ name: 'Hairpinning', val: conn.hairpinning, ok: (conn.hairpinning === 'Yes') }
+		];
+
+		const badgeElements = badges.map(b => {
+			const color = b.ok ? '#28a745' : '#6c757d';
+			return E('span', {
+				'style': 'display: inline-block; margin-right: 8px; margin-bottom: 6px; padding: 2px 8px; border-radius: 3px; font-size: 12px; font-weight: bold; background: #e9ecef; color: ' + color + '; border: 1px solid #ced4da;'
+			}, `${b.name}: ${b.val || 'No'}`);
+		});
+
+		let nearestDerpText = '-';
+		if (conn.preferred_derp) {
+			const regionName = getRegionName(conn.preferred_derp) || `DERP-${conn.preferred_derp}`;
+			nearestDerpText = regionName + (conn.derp_latency ? ` (${conn.derp_latency})` : '');
+		}
+
+		let endpointsText = (conn.endpoints && conn.endpoints.length > 0) ? conn.endpoints.join(', ') : '-';
+
+		connSection = E('div', { 'style': 'margin-top: 12px; padding-top: 10px; border-top: 1px dashed #ccc;' }, [
+			E('div', { 'style': 'font-weight: bold; margin-bottom: 8px; font-size: 14px;' }, [
+				E('span', { 'style': 'margin-right: 5px;' }, '🌐'),
+				_('Client Connectivity')
+			]),
+			E('div', { 'style': 'margin-bottom: 8px; font-size: 13px;' }, [
+				E('strong', {}, _('Nearest Relay') + ': '),
+				E('span', { 'style': 'color: #007bff; font-weight: bold;' }, nearestDerpText),
+				E('span', { 'style': 'margin-left: 20px;' }, [
+					E('strong', {}, _('Public Endpoints') + ': '),
+					E('span', {}, endpointsText)
+				])
+			]),
+			E('div', { 'style': 'margin-top: 4px;' }, badgeElements)
+		]);
+	}
+
+	return E('div', {}, [statusTable, connSection].filter(Boolean));
 }
 
 function renderLogs(logs_data) {

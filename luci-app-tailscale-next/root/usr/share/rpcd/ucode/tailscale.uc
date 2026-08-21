@@ -33,6 +33,16 @@ function shell_quote(s) {
 	return "'" + replace(s, "'", "'\\''") + "'";
 }
 
+function get_connectivity_data() {
+	let res = exec('if [ ! -f /tmp/tailscale_netcheck.json ] || [ $(($(date +%s) - $(date -r /tmp/tailscale_netcheck.json +%s 2>/dev/null || stat -c %Y /tmp/tailscale_netcheck.json 2>/dev/null || echo 0))) -gt 60 ]; then tailscale netcheck --format=json > /tmp/tailscale_netcheck.tmp 2>/dev/null && mv /tmp/tailscale_netcheck.tmp /tmp/tailscale_netcheck.json; fi; cat /tmp/tailscale_netcheck.json 2>/dev/null');
+	if (res.code == 0 && length(res.stdout) > 0) {
+		try {
+			return json(join('', res.stdout));
+		} catch(e) { /* ignore */ }
+	}
+	return null;
+}
+
 const methods = {};
 
 methods.get_status = {
@@ -45,7 +55,8 @@ methods.get_status = {
 			ipv4: "Not running",
 			ipv6: null,
 			domain_name: '',
-			peers: []
+			peers: [],
+			connectivity: null
 		};
 		if (access('/usr/sbin/tailscale')==true || access('/usr/bin/tailscale')==true){ }else{
 			data.status = 'not_installed';
@@ -81,6 +92,39 @@ methods.get_status = {
 						exit_node_option: !!p?.ExitNodeOption,
 						tx: p?.TxBytes || '',
 						rx: p?.RxBytes || ''
+					};
+				}
+
+				if (data.status == 'running') {
+					let netcheck = get_connectivity_data();
+					let derp_lat_str = '';
+					let pref_derp = netcheck?.PreferredDERP || 0;
+					if (pref_derp > 0 && netcheck?.DERPLatencies) {
+						let lat = netcheck.DERPLatencies[sprintf('%d', pref_derp)];
+						if (lat != null) {
+							derp_lat_str = sprintf('%d ms', int(lat * 1000));
+						}
+					}
+
+					let ep_list = [];
+					if (status_data?.Self?.Endpoints && length(status_data.Self.Endpoints) > 0) {
+						ep_list = status_data.Self.Endpoints;
+					} else if (netcheck?.GlobalAddrs && length(netcheck.GlobalAddrs) > 0) {
+						ep_list = netcheck.GlobalAddrs;
+					}
+
+					data.connectivity = {
+						varies: (netcheck?.MappingVariesByDestIP == true) ? 'Yes' : 'No',
+						ipv4: (netcheck?.IPv4 == true) ? 'Yes' : 'No',
+						ipv6: (netcheck?.IPv6 == true) ? 'Yes' : 'No',
+						udp: (netcheck?.UDP == true) ? 'Yes' : 'No',
+						upnp: (netcheck?.UPnP == true) ? 'Yes' : 'No',
+						pcp: (netcheck?.PCP == true) ? 'Yes' : 'No',
+						pmp: (netcheck?.PMP == true) ? 'Yes' : 'No',
+						hairpinning: (netcheck?.HairPinning == true) ? 'Yes' : 'No',
+						preferred_derp: pref_derp,
+						derp_latency: derp_lat_str,
+						endpoints: ep_list
 					};
 				}
 			} catch (e) { /* ignore */ }
