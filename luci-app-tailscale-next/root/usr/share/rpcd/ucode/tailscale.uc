@@ -222,29 +222,39 @@ methods.do_login = {
 	args: { form_data: {} },
 	call: function(request) {
 		const form_data = request.args.form_data;
-		let loginargs = [];
 		if (form_data == null || length(form_data) == 0) {
 			return { error: 'Missing or invalid form_data parameter. Please provide login data.' };
 		}
 
-		let status=methods.get_status.call();
-		if (status.status != 'logout') {
+		let status = methods.get_status.call();
+		if (status.status == 'running') {
 			return { error: 'Tailscale is already logged in and running.' };
 		}
 
+		let status_test = exec('tailscale status >/dev/null 2>&1');
+		if (status_test.code != 0) {
+			exec('/etc/init.d/tailscale start >/dev/null 2>&1');
+			for (let i = 0; i < 3; i++) {
+				sleep(1000);
+				let res = exec('tailscale status >/dev/null 2>&1');
+				if (res.code == 0) break;
+			}
+		}
+
 		// --- 1. Prepare and Run Login Command (Once) ---
+		let loginargs = [];
 		const loginserver = trim(form_data.loginserver) || '';
 		const loginserver_authkey = trim(form_data.loginserver_authkey) || '';
 
-		if (loginserver!='') {
-			push(loginargs,'--login-server '+shell_quote(loginserver));
-			if (loginserver_authkey!='') {
-				push(loginargs,'--auth-key '+shell_quote(loginserver_authkey));
+		if (loginserver != '') {
+			push(loginargs, '--login-server ' + shell_quote(loginserver));
+			if (loginserver_authkey != '') {
+				push(loginargs, '--auth-key ' + shell_quote(loginserver_authkey));
 			}
 		}
 
 		// Run the command in the background using /bin/sh -c to handle the '&' correctly
-		let login_cmd = 'tailscale login '+join(' ', loginargs);
+		let login_cmd = 'tailscale login ' + join(' ', loginargs);
 		popen('/bin/sh -c ' + shell_quote(login_cmd + ' &'), 'r');
 
 		// --- 2. Loop to Check Status for URL ---
@@ -252,7 +262,7 @@ methods.do_login = {
 		let interval = 2000;
 
 		for (let i = 0; i < max_attempts; i++) {
-			let tresult = exec('tailscale status');
+			let tresult = exec('tailscale status 2>&1');
 			for (let line in tresult.stdout) {
 				let trline = trim(line);
 				if (index(trline, 'http') != -1) {
