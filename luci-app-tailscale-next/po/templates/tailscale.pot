@@ -587,3 +587,39 @@ msgid ""
 "Optional: Specify a custom control server URL (e.g., a Headscale instance). "
 "Leave blank for default Tailscale control plane."
 msgstr ""
+
+msgid "Control Server"
+msgstr ""
+
+msgid "Official Server (Tailscale SaaS)"
+msgstr ""
+
+msgid "Custom Server (%s)"
+msgstr ""
+
+msgid "Disable Subnet SNAT"
+msgstr ""
+
+msgid "Disable Source NAT (SNAT) for traffic to advertised routes (--snat-subnet-routes=false). Recommended when OpenWrt is the default gateway to preserve client IPs."
+msgstr ""
+
+msgid "Custom Control Server"
+msgstr ""
+
+msgid "Custom Server Auth Key"
+msgstr ""
+
+msgid "Optional: Specify an authentication key for the custom control server. Leave blank if not required."
+msgstr ""
+
+msgid "When using or advertising the exit node, allow access to the local LAN."
+msgstr ""
+
+msgid "Disable Firewall Auto Configuration"
+msgstr ""
+
+msgid "Not logged in. Please authenticate first."
+msgstr ""
+
+msgid "Service is not running."
+msgstr ""

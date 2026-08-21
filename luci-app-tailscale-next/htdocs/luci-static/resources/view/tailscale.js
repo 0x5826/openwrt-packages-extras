@@ -17,23 +17,19 @@ let map;
 
 const tailscaleSettingsConf = [
 	[form.Flag, 'service_enabled', _('Enable Tailscale Service'), _('Enable or disable the Tailscale service. When disabled, the service will be stopped and the process will be killed.'), { rmempty: false }],
-	[form.ListValue, 'fw_mode', _('Firewall Mode'), _('Select the firewall backend for Tailscale to use. Requires service restart to take effect.'), {values: ['nftables','iptables'],rmempty: false}],
+	[form.Flag, 'runwebclient', _('Enable Web Interface'), _('Expose a web interface on port 5252 for managing this node over Tailscale.'), { rmempty: false }],
+	[form.ListValue, 'fw_mode', _('Firewall Mode'), _('Select the firewall backend for Tailscale to use. Requires service restart to take effect.'), { values: ['nftables', 'iptables'], rmempty: false }],
+	[form.Flag, 'disable_fw_config', _('Disable Firewall Auto Configuration'), _('Disable Tailscale netfilter auto-configuration (--netfilter-mode=off).'), { rmempty: false }],
 	[form.Flag, 'accept_routes', _('Accept Routes'), _('Allow accepting routes announced by other nodes.'), { rmempty: false }],
 	[form.Flag, 'advertise_exit_node', _('Advertise Exit Node'), _('Declare this device as an Exit Node.'), { rmempty: false }],
-	[form.Flag, 'exit_node_allow_lan_access', _('Allow LAN Access'), _('When using the exit node, access to the local LAN is allowed.'), { rmempty: false }],
-	[form.Flag, 'runwebclient', _('Enable Web Interface'), _('Expose a web interface on port 5252 for managing this node over Tailscale.'), { rmempty: false }],
-	[form.Flag, 'nosnat', _('Disable SNAT'), _('Disable Source NAT (SNAT) for traffic to advertised routes. Most users should leave this unchecked.'), { rmempty: false }],
-	[form.Flag, 'shields_up', _('Shields Up'), _('When enabled, blocks all inbound connections from the Tailscale network.'), { rmempty: false }],
+	[form.Flag, 'exit_node_allow_lan_access', _('Allow LAN Access'), _('When using or advertising the exit node, allow access to the local LAN.'), { rmempty: false, depends: { 'advertise_exit_node': '1' } }],
 	[form.Flag, 'ssh', _('Enable Tailscale SSH'), _('Allow connecting to this device through the SSH function of Tailscale.'), { rmempty: false }],
-	[form.ListValue, 'dns_mode', _('DNS Mode'), _('Controls how Tailscale DNS is handled.')+'<br>'+_('Disabled: system DNS only.')+'<br>'+_('MagicDNS: Tailscale overrides resolv.conf.')+'<br>'+_('OpenWrt Forward: MagicDNS via dnsmasq forwarding.(Only support ts.net)'), { values: [['disabled', _('Disabled')], ['magicdns', 'MagicDNS'], ['openwrt_forward', _('OpenWrt Forward')]], rmempty: false }],
-	[form.Flag, 'disable_fw_config', _('Disable Firewall Configuration'), _('Disable Tailscale netfilter auto-configuration (--netfilter-mode=off).'), { rmempty: false }],
+	[form.Flag, 'shields_up', _('Shields Up'), _('When enabled, blocks all inbound connections from the Tailscale network.'), { rmempty: false }],
+	[form.ListValue, 'dns_mode', _('DNS Mode'), _('Controls how Tailscale DNS is handled.') + '<br>' + _('Disabled: system DNS only.') + '<br>' + _('MagicDNS: Tailscale overrides resolv.conf.') + '<br>' + _('OpenWrt Forward: MagicDNS via dnsmasq forwarding.(Only support ts.net)'), { values: [['disabled', _('Disabled')], ['magicdns', 'MagicDNS'], ['openwrt_forward', _('OpenWrt Forward')]], rmempty: false }],
 	[form.Flag, 'enable_relay', _('Enable Peer Relay'), _('Enable this device as a Peer Relay server. Requires a public IP and an UDP port open on the router.'), { rmempty: false }]
 ];
 
-const accountConf = [];	// dynamic created in render function
-
 const daemonConf = [
-	//[form.Value, 'daemon_mtu', _('Daemon MTU'), _('Set a custom MTU for the Tailscale daemon. Leave blank to use the default value.'), { datatype: 'uinteger', placeholder: '1280' }, { rmempty: false }],
 	[form.Flag, 'daemon_reduce_memory', _('(Experimental) Reduce Memory Usage'), _('Enabling this option can reduce memory usage, but it may sacrifice some performance (set GOGC=10).'), { rmempty: false }]
 ];
 
@@ -170,6 +166,75 @@ function formatConnectionInfo(info) {
 	return info;
 }
 
+function handleLogin() {
+	const customServerInput = document.getElementById('widget.cbid.tailscale.settings.custom_login_url');
+	const customServer = (customServerInput ? customServerInput.value : '') || uci.get('tailscale', 'settings', 'custom_login_url') || '';
+	const customServerAuthInput = document.getElementById('widget.cbid.tailscale.settings.custom_login_AuthKey');
+	const customServerAuth = (customServerAuthInput ? customServerAuthInput.value : '') || uci.get('tailscale', 'settings', 'custom_login_AuthKey') || '';
+
+	const loginWindow = window.open('', '_blank');
+	if (!loginWindow) {
+		ui.addTimeLimitedNotification(null, [ E('p', _('Could not open a new tab. Please check if your browser or an extension blocked the pop-up.')) ], 10000, 'error');
+		return;
+	}
+
+	const doc = loginWindow.document;
+	doc.body.innerHTML =
+		'<h2>' + _('Tailscale Login') + '</h2>' +
+		'<p>' + _('Requesting Tailscale login URL... Please wait.') + '</p>' +
+		'<p>' + _('This can take up to 30 seconds.') + '</p>';
+
+	ui.showModal(_('Requesting Login URL...'), E('em', {}, _('Please wait.')));
+	const payload = {
+		loginserver: customServer,
+		loginserver_authkey: customServerAuth
+	};
+
+	return callDoLogin(payload).then(function(res) {
+		ui.hideModal();
+		if (res && res.url) {
+			loginWindow.location.href = res.url;
+		} else {
+			doc.body.innerHTML =
+				'<h2>' + _('Error') + '</h2>' +
+				'<p>' + _('Failed to get login URL. You may close this tab.') + '</p>';
+			ui.addTimeLimitedNotification(null, [ E('p', _('Failed to get login URL: Invalid response from server.')) ], 7000, 'error');
+		}
+	}).catch(function(err) {
+		ui.hideModal();
+		ui.addTimeLimitedNotification(null, [ E('p', _('Failed to get login URL: %s').format(err.message || _('Unknown error'))) ], 7000, 'error');
+	});
+}
+
+function handleLogout() {
+	const confirmationContent = E([
+		E('p', {}, _('Are you sure you want to log out?') + '<br>' + _('This will disconnect this device from your Tailnet and require you to re-authenticate.')),
+		E('div', { 'style': 'text-align: right; margin-top: 1em;' }, [
+			E('button', {
+				'class': 'cbi-button',
+				'click': ui.hideModal
+			}, _('Cancel')),
+			' ',
+			E('button', {
+				'class': 'cbi-button cbi-button-negative',
+				'click': function() {
+					ui.hideModal();
+					ui.showModal(_('Logging out...'), E('em', {}, _('Please wait.')));
+
+					return callDoLogout().then(function(res) {
+						ui.hideModal();
+						ui.addTimeLimitedNotification(null, [ E('p', _('Successfully logged out.')) ], 5000, 'info');
+					}).catch(function(err) {
+						ui.hideModal();
+						ui.addTimeLimitedNotification(null, [ E('p', _('Logout failed: %s').format(err.message || _('Unknown error'))) ], 7000, 'error');
+					});
+				}
+			}, _('Logout'))
+		])
+	]);
+	ui.showModal(_('Confirm Logout'), confirmationContent);
+}
+
 function renderStatus(status) {
 	// If status object is not yet available, show a loading message.
 	if (!status || !status.hasOwnProperty('status')) {
@@ -180,41 +245,38 @@ function renderStatus(status) {
 		initializeRegionMap();
 	}
 
-	// --- Part 1: Handle non-running states ---
-
-	// State: Tailscale binary not found.
-	if (status.status == 'not_installed') {
-		return E('dl', { 'class': 'cbi-value' }, [
-			E('dt', {}, _('Service Status')),
-			E('dd', {}, E('span', { 'style': 'color:red;' }, E('strong', {}, _('TAILSCALE NOT FOUND'))))
-		]);
+	const customServerUrl = uci.get('tailscale', 'settings', 'custom_login_url');
+	let serverDisplayText = _('Official Server (Tailscale SaaS)');
+	if (customServerUrl && customServerUrl !== '') {
+		serverDisplayText = _('Custom Server (%s)').format(customServerUrl.replace(/^https?:\/\//, ''));
 	}
 
-	// State: Logged out, requires user action.
-	if (status.status == 'logout') {
-		return E('dl', { 'class': 'cbi-value' }, [
-			E('dt', {}, _('Service Status')),
-			E('dd', {}, [
-				E('span', { 'style': 'color:orange;' }, E('strong', {}, _('LOGGED OUT'))),
-				E('br'),
-				E('span', {}, _('Please use the login button in the settings below to authenticate.'))
-			])
-		]);
+	let statusBadge;
+	let actionButton = null;
+
+	if (status.status === 'not_installed') {
+		statusBadge = E('span', { 'style': 'color:red;' }, E('strong', {}, _('NOT INSTALLED')));
+	} else if (status.status === 'logout') {
+		statusBadge = E('span', { 'style': 'color:red;' }, E('strong', {}, _('NOT LOGGED IN')));
+		actionButton = E('button', {
+			'class': 'cbi-button cbi-button-action',
+			'style': 'margin-left: 10px; padding: 2px 10px;',
+			'click': ui.createHandlerFn(this, handleLogin)
+		}, _('Login'));
+	} else if (status.status !== 'running') {
+		statusBadge = E('span', { 'style': 'color:orange;' }, E('strong', {}, _('NOT RUNNING')));
+	} else {
+		statusBadge = E('span', { 'style': 'color:green;' }, E('strong', {}, _('RUNNING')));
+		actionButton = E('button', {
+			'class': 'cbi-button cbi-button-remove',
+			'style': 'margin-left: 10px; padding: 2px 10px;',
+			'click': ui.createHandlerFn(this, handleLogout)
+		}, _('Logout'));
 	}
 
-	// State: Service is installed but not running.
-	if (status.status != 'running') {
-		return E('dl', { 'class': 'cbi-value' }, [
-			E('dt', {}, _('Service Status')),
-			E('dd', {}, E('span', { 'style': 'color:red;' }, E('strong', {}, _('NOT RUNNING'))))
-		]);
-	}
-
-	// --- Part 2: Render the full status display for a running service ---
-
-	// A helper array to define the data for the main status table.
 	const statusData = [
-		{ label: _('Service Status'), value: E('span', { 'style': 'color:green;' }, E('strong', {}, _('RUNNING'))) },
+		{ label: _('Service Status'), value: E('span', {}, [statusBadge, actionButton || '']) },
+		{ label: _('Control Server'), value: serverDisplayText },
 		{ label: _('Version'), value: status.version || 'N/A' },
 		{ label: _('TUN Mode'), value: status.TUNMode ? _('Enabled') : _('Disabled') },
 		{ label: _('Tailscale IPv4'), value: status.ipv4 || 'N/A' },
@@ -222,7 +284,6 @@ function renderStatus(status) {
 		{ label: _('Tailnet Account'), value: status.account || status.domain_name || 'N/A' }
 	];
 
-	// Build the horizontal status table using the data array.
 	const statusTable = E('table', { 'style': 'width: 100%; border-spacing: 0 5px;' }, [
 		E('tr', {}, statusData.map(item => E('td', { 'style': 'padding-right: 20px;' }, E('strong', {}, item.label)))),
 		E('tr', {}, statusData.map(item => E('td', { 'style': 'padding-right: 20px;' }, item.value)))
@@ -434,10 +495,6 @@ return view.extend({
 						if (devicesView) {
 							devicesView.replaceChildren(renderDevices(res));
 						}
-
-						// login button only available when logged out
-						const login_btn=document.getElementsByClassName('cbi-button cbi-button-apply')[0];
-						if(login_btn) { login_btn.disabled=(res.status != 'logout'); }
 					});
 				}, 10);
 
@@ -450,7 +507,7 @@ return view.extend({
 		s = map.section(form.NamedSection, 'settings', 'settings', null);
 		s.dynamic = true;
 
-		// Create the "General Settings" tab and apply tailscaleSettingsConf
+		// Tab 1: General Settings
 		s.tab('general', _('General Settings'));
 
 		defTabOpts(s, 'general', tailscaleSettingsConf, { optional: false });
@@ -487,7 +544,9 @@ return view.extend({
 			return uci.get('tailscale', 'settings', 'exit_node') || '';
 		};
 
-		const o = s.taboption('general', form.DynamicList, 'advertise_routes', _('Advertise Routes'),_('Advertise subnet routes behind this device. Select from the detected subnets below or enter custom routes (comma-separated).'));
+		const o = s.taboption('general', form.DynamicList, 'advertise_routes', _('Advertise Subnet Routes'),
+			_('Announce subnet routes behind this device. Select from the detected subnets below or enter custom routes (comma-separated).')
+		);
 		if (subroutes.length > 0) {
 			subroutes.forEach(function(subnet) {
 				o.value(subnet, subnet);
@@ -495,114 +554,35 @@ return view.extend({
 		}
 		o.rmempty = true;
 
-		// Create the account settings
-		s.tab('account', _('Account Settings'));
-		defTabOpts(s, 'account', accountConf, { optional: false });
-
-		const loginBtn = s.taboption('account', form.Button, '_login', _('Login'),
-			_('Click to get a login URL for this device.')
+		const nosnatOpt = s.taboption('general', form.Flag, 'nosnat', _('Disable Subnet SNAT'),
+			_('Disable Source NAT (SNAT) for traffic to advertised routes (--snat-subnet-routes=false). Recommended when OpenWrt is the default gateway to preserve client IPs.')
 		);
-		loginBtn.inputstyle = 'apply';
+		nosnatOpt.rmempty = false;
 
-		const customLoginUrl = s.taboption('account', form.Value, 'custom_login_url',
-			_('Custom Login Server'),
+		const customLoginUrl = s.taboption('general', form.Value, 'custom_login_url',
+			_('Custom Control Server'),
 			_('Optional: Specify a custom control server URL (e.g., a Headscale instance). Leave blank for default Tailscale control plane.')
 		);
 		customLoginUrl.placeholder = '';
 		customLoginUrl.rmempty = true;
 
-		const customLoginAuthKey = s.taboption('account', form.Value, 'custom_login_AuthKey',
-			_('Custom Login Server Auth Key'),
+		const customLoginAuthKey = s.taboption('general', form.Value, 'custom_login_AuthKey',
+			_('Custom Server Auth Key'),
 			_('Optional: Specify an authentication key for the custom control server. Leave blank if not required.')
 		);
 		customLoginAuthKey.placeholder = '';
 		customLoginAuthKey.rmempty = true;
 
-		const logoutBtn = s.taboption('account', form.Button, '_logout', _('Logout'),
-		_('Click to Log out account on this device.')
-		+'<br>'+_('Disconnect from Tailscale and expire current node key.'));
-		logoutBtn.inputstyle = 'apply';
-		logoutBtn.id = 'tailscale_logout_btn';
+		defTabOpts(s, 'general', daemonConf, { optional: false });
 
-		loginBtn.onclick = function() {
-			const customServerInput = document.getElementById('widget.cbid.tailscale.settings.custom_login_url');
-			const customServer = customServerInput ? customServerInput.value : '';
-			const customserverAuthInput = document.getElementById('widget.cbid.tailscale.settings.custom_login_AuthKey');
-			const customServerAuth = customserverAuthInput ? customserverAuthInput.value : '';
-			const loginWindow = window.open('', '_blank');
-			if (!loginWindow) {
-				ui.addTimeLimitedNotification(null, [ E('p', _('Could not open a new tab. Please check if your browser or an extension blocked the pop-up.')) ], 10000, 'error');
-				return;
-			}
-			// Display a prompt message in the new window
-			const doc = loginWindow.document;
-			doc.body.innerHTML =
-				'<h2>' + _('Tailscale Login') + '</h2>' +
-				'<p>' + _('Requesting Tailscale login URL... Please wait.') + '</p>' +
-				'<p>' + _('This can take up to 30 seconds.') + '</p>';
-
-			ui.showModal(_('Requesting Login URL...'), E('em', {}, _('Please wait.')));
-			const payload = {
-				loginserver: customServer || '',
-				loginserver_authkey: customServerAuth || ''
-			};
-			// Show a "loading" modal and execute the asynchronous RPC call
-			ui.showModal(_('Requesting Login URL...'), E('em', {}, _('Please wait.')));
-			return callDoLogin(payload).then(function(res) {
-				ui.hideModal();
-				if (res && res.url) {
-					// After successfully obtaining the URL, redirect the previously opened tab
-					loginWindow.location.href = res.url;
-				} else {
-					// If it fails, inform the user and they can close the new tab
-					doc.body.innerHTML =
-						'<h2>' + _('Error') + '</h2>' +
-						'<p>' + _('Failed to get login URL. You may close this tab.') + '</p>';
-					ui.addTimeLimitedNotification(null, [ E('p', _('Failed to get login URL: Invalid response from server.')) ], 7000, 'error');
-				}
-			}).catch(function(err) {
-				ui.hideModal();
-				ui.addTimeLimitedNotification(null, [ E('p', _('Failed to get login URL: %s').format(err.message || _('Unknown error'))) ], 7000, 'error');
-			});
-		};
-
-		logoutBtn.onclick = function() {
-			const confirmationContent = E([
-				E('p', {}, _('Are you sure you want to log out?')
-					+'<br>'+_('This will disconnect this device from your Tailnet and require you to re-authenticate.')),
-
-				E('div', { 'style': 'text-align: right; margin-top: 1em;' }, [
-					E('button', {
-						'class': 'cbi-button',
-						'click': ui.hideModal
-					}, _('Cancel')),
-					' ',
-					E('button', {
-						'class': 'cbi-button cbi-button-negative',
-						'click': function() {
-							ui.hideModal();
-							ui.showModal(_('Logging out...'), E('em', {}, _('Please wait.')));
-
-							return callDoLogout().then(function(res) {
-								ui.hideModal();
-								ui.addTimeLimitedNotification(null, [ E('p', _('Successfully logged out.')) ], 5000, 'info');
-							}).catch(function(err) {
-								ui.hideModal();
-								ui.addTimeLimitedNotification(null, [ E('p', _('Logout failed: %s').format(err.message || _('Unknown error'))) ], 7000, 'error');
-							});
-						}
-					}, _('Logout'))
-				])
-			]);
-			ui.showModal(_('Confirm Logout'), confirmationContent);
-		};
-
+		// Tab 2: Devices List
 		s.tab('devices', _('Devices List'));
 		const devicesSection = s.taboption('devices', form.DummyValue, '_devices');
 		devicesSection.render = function () {
 			return E('div', { 'id': 'tailscale_devices_display', 'class': 'cbi-value' }, renderDevices(status));
 		};
 
+		// Tab 3: Logs
 		s.tab('logs', _('Logs'));
 		const logsSection = s.taboption('logs', form.DummyValue, '_logs');
 		logsSection.render = function () {
@@ -630,22 +610,12 @@ return view.extend({
 			});
 		};
 
-		// Create the "Daemon Settings" tab and apply daemonConf
-		//s.tab('daemon', _('Daemon Settings'));
-		//defTabOpts(s, 'daemon', daemonConf, { optional: false });
-
 		return map.render();
 	},
 
-	// The handleSaveApply function saves UCI changes then applies them via the
-	// standard OpenWrt apply mechanism, which triggers /etc/init.d/tailscale-settings
-	// and provides automatic rollback protection if the device becomes unreachable.
 	handleSaveApply(ev, mode) {
 		return map.save().then(function () {
 			return ui.changes.apply(mode == '0');
 		});
-	},
-
-	handleSave: null,
-	handleReset: null
+	}
 });
