@@ -443,7 +443,7 @@ msgstr "服務狀態"
 
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:26
 msgid "Shields Up"
-msgstr "開啟防護 (Shields Up)"
+msgstr "開啟防護"
 
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:277
 msgid "Status"
