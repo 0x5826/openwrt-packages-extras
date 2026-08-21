@@ -284,9 +284,9 @@ function renderStatus(status) {
 		{ label: _('Control Server'), value: serverDisplayText },
 		{ label: _('Version'), value: status.version || 'N/A' },
 		{ label: _('TUN Mode'), value: status.TUNMode ? _('Enabled') : _('Disabled') },
-		{ label: _('Tailscale IPv4'), value: status.ipv4 || 'N/A' },
-		{ label: _('Tailscale IPv6'), value: status.ipv6 || 'N/A' },
-		{ label: _('Tailnet Account'), value: status.account || status.domain_name || 'N/A' }
+		{ label: _('Tailscale IPv4'), value: status.ipv4 || '-' },
+		{ label: _('Tailscale IPv6'), value: status.ipv6 || '-' },
+		{ label: _('Tailnet Account'), value: status.account || status.domain_name || '-' }
 	];
 
 	const statusTable = E('table', { 'style': 'width: 100%; border-spacing: 0 5px;' }, [

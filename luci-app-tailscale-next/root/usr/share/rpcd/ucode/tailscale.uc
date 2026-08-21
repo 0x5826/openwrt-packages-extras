@@ -56,7 +56,7 @@ methods.get_status = {
 			version: '',
 			TUNMode: '',
 			health: '',
-			ipv4: "Not running",
+			ipv4: null,
 			ipv6: null,
 			domain_name: '',
 			peers: [],
@@ -84,7 +84,7 @@ methods.get_status = {
 				}
 
 				if (status_data?.Self?.TailscaleIPs) {
-					data.ipv4 = status_data.Self.TailscaleIPs[0] || 'No IP assigned';
+					data.ipv4 = status_data.Self.TailscaleIPs[0] || null;
 					data.ipv6 = status_data.Self.TailscaleIPs[1] || null;
 				}
 

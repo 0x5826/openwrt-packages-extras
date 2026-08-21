@@ -35,12 +35,6 @@ msgstr ""
 msgid "Advertise Routes"
 msgstr ""
 
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:437
-msgid ""
-"Advertise subnet routes behind this device. Select from the detected subnets "
-"below or enter custom routes (comma-separated)."
-msgstr ""
-
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:23
 msgid "Allow LAN Access"
 msgstr ""
@@ -96,12 +90,6 @@ msgstr ""
 msgid "Controls how Tailscale DNS is handled."
 msgstr ""
 
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:515
-msgid ""
-"Could not open a new tab. Please check if your browser or an extension "
-"blocked the pop-up."
-msgstr ""
-
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:487
 msgid "Custom Login Server"
 msgstr ""
@@ -128,12 +116,6 @@ msgstr ""
 
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:25
 msgid "Disable SNAT"
-msgstr ""
-
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:25
-msgid ""
-"Disable Source NAT (SNAT) for traffic to advertised routes. Most users "
-"should leave this unchecked."
 msgstr ""
 
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:29
@@ -169,26 +151,8 @@ msgstr ""
 msgid "Enable Web Interface"
 msgstr ""
 
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:19
-msgid ""
-"Enable or disable the Tailscale service. When disabled, the service will be "
-"stopped and the process will be killed."
-msgstr ""
-
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:30
-msgid ""
-"Enable this device as a Peer Relay server. Requires a public IP and an UDP "
-"port open on the router."
-msgstr ""
-
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:229
 msgid "Enabled"
-msgstr ""
-
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:37
-msgid ""
-"Enabling this option can reduce memory usage, but it may sacrifice some "
-"performance (set GOGC=10)."
 msgstr ""
 
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:540
@@ -207,20 +171,9 @@ msgstr ""
 msgid "Error reading cached DERP region map: %s"
 msgstr ""
 
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:446
-msgid ""
-"Essential configuration for Subnet Routing (Site-to-Site) and Exit Node "
-"features."
-msgstr ""
-
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:303
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:413
 msgid "Exit Node"
-msgstr ""
-
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:24
-msgid ""
-"Expose a web interface on port 5252 for managing this node over Tailscale."
 msgstr ""
 
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:455
@@ -263,25 +216,8 @@ msgstr ""
 msgid "How to enable Site-to-Site?"
 msgstr ""
 
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:483
-msgid ""
-"If the timeout is displayed, you can refresh the page and click Login again."
-msgstr ""
-
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:497
-msgid ""
-"If you are using custom login server but not providing an Auth Key, will "
-"redirect to the login page without pre-filling the key."
-msgstr ""
-
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:93
 msgid "Invalid Date"
-msgstr ""
-
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:447
-msgid ""
-"It automatically creates the tailscale interface, sets up firewall zones for "
-"LAN <-> Tailscale forwarding,"
 msgstr ""
 
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:96
@@ -370,18 +306,6 @@ msgstr ""
 msgid "OpenWrt Forward: MagicDNS via dnsmasq forwarding.(Only support ts.net)"
 msgstr ""
 
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:488
-msgid ""
-"Optional: Specify a custom control server URL (e.g., a Headscale instance, "
-"%s)."
-msgstr ""
-
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:496
-msgid ""
-"Optional: Specify an authentication key for the custom control server. Leave "
-"blank if not required."
-msgstr ""
-
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:405
 msgid "Peer Relay Port"
 msgstr ""
@@ -415,18 +339,6 @@ msgstr ""
 
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:522
 msgid "Requesting Tailscale login URL... Please wait."
-msgstr ""
-
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:413
-msgid ""
-"Select an exit node from the list. If enabled, Allow LAN Access is enabled "
-"implicitly."
-msgstr ""
-
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:20
-msgid ""
-"Select the firewall backend for Tailscale to use. Requires service restart "
-"to take effect."
 msgstr ""
 
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:198
@@ -493,31 +405,12 @@ msgstr ""
 msgid "Tailscale Login"
 msgstr ""
 
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:366
-msgid ""
-"Tailscale is a mesh VPN solution that makes it easy to connect your devices "
-"securely. This configuration page allows you to manage Tailscale settings on "
-"your OpenWrt device."
-msgstr ""
-
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:264
 msgid "Tailscale status error"
 msgstr ""
 
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:523
 msgid "This can take up to 30 seconds."
-msgstr ""
-
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:553
-msgid ""
-"This will disconnect this device from your Tailnet and require you to re-"
-"authenticate."
-msgstr ""
-
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:406
-msgid ""
-"UDP port for the Peer Relay service. Open this port on your router firewall/"
-"NAT."
 msgstr ""
 
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:123
@@ -533,29 +426,12 @@ msgstr ""
 msgid "Version"
 msgstr ""
 
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:26
-msgid ""
-"When enabled, blocks all inbound connections from the Tailscale network."
-msgstr ""
-
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:23
 msgid "When using the exit node, access to the local LAN is allowed."
 msgstr ""
 
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:472
-msgid ""
-"[Important] Log in to the Tailscale admin console and manually enable "
-"\"Subnet Routes\" for this device."
-msgstr ""
-
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:99
 msgid "ago"
-msgstr ""
-
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:448
-msgid ""
-"and enables Masquerading and MSS Clamping (MTU fix) to ensure stable "
-"connections."
 msgstr ""
 
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:274
@@ -580,12 +456,6 @@ msgstr ""
 
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:308
 msgid "Tailscale is not running."
-msgstr ""
-
-#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:530
-msgid ""
-"Optional: Specify a custom control server URL (e.g., a Headscale instance). "
-"Leave blank for default Tailscale control plane."
 msgstr ""
 
 msgid "Control Server"
@@ -622,4 +492,16 @@ msgid "Not logged in. Please authenticate first."
 msgstr ""
 
 msgid "Service is not running."
+msgstr ""
+
+msgid "NOT INSTALLED"
+msgstr ""
+
+msgid "NOT LOGGED IN"
+msgstr ""
+
+msgid "This will disconnect this device from your Tailnet and require you to re-authenticate."
+msgstr ""
+
+msgid "Could not open a new tab. Please check if your browser or an extension blocked the pop-up."
 msgstr ""
