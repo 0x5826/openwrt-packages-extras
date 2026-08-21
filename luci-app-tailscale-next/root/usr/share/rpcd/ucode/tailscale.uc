@@ -127,9 +127,20 @@ methods.get_status = {
 				if (status_data?.Self?.UserID && status_data?.User) {
 					let uid = tostring(status_data.Self.UserID);
 					let uinfo = status_data.User[uid];
-					if (uinfo?.DisplayName && uinfo.DisplayName != '' && uinfo.DisplayName != account_str) {
-						account_str = (account_str != '' ? (account_str + ' (' + uinfo.DisplayName + ')') : uinfo.DisplayName);
+					if (uinfo) {
+						let login_name = uinfo?.LoginName || uinfo?.Username || '';
+						let display_name = uinfo?.DisplayName || '';
+						if (login_name != '' && display_name != '' && login_name != display_name) {
+							account_str = login_name + ' (' + display_name + ')';
+						} else if (login_name != '') {
+							account_str = login_name;
+						} else if (display_name != '') {
+							account_str = display_name;
+						}
 					}
+				}
+				if (account_str == '' && status_data?.Self?.DNSName) {
+					account_str = status_data.Self.DNSName;
 				}
 				data.account = account_str;
 				data.domain_name = account_str;
@@ -168,7 +179,7 @@ methods.get_status = {
 					if (pref_derp != 0 && pref_derp != '' && netcheck?.DERPLatencies) {
 						let lat = netcheck.DERPLatencies[tostring(pref_derp)];
 						if (lat) {
-							derp_lat_str = sprintf('%d ms', int(lat * 1000));
+							derp_lat_str = sprintf('%d ms', lat * 1000);
 						}
 					}
 
