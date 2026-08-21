@@ -7,6 +7,14 @@ PKG_MAINTAINER:=Tokisaki-Galaxy <moebest@outlook.jp>
 LUCI_DEPENDS:=+tailscale-next +ip-full +luci-base +luci-compat +luci-lib-jsonc
 LUCI_PKGARCH:=all
 
+define Package/luci-app-tailscale-next/prerm
+#!/bin/sh
+[ -n "$${IPKG_INSTROOT}" ] || {
+	/etc/init.d/tailscale-settings clean_firewall 2>/dev/null || true
+}
+exit 0
+endef
+
 include $(TOPDIR)/feeds/luci/luci.mk
 
 # call BuildPackage - OpenWrt buildroot signature

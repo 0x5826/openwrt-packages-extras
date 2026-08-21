@@ -595,6 +595,42 @@ msgid ""
 "Leave blank for default Tailscale control plane."
 msgstr "可選：指定自訂控制伺服器位址（例如 Headscale 實例）。留空則使用 Tailscale 官方伺服器。"
 
+msgid "Control Server"
+msgstr "控制伺服器"
+
+msgid "Official Server (Tailscale SaaS)"
+msgstr "官方伺服器 (Tailscale SaaS)"
+
+msgid "Custom Server (%s)"
+msgstr "自訂伺服器 (%s)"
+
+msgid "Disable Subnet SNAT"
+msgstr "停用子網 SNAT"
+
+msgid "Disable Source NAT (SNAT) for traffic to advertised routes (--snat-subnet-routes=false). Recommended when OpenWrt is the default gateway to preserve client IPs."
+msgstr "為通告子網流量停用來源位址轉換 (--snat-subnet-routes=false)。當 OpenWrt 作為預設閘道時建議開啟，保留用戶端真實 IP。"
+
+msgid "Custom Control Server"
+msgstr "自訂控制伺服器"
+
+msgid "Custom Server Auth Key"
+msgstr "自訂伺服器認證密鑰"
+
+msgid "Optional: Specify an authentication key for the custom control server. Leave blank if not required."
+msgstr "可選：指定自訂控制伺服器的預認證密鑰（Auth Key）。留空則無需認證密鑰。"
+
+msgid "When using or advertising the exit node, allow access to the local LAN."
+msgstr "在使用或通告出口節點時，允許存取本地區域網路裝置。"
+
+msgid "Disable Firewall Auto Configuration"
+msgstr "停用防火牆自動設定"
+
+msgid "Not logged in. Please authenticate first."
+msgstr "未登入，請先完成登入認證。"
+
+msgid "Service is not running."
+msgstr "服務未執行。"
+
 #~ msgid ""
 #~ "Completely disable all Tailscale firewall auto-configuration, including "
 #~ "zone creation, forwarding rules, and netfilter settings."
