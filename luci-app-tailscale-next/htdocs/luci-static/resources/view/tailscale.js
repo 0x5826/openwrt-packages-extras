@@ -223,7 +223,8 @@ function handleLogout() {
 
 					return callDoLogout().then(function(res) {
 						ui.hideModal();
-						ui.addTimeLimitedNotification(null, [ E('p', _('Successfully logged out.')) ], 5000, 'info');
+						ui.addTimeLimitedNotification(null, [ E('p', _('Successfully logged out.')) ], 3000, 'info');
+						window.location.reload();
 					}).catch(function(err) {
 						ui.hideModal();
 						ui.addTimeLimitedNotification(null, [ E('p', _('Logout failed: %s').format(err.message || _('Unknown error'))) ], 7000, 'error');
@@ -484,7 +485,9 @@ return view.extend({
 				function () {
 					return getRunningStatus().then(function (res) {
 						if (lastStatus === 'logout' && res.status === 'running') {
-							L.resolveDefault(callReloadSettings(), {});
+							L.resolveDefault(callReloadSettings(), {}).then(function() {
+								window.location.reload();
+							});
 						}
 						if (res.status === 'logout' || res.status === 'running') {
 							lastStatus = res.status;
