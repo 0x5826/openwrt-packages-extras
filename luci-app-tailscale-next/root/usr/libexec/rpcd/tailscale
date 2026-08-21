@@ -68,7 +68,7 @@ methods.get_status = {
 			version = '',
 			TUNMode = '',
 			health = '',
-			ipv4 = "Not running",
+			ipv4 = json.null,
 			ipv6 = json.null,
 			domain_name = '',
 			peers = {},
@@ -96,7 +96,7 @@ methods.get_status = {
 				end
 
 				if status_data.Self and status_data.Self.TailscaleIPs then
-					data.ipv4 = status_data.Self.TailscaleIPs[1] or 'No IP assigned'
+					data.ipv4 = status_data.Self.TailscaleIPs[1] or json.null
 					data.ipv6 = status_data.Self.TailscaleIPs[2] or json.null
 				end
 
