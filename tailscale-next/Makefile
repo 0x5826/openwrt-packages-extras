@@ -1,0 +1,66 @@
+#
+# Copyright (C) 2021 CZ.NIC, z. s. p. o. (https://www.nic.cz/)
+#
+# This is free software, licensed under the GNU General Public License v2.
+# See /LICENSE for more information.
+#
+
+include $(TOPDIR)/rules.mk
+
+PKG_NAME:=tailscale-next
+PKG_VERSION:=1.102.2
+PKG_RELEASE:=1
+
+PKG_SOURCE:=tailscale-$(PKG_VERSION).tar.gz
+PKG_SOURCE_URL:=https://codeload.github.com/tailscale/tailscale/tar.gz/v$(PKG_VERSION)?
+PKG_HASH:=66c447b5555aa89e0690dc21e0ec59421302ceaa982f3ccc0df686b16f5d5505
+
+PKG_MAINTAINER:=Zephyr Lykos <self@mochaa.ws>, \
+		Sandro Jäckel <sandro.jaeckel@gmail.com>
+PKG_LICENSE:=BSD-3-Clause
+PKG_LICENSE_FILES:=LICENSE
+PKG_CPE_ID:=cpe:/a:tailscale:tailscale
+
+PKG_BUILD_DIR:=$(BUILD_DIR)/tailscale-$(PKG_VERSION)
+PKG_BUILD_DEPENDS:=golang/host
+PKG_BUILD_PARALLEL:=1
+PKG_BUILD_FLAGS:=no-mips16
+
+GO_PKG:=tailscale.com/cmd/tailscaled
+GO_PKG_LDFLAGS:=-X 'tailscale.com/version.longStamp=$(PKG_VERSION)-$(PKG_RELEASE) (OpenWrt)'
+GO_PKG_LDFLAGS_X:=tailscale.com/version.shortStamp=$(PKG_VERSION)
+GO_PKG_TAGS:=ts_include_cli,ts_omit_aws,ts_omit_bird,ts_omit_completion,ts_omit_kube,ts_omit_systray,ts_omit_taildrop,ts_omit_tap,ts_omit_tpm
+
+include $(INCLUDE_DIR)/package.mk
+include ../../lang/golang/golang-package.mk
+
+define Package/tailscale-next
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=VPN
+  TITLE:=Zero config VPN (Next)
+  URL:=https://tailscale.com
+  DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle +kmod-tun
+  PROVIDES:=tailscale tailscaled
+  CONFLICTS:=tailscale tailscaled
+endef
+
+define Package/tailscale-next/description
+  It creates a secure network between your servers, computers,
+  and cloud instances. Even when separated by firewalls or subnets.
+endef
+
+define Package/tailscale-next/conffiles
+/etc/config/tailscale
+/etc/tailscale/
+endef
+
+define Package/tailscale-next/install
+	$(INSTALL_DIR) $(1)/usr/sbin $(1)/etc/init.d $(1)/etc/config
+	$(INSTALL_BIN) $(GO_PKG_BUILD_BIN_DIR)/tailscaled $(1)/usr/sbin
+	$(LN) tailscaled $(1)/usr/sbin/tailscale
+	$(INSTALL_BIN) ./files/tailscale.init $(1)/etc/init.d/tailscale
+	$(INSTALL_DATA) ./files/tailscale.conf $(1)/etc/config/tailscale
+endef
+
+$(eval $(call BuildPackage,tailscale-next))

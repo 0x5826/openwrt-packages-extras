@@ -1,0 +1,445 @@
+#!/usr/bin/env lua
+
+local json = require "luci.jsonc"
+local UCI = require "luci.model.uci"
+local nixio = require "nixio"
+local fs = require "nixio.fs"
+
+local function trim(s)
+	if type(s) ~= 'string' then return '' end
+	return s:gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local function shellquote(s)
+	if not s or s == "" then return "''" end
+	return "'" .. s:gsub("'", "'\\''") .. "'"
+end
+
+local function exec_cmd(cmd)
+	local f = io.popen(cmd)
+	if not f then
+		return { code = -1, stdout = {}, stderr = "Failed to popen: " .. cmd }
+	end
+	local content = f:read("*a") or ""
+	local success, msg, code = f:close()
+	content = trim(content)
+	local lines = {}
+	for line in string.gmatch(content .. "\n", "(.-)\r?\n") do
+		if line ~= "" or #lines > 0 then
+			table.insert(lines, line)
+		end
+	end
+	return {
+		code = (type(success) == "number" and success) or (code or 0),
+		stdout = lines,
+		raw = content
+	}
+end
+
+local function b64decode(str)
+	if not str then return nil end
+	return nixio.bin.b64decode(str)
+end
+
+local methods = {}
+
+methods.get_status = {
+	call = function()
+		local data = {
+			status = '',
+			version = '',
+			TUNMode = '',
+			health = '',
+			ipv4 = "Not running",
+			ipv6 = json.null,
+			domain_name = '',
+			peers = {}
+		}
+
+		if not fs.access('/usr/sbin/tailscale') and not fs.access('/usr/bin/tailscale') then
+			data.status = 'not_installed'
+			return data
+		end
+
+		local status_out = exec_cmd('tailscale status --json 2>/dev/null')
+		local peer_map = {}
+
+		if status_out.raw and #status_out.raw > 0 then
+			local status_data = json.parse(status_out.raw)
+			if status_data then
+				data.version = status_data.Version or 'Unknown'
+				data.health = status_data.Health or ''
+				data.TUNMode = (status_data.TUN == false and 'false') or 'true'
+				if status_data.BackendState == 'Running' then
+					data.status = 'running'
+				elseif status_data.BackendState == 'NeedsLogin' then
+					data.status = 'logout'
+				end
+
+				if status_data.Self and status_data.Self.TailscaleIPs then
+					data.ipv4 = status_data.Self.TailscaleIPs[1] or 'No IP assigned'
+					data.ipv6 = status_data.Self.TailscaleIPs[2] or json.null
+				end
+
+				if status_data.CurrentTailnet then
+					data.domain_name = status_data.CurrentTailnet.Name or ''
+				end
+
+				if status_data.Peer then
+					for _, p in pairs(status_data.Peer) do
+						if type(p) == "table" and p.ID then
+							local ips = ""
+							if p.TailscaleIPs and type(p.TailscaleIPs) == "table" then
+								ips = table.concat(p.TailscaleIPs, "<br>")
+							end
+							local hostname = p.DNSName or ""
+							if hostname ~= "" then
+								hostname = hostname:match("^([^%.]+)") or hostname
+							end
+
+							peer_map[tostring(p.ID)] = {
+								ip = ips,
+								hostname = hostname,
+								ostype = p.OS,
+								online = p.Online or false,
+								linkadress = (not p.CurAddr or p.CurAddr == "") and p.Relay or p.CurAddr,
+								lastseen = p.LastSeen,
+								exit_node = not not p.ExitNode,
+								exit_node_option = not not p.ExitNodeOption,
+								tx = p.TxBytes or '',
+								rx = p.RxBytes or ''
+							}
+						end
+					end
+				end
+			end
+		end
+
+		data.peers = peer_map
+		return data
+	end
+}
+
+methods.get_settings = {
+	call = function()
+		local settings = {}
+		local uci = UCI.cursor()
+		local state_file_path = uci:get('tailscale', 'settings', 'state_file') or "/etc/tailscale/tailscaled.state"
+
+		if fs.access(state_file_path) then
+			local state_content = fs.readfile(state_file_path)
+			if state_content then
+				local state_data = json.parse(state_content)
+				if state_data and state_data._profiles then
+					local profiles_raw = b64decode(state_data._profiles)
+					if profiles_raw then
+						local profiles_data = json.parse(profiles_raw)
+						local profiles_key = nil
+						if profiles_data then
+							for k, _ in pairs(profiles_data) do
+								profiles_key = k
+								break
+							end
+						end
+
+						if profiles_key then
+							local p_key = 'profile-' .. profiles_key
+							local p_raw = b64decode(state_data[p_key])
+							if p_raw then
+								local status_data = json.parse(p_raw)
+								if status_data then
+									settings.accept_routes = status_data.RouteAll or false
+									settings.advertise_exit_node = status_data.AdvertiseExitNode or false
+									settings.advertise_routes = status_data.AdvertiseRoutes or {}
+									settings.exit_node = status_data.ExitNodeID or ""
+									settings.exit_node_allow_lan_access = status_data.ExitNodeAllowLANAccess or false
+									settings.shields_up = status_data.ShieldsUp or false
+									settings.ssh = status_data.RunSSH or false
+									settings.runwebclient = status_data.RunWebClient or false
+									settings.nosnat = status_data.NoSNAT or false
+									settings.dns_mode = uci:get('tailscale', 'settings', 'dns_mode') or 'disabled'
+									local fw = uci:get('tailscale', 'settings', 'fw_mode') or 'iptables'
+									settings.fw_mode = fw:match("^(%S+)") or 'iptables'
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+		return settings
+	end
+}
+
+methods.do_login = {
+	args = { form_data = {} },
+	call = function(request)
+		local form_data = request.form_data or {}
+		local loginargs = {}
+
+		local status = methods.get_status.call()
+		if status.status ~= 'logout' then
+			return { error = 'Tailscale is already logged in and running.' }
+		end
+
+		local loginserver = trim(form_data.loginserver or '')
+		local loginserver_authkey = trim(form_data.loginserver_authkey or '')
+
+		if loginserver ~= '' then
+			table.insert(loginargs, '--login-server ' .. shellquote(loginserver))
+			if loginserver_authkey ~= '' then
+				table.insert(loginargs, '--auth-key ' .. shellquote(loginserver_authkey))
+			end
+		end
+
+		local login_cmd = 'tailscale login ' .. table.concat(loginargs, ' ')
+		os.execute('/bin/sh -c ' .. shellquote(login_cmd .. ' &'))
+
+		local max_attempts = 15
+		for _ = 1, max_attempts do
+			local tresult = exec_cmd('tailscale status 2>&1')
+			for _, line in ipairs(tresult.stdout) do
+				local trline = trim(line)
+				if string.find(trline, 'http') then
+					for part in string.gmatch(trline, "%S+") do
+						if string.find(part, 'http') then
+							return { url = part }
+						end
+					end
+				end
+			end
+			nixio.nanosleep(2, 0)
+		end
+		return { error = 'Could not retrieve login URL from tailscale command after 30 seconds.' }
+	end
+}
+
+methods.do_logout = {
+	call = function()
+		local status = methods.get_status.call()
+		if status.status ~= 'running' then
+			return { error = 'Tailscale is not running. Cannot perform logout.' }
+		end
+
+		local logout_result = exec_cmd('tailscale logout 2>&1')
+		if logout_result.code ~= 0 then
+			return { error = 'Failed to logout: ' .. (logout_result.raw or "") }
+		end
+		return { success = true }
+	end
+}
+
+methods.get_subroutes = {
+	call = function()
+		local subnets = {}
+		local result = exec_cmd('ip -j route 2>/dev/null')
+		if result.raw and #result.raw > 0 then
+			local routes_json = json.parse(result.raw)
+			if type(routes_json) == "table" then
+				for _, route in ipairs(routes_json) do
+					if route.dst and route.dst ~= 'default' and route.scope == 'link' and string.find(route.dst, '%.') then
+						table.insert(subnets, route.dst)
+					end
+				end
+			end
+		end
+
+		if #subnets == 0 then
+			local text_routes = exec_cmd('ip route 2>/dev/null')
+			for _, line in ipairs(text_routes.stdout) do
+				local dst = line:match("^(%d+%.%d+%.%d+%.%d+/%d+)%s+dev%s+") or line:match("^(%d+%.%d+%.%d+%.%d+)%s+dev%s+")
+				if dst and not line:match("^default") and line:match("scope%s+link") then
+					table.insert(subnets, dst)
+				end
+			end
+		end
+
+		return { routes = subnets }
+	end
+}
+
+methods.setup_firewall = {
+	call = function()
+		local uci = UCI.cursor()
+		local changed_network = false
+		local changed_firewall = false
+
+		-- 1. config Network Interface
+		local net_ts = uci:get('network', 'tailscale')
+		if not net_ts then
+			uci:set('network', 'tailscale', 'interface')
+			uci:set('network', 'tailscale', 'proto', 'none')
+			uci:set('network', 'tailscale', 'device', 'tailscale0')
+			changed_network = true
+		else
+			local current_dev = uci:get('network', 'tailscale', 'device')
+			if current_dev ~= 'tailscale0' then
+				uci:set('network', 'tailscale', 'device', 'tailscale0')
+				changed_network = true
+			end
+		end
+
+		-- 2. config Firewall Zone
+		local ts_zone_section = nil
+		local fwd_lan_to_ts = false
+		local fwd_ts_to_lan = false
+		local fwd_ts_to_wan = false
+
+		uci:foreach('firewall', 'zone', function(s)
+			if s.name == 'tailscale' then
+				ts_zone_section = s['.name']
+			end
+		end)
+
+		uci:foreach('firewall', 'forwarding', function(s)
+			if s.src == 'lan' and s.dest == 'tailscale' then fwd_lan_to_ts = true end
+			if s.src == 'tailscale' and s.dest == 'lan' then fwd_ts_to_lan = true end
+			if s.src == 'tailscale' and s.dest == 'wan' then fwd_ts_to_wan = true end
+		end)
+
+		if not ts_zone_section then
+			local zid = uci:add('firewall', 'zone')
+			uci:set('firewall', zid, 'name', 'tailscale')
+			uci:set('firewall', zid, 'input', 'ACCEPT')
+			uci:set('firewall', zid, 'output', 'ACCEPT')
+			uci:set('firewall', zid, 'forward', 'ACCEPT')
+			uci:set('firewall', zid, 'masq', '1')
+			uci:set('firewall', zid, 'mtu_fix', '1')
+			uci:set('firewall', zid, 'network', 'tailscale')
+			changed_firewall = true
+		else
+			local nets = uci:get('firewall', ts_zone_section, 'network')
+			local net_list = {}
+			local has_ts = false
+			if type(nets) == "table" then
+				net_list = nets
+			elseif type(nets) == "string" then
+				for n in string.gmatch(nets, "%S+") do table.insert(net_list, n) end
+			end
+			for _, n in ipairs(net_list) do
+				if n == 'tailscale' then has_ts = true break end
+			end
+			if not has_ts then
+				table.insert(net_list, 'tailscale')
+				uci:set('firewall', ts_zone_section, 'network', net_list)
+				changed_firewall = true
+			end
+		end
+
+		-- 3. config Forwarding
+		if not fwd_lan_to_ts then
+			local fid = uci:add('firewall', 'forwarding')
+			uci:set('firewall', fid, 'src', 'lan')
+			uci:set('firewall', fid, 'dest', 'tailscale')
+			changed_firewall = true
+		end
+
+		if not fwd_ts_to_lan then
+			local fid = uci:add('firewall', 'forwarding')
+			uci:set('firewall', fid, 'src', 'tailscale')
+			uci:set('firewall', fid, 'dest', 'lan')
+			changed_firewall = true
+		end
+
+		if not fwd_ts_to_wan then
+			local fid = uci:add('firewall', 'forwarding')
+			uci:set('firewall', fid, 'src', 'tailscale')
+			uci:set('firewall', fid, 'dest', 'wan')
+			changed_firewall = true
+		end
+
+		-- 4. save & reload
+		if changed_network then
+			uci:save('network')
+			uci:commit('network')
+			os.execute('/etc/init.d/network reload')
+		end
+
+		if changed_firewall then
+			uci:save('firewall')
+			uci:commit('firewall')
+			os.execute('/etc/init.d/firewall reload')
+		end
+
+		return {
+			success = true,
+			changed_network = changed_network,
+			changed_firewall = changed_firewall,
+			message = (changed_network or changed_firewall) and 'Tailscale firewall/interface configuration applied.' or 'Tailscale firewall/interface already configured.'
+		}
+	end
+}
+
+methods.get_logs = {
+	args = { lines = 200 },
+	call = function(request)
+		local lines = tonumber(request.lines) or 200
+		local cmd = 'logread -l ' .. lines .. ' 2>/dev/null | grep -i -E "tailscale" || true'
+		local result = exec_cmd(cmd)
+		return { logs = result.stdout }
+	end
+}
+
+methods.reload_settings = {
+	call = function()
+		os.execute('/etc/init.d/tailscale-settings reload')
+		return { success = true }
+	end
+}
+
+local function parseInput()
+	local parse = json.new()
+	local done, err
+
+	while true do
+		local chunk = io.read(4096)
+		if not chunk or #chunk == 0 then break end
+		done, err = parse:parse(chunk)
+		if done then break end
+		if err then
+			print(json.stringify({ error = "JSON parsing error: " .. tostring(err) }))
+			os.exit(1)
+		end
+	end
+
+	return parse:get()
+end
+
+local function validateArgs(func, uargs)
+	local method = methods[func]
+	if not method then
+		print(json.stringify({ error = "Method not found" }))
+		os.exit(1)
+	end
+
+	if type(uargs) ~= "table" then
+		print(json.stringify({ error = "Invalid arguments" }))
+		os.exit(1)
+	end
+
+	uargs.ubus_rpc_session = nil
+
+	local margs = method.args or {}
+	for k, _ in pairs(uargs) do
+		if margs[k] == nil then
+			print(json.stringify({ error = "Invalid argument: " .. tostring(k) }))
+			os.exit(1)
+		end
+	end
+
+	return method
+end
+
+if arg[1] == "list" then
+	local rv = {}
+	for name, method in pairs(methods) do
+		rv[name] = method.args or {}
+	end
+	print((json.stringify(rv):gsub(":%[%]", ":{}")))
+elseif arg[1] == "call" then
+	local args = parseInput()
+	local method = validateArgs(arg[2], args)
+	local result, code = method.call(args)
+	print((json.stringify(result):gsub("^%[%]$", "{}")))
+	os.exit(code or 0)
+end
