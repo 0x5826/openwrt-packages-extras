@@ -59,6 +59,30 @@ local function get_connectivity_data()
 	return nil
 end
 
+local function get_cached_version()
+	local cache_file = '/tmp/tailscale_version.cache'
+	local ts_bin = fs.access('/usr/sbin/tailscale') and '/usr/sbin/tailscale' or '/usr/bin/tailscale'
+	if not fs.access(ts_bin) then return 'Unknown' end
+
+	local bin_st = fs.stat(ts_bin)
+	local cache_st = fs.stat(cache_file)
+
+	if cache_st and (cache_st.size or 0) > 0 and bin_st and (cache_st.mtime or 0) >= (bin_st.mtime or 0) then
+		local cached = trim(fs.readfile(cache_file) or '')
+		if cached ~= '' then return cached end
+	end
+
+	local ver_res = exec_cmd(ts_bin .. ' version 2>/dev/null')
+	if ver_res.stdout and #ver_res.stdout > 0 then
+		local ver_line = trim(ver_res.stdout[1])
+		if ver_line ~= '' then
+			fs.writefile(cache_file, ver_line .. '\n')
+			return ver_line
+		end
+	end
+	return 'Unknown'
+end
+
 local methods = {}
 
 methods.get_status = {
@@ -80,13 +104,7 @@ methods.get_status = {
 			return data
 		end
 
-		local ver_res = exec_cmd('tailscale version 2>/dev/null')
-		if ver_res.stdout and #ver_res.stdout > 0 then
-			local ver_line = trim(ver_res.stdout[1])
-			if ver_line ~= '' then
-				data.version = ver_line
-			end
-		end
+		data.version = get_cached_version()
 
 		local status_out = exec_cmd('tailscale status --json 2>/dev/null')
 		local peer_map = {}
@@ -94,7 +112,9 @@ methods.get_status = {
 		if status_out.raw and #status_out.raw > 0 then
 			local status_data = json.parse(status_out.raw)
 			if status_data then
-				data.version = status_data.Version or 'Unknown'
+				if status_data.Version then
+					data.version = status_data.Version
+				end
 				data.health = status_data.Health or ''
 				data.TUNMode = (status_data.TUN == false and 'false') or 'true'
 				if status_data.BackendState == 'Running' then
