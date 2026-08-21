@@ -502,7 +502,6 @@ methods.setup_firewall = {
 			if (changed_network) {
 				uci.save('network');
 				uci.commit('network');
-				exec('/etc/init.d/network reload');
 			}
 
 			if (changed_firewall) {
