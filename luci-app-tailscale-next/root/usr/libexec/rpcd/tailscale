@@ -139,9 +139,20 @@ methods.get_status = {
 				if status_data.Self and status_data.Self.UserID and status_data.User then
 					local uid = tostring(status_data.Self.UserID)
 					local uinfo = status_data.User[uid]
-					if uinfo and uinfo.DisplayName and uinfo.DisplayName ~= '' and uinfo.DisplayName ~= account_str then
-						account_str = (account_str ~= '' and (account_str .. ' (' .. uinfo.DisplayName .. ')') or uinfo.DisplayName)
+					if uinfo then
+						local login_name = uinfo.LoginName or uinfo.Username or ''
+						local display_name = uinfo.DisplayName or ''
+						if login_name ~= '' and display_name ~= '' and login_name ~= display_name then
+							account_str = login_name .. ' (' .. display_name .. ')'
+						elseif login_name ~= '' then
+							account_str = login_name
+						elseif display_name ~= '' then
+							account_str = display_name
+						end
 					end
+				end
+				if account_str == '' and status_data.Self and status_data.Self.DNSName then
+					account_str = status_data.Self.DNSName
 				end
 				data.account = account_str
 				data.domain_name = account_str
