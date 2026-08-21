@@ -177,23 +177,6 @@ function renderStatus(status) {
 		return E('em', {}, _('Collecting data ...'));
 	}
 
-	const notificationId = 'tailscale_health_notification';
-	let notificationElement = document.getElementById(notificationId);
-	if (status.health != '') {
-		const message = _('Tailscale Health Check: %s').format(status.health);
-		if (notificationElement) {
-			notificationElement.textContent = message;
-		}
-		else {
-			let newNotificationContent = E('p', { 'id': notificationId }, message);
-			ui.addNotification(null, newNotificationContent, 'info');
-		}
-	}else{
-		try{
-			notificationElement.parentNode.parentNode.remove();
-		}catch(e){}
-	}
-
 	if (Object.keys(regionCodeMap).length === 0) {
 		initializeRegionMap();
 	}
