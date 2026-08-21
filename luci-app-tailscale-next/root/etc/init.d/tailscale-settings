@@ -68,7 +68,83 @@ remove_tailscale_dns_forward() {
 	fi
 }
 
+setup_firewall_rules() {
+	local changed_net=0
+	local changed_fw=0
+
+	# 1. Interface
+	if ! uci -q get network.tailscale >/dev/null; then
+		uci -q set network.tailscale=interface
+		uci -q set network.tailscale.proto='none'
+		uci -q set network.tailscale.device='tailscale0'
+		changed_net=1
+	fi
+
+	# 2. Zone
+	local ts_zone
+	ts_zone=$(uci -q show firewall | grep "=\'tailscale\'" | grep "\.name=" | cut -d'.' -f2 | head -n1)
+	if [ -z "$ts_zone" ]; then
+		ts_zone=$(uci -q add firewall zone)
+		uci -q set firewall."$ts_zone".name='tailscale'
+		uci -q set firewall."$ts_zone".input='ACCEPT'
+		uci -q set firewall."$ts_zone".output='ACCEPT'
+		uci -q set firewall."$ts_zone".forward='ACCEPT'
+		uci -q set firewall."$ts_zone".masq='1'
+		uci -q set firewall."$ts_zone".mtu_fix='1'
+		uci -q add_list firewall."$ts_zone".network='tailscale'
+		changed_fw=1
+	fi
+
+	# 3. Forwardings
+	local fwd_lan_ts=0 fwd_ts_lan=0 fwd_ts_wan=0
+	for fwd in $(uci -q show firewall | grep "=forwarding" | cut -d'.' -f2 | cut -d'=' -f1); do
+		local src dst
+		src=$(uci -q get firewall."$fwd".src 2>/dev/null)
+		dst=$(uci -q get firewall."$fwd".dest 2>/dev/null)
+		[ "$src" = "lan" ] && [ "$dst" = "tailscale" ] && fwd_lan_ts=1
+		[ "$src" = "tailscale" ] && [ "$dst" = "lan" ] && fwd_ts_lan=1
+		[ "$src" = "tailscale" ] && [ "$dst" = "wan" ] && fwd_ts_wan=1
+	done
+
+	if [ "$fwd_lan_ts" = "0" ]; then
+		local fid=$(uci -q add firewall forwarding)
+		uci -q set firewall."$fid".src='lan'
+		uci -q set firewall."$fid".dest='tailscale'
+		changed_fw=1
+	fi
+	if [ "$fwd_ts_lan" = "0" ]; then
+		local fid=$(uci -q add firewall forwarding)
+		uci -q set firewall."$fid".src='tailscale'
+		uci -q set firewall."$fid".dest='lan'
+		changed_fw=1
+	fi
+	if [ "$fwd_ts_wan" = "0" ]; then
+		local fid=$(uci -q add firewall forwarding)
+		uci -q set firewall."$fid".src='tailscale'
+		uci -q set firewall."$fid".dest='wan'
+		changed_fw=1
+	fi
+
+	if [ "$changed_net" = "1" ]; then
+		uci -q commit network
+		/etc/init.d/network reload 2>/dev/null
+		logger -t "$NAME" "Auto configured tailscale network interface"
+	fi
+
+	if [ "$changed_fw" = "1" ]; then
+		uci -q commit firewall
+		/etc/init.d/firewall reload 2>/dev/null
+		logger -t "$NAME" "Auto configured tailscale firewall zone and forwarding rules"
+	fi
+}
+
 apply_settings() {
+	local disable_fw_config
+	config_get_bool disable_fw_config settings disable_fw_config 0
+	if [ "$disable_fw_config" = "0" ]; then
+		setup_firewall_rules
+	fi
+
 	local ts_bin
 	if [ -x /usr/sbin/tailscale ]; then
 		ts_bin=/usr/sbin/tailscale

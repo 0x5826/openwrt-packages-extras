@@ -573,6 +573,24 @@ msgstr "最近中繼節點"
 msgid "Public Endpoints"
 msgstr "公網打洞端點"
 
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:300
+msgid "Tailscale is not installed."
+msgstr "未安裝 Tailscale 主程式"
+
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:304
+msgid "Tailscale is not logged in. Please log in to view devices."
+msgstr "Tailscale 未登入，請先登入帳戶以檢視裝置清單。"
+
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:308
+msgid "Tailscale is not running."
+msgstr "Tailscale 未執行"
+
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:530
+msgid ""
+"Optional: Specify a custom control server URL (e.g., a Headscale instance). "
+"Leave blank for default Tailscale control plane."
+msgstr "可選：指定自訂控制伺服器位址（例如 Headscale 實例）。留空則使用 Tailscale 官方伺服器。"
+
 #~ msgid ""
 #~ "Completely disable all Tailscale firewall auto-configuration, including "
 #~ "zone creation, forwarding rules, and netfilter settings."

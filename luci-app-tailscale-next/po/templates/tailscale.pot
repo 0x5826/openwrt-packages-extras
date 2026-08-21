@@ -565,3 +565,21 @@ msgstr ""
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:280
 msgid "Public Endpoints"
 msgstr ""
+
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:300
+msgid "Tailscale is not installed."
+msgstr ""
+
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:304
+msgid "Tailscale is not logged in. Please log in to view devices."
+msgstr ""
+
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:308
+msgid "Tailscale is not running."
+msgstr ""
+
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:530
+msgid ""
+"Optional: Specify a custom control server URL (e.g., a Headscale instance). "
+"Leave blank for default Tailscale control plane."
+msgstr ""

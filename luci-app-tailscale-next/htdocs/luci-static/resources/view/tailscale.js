@@ -11,7 +11,6 @@ const callGetSettings = rpc.declare({ object: 'tailscale', method: 'get_settings
 const callDoLogin = rpc.declare({ object: 'tailscale', method: 'do_login', params: ['form_data'] });
 const callDoLogout = rpc.declare({ object: 'tailscale', method: 'do_logout' });
 const callGetSubroutes = rpc.declare({ object: 'tailscale', method: 'get_subroutes' });
-const callSetupFirewall = rpc.declare({ object: 'tailscale', method: 'setup_firewall' });
 const callGetLogs = rpc.declare({ object: 'tailscale', method: 'get_logs' });
 const callReloadSettings = rpc.declare({ object: 'tailscale', method: 'reload_settings' });
 let map;
@@ -297,8 +296,16 @@ function renderDevices(status) {
 		return E('em', {}, _('Collecting data ...'));
 	}
 
-	if (status.status != 'running') {
-		return E('em', {}, _('Tailscale status error'));
+	if (status.status === 'not_installed') {
+		return E('em', {}, _('Tailscale is not installed.'));
+	}
+
+	if (status.status === 'logout') {
+		return E('em', {}, _('Tailscale is not logged in. Please log in to view devices.'));
+	}
+
+	if (status.status !== 'running') {
+		return E('em', {}, _('Tailscale is not running.'));
 	}
 
 	if (Object.keys(regionCodeMap).length === 0) {
@@ -333,10 +340,11 @@ function renderDevices(status) {
 		...Object.entries(peers).map(([peerid, peer]) => {
 			const td_style = 'padding-right: 20px;';
 
-			return E('tr', { 'class': 'cbi-rowstyle-1' }, [
+			return E('tr', { 'class': 'cbi-row', 'id': `tailscale-peer-${peerid}` }, [
 				E('td', { 'class': 'cbi-value-field', 'style': td_style },
 					E('span', {
-						'style': `color:${peer.exit_node ? 'blue' : (peer.online ? 'green' : 'gray')};`,
+						'class': peer.online ? 'badge-status-positive' : 'badge-status-neutral',
+						'style': `color: ${peer.online ? 'green' : 'grey'}; font-size: 1.2em;`,
 						'title': (peer.exit_node ? _('Exit Node') + ' ' : '') + (peer.online ? _('Online') : _('Offline'))
 					}, peer.online ? '●' : '○')
 				),
@@ -487,51 +495,18 @@ return view.extend({
 		}
 		o.rmempty = true;
 
-		const fwBtn = s.taboption('general', form.Button, '_setup_firewall', _('Auto Configure Firewall'));
-		fwBtn.description = _('Essential configuration for Subnet Routing (Site-to-Site) and Exit Node features.')
-		+'<br>'+_('It automatically creates the tailscale interface, sets up firewall zones for LAN <-> Tailscale forwarding,')
-		+'<br>'+_('and enables Masquerading and MSS Clamping (MTU fix) to ensure stable connections.');
-		fwBtn.inputstyle = 'action';
-		fwBtn.onclick = function() {
-			return callSetupFirewall().then(function(res) {
-			const msg = res?.message || _('Firewall configuration applied.');
-			ui.addNotification(null, E('p', {}, msg), 'info');
-		}).catch(function(err) {
-			ui.addNotification(null, E('p', {}, _('Failed to configure firewall: %s').format(err?.message || err || 'Unknown error')), 'error');
-		}).then(function() {
-			return new Promise(function(resolve) {
-				window.setTimeout(resolve, 3000);
-			});
-		});
-	};
-
-		const helpTitle = s.taboption('general', form.DummyValue, '_help_title');
-		helpTitle.title = _('How to enable Site-to-Site?');
-		helpTitle.render = function() {
-			return E('div', { 'class': 'cbi-value', 'style': 'margin-top: 1em; border-top: 1px font-weight: bold;' }, [
-				E('label', { 'class': 'cbi-value-title' }, this.title),
-				E('div', { 'class': 'cbi-value-field', 'style': 'line-height: 1.6em; font-size: 95%; color: #555;' }, [
-					_('1. Select "Accept Routes" (to access remote devices).'), E('br'),
-					_('2. In "Advertise Routes", select your local subnet (to allow remote devices to access this LAN).'), E('br'),
-					_('3. Click "Auto Configure Firewall" (to allow traffic forwarding).'), E('br'),
-					E('strong', { 'style': 'color: #d9534f;' }, _('[Important] Log in to the Tailscale admin console and manually enable "Subnet Routes" for this device.'))
-				])
-			]);
-		};
-
 		// Create the account settings
 		s.tab('account', _('Account Settings'));
 		defTabOpts(s, 'account', accountConf, { optional: false });
 
 		const loginBtn = s.taboption('account', form.Button, '_login', _('Login'),
-		_('Click to get a login URL for this device.')
-		+'<br>'+_('If the timeout is displayed, you can refresh the page and click Login again.'));
+			_('Click to get a login URL for this device.')
+		);
 		loginBtn.inputstyle = 'apply';
 
 		const customLoginUrl = s.taboption('account', form.Value, 'custom_login_url',
 			_('Custom Login Server'),
-			_('Optional: Specify a custom control server URL (e.g., a Headscale instance, %s).'.format('https://example.com'))
-			+'<br>'+_('Leave blank for default Tailscale control plane.')
+			_('Optional: Specify a custom control server URL (e.g., a Headscale instance). Leave blank for default Tailscale control plane.')
 		);
 		customLoginUrl.placeholder = '';
 		customLoginUrl.rmempty = true;
@@ -539,7 +514,6 @@ return view.extend({
 		const customLoginAuthKey = s.taboption('account', form.Value, 'custom_login_AuthKey',
 			_('Custom Login Server Auth Key'),
 			_('Optional: Specify an authentication key for the custom control server. Leave blank if not required.')
-			+'<br>'+_('If you are using custom login server but not providing an Auth Key, will redirect to the login page without pre-filling the key.')
 		);
 		customLoginAuthKey.placeholder = '';
 		customLoginAuthKey.rmempty = true;

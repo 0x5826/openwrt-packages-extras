@@ -139,7 +139,7 @@ msgstr "为通告路由的流量禁用源地址转换 (SNAT)。大多数用户�
 
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:29
 msgid "Disable Tailscale netfilter auto-configuration (--netfilter-mode=off)."
-msgstr ""
+msgstr "禁用 Tailscale 自动配置 netfilter 防火墙规则 (--netfilter-mode=off)。"
 
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:28
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:229
@@ -572,6 +572,24 @@ msgstr "最近中继节点"
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:280
 msgid "Public Endpoints"
 msgstr "公网打洞端点"
+
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:300
+msgid "Tailscale is not installed."
+msgstr "未安装 Tailscale 主程序"
+
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:304
+msgid "Tailscale is not logged in. Please log in to view devices."
+msgstr "Tailscale 未登录，请先登录账户以查看设备列表。"
+
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:308
+msgid "Tailscale is not running."
+msgstr "Tailscale 未运行"
+
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:530
+msgid ""
+"Optional: Specify a custom control server URL (e.g., a Headscale instance). "
+"Leave blank for default Tailscale control plane."
+msgstr "可选：指定自定义控制服务器地址（例如 Headscale 实例）。留空则使用 Tailscale 官方服务器。"
 
 #~ msgid ""
 #~ "Completely disable all Tailscale firewall auto-configuration, including "
