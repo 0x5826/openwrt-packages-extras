@@ -47,6 +47,30 @@ function get_connectivity_data() {
 	return null;
 }
 
+function get_cached_version() {
+	const cache_file = '/tmp/tailscale_version.cache';
+	const ts_bin = access('/usr/sbin/tailscale') ? '/usr/sbin/tailscale' : '/usr/bin/tailscale';
+	if (!access(ts_bin)) return 'Unknown';
+
+	let bin_st = stat(ts_bin);
+	let cache_st = access(cache_file) ? stat(cache_file) : null;
+
+	if (cache_st && cache_st.size > 0 && bin_st && cache_st.mtime >= bin_st.mtime) {
+		let cached = trim(readfile(cache_file) || '');
+		if (cached != '') return cached;
+	}
+
+	let ver_res = exec(ts_bin + ' version 2>/dev/null');
+	if (ver_res.code == 0 && length(ver_res.stdout) > 0) {
+		let ver_line = trim(ver_res.stdout[0]);
+		if (ver_line != '') {
+			writefile(cache_file, ver_line + '\n');
+			return ver_line;
+		}
+	}
+	return 'Unknown';
+}
+
 const methods = {};
 
 methods.get_status = {
@@ -68,13 +92,7 @@ methods.get_status = {
 			return data;
 		}
 
-		let ver_res = exec('tailscale version 2>/dev/null');
-		if (ver_res.code == 0 && length(ver_res.stdout) > 0) {
-			let ver_line = trim(ver_res.stdout[0]);
-			if (ver_line != '') {
-				data.version = ver_line;
-			}
-		}
+		data.version = get_cached_version();
 
 		let status_out = exec('tailscale status --json 2>/dev/null');
 		let peer_map = {};
@@ -82,7 +100,9 @@ methods.get_status = {
 		if (status_out.code == 0 && length(status_out.stdout) > 0) {
 			try {
 				let status_data = json(join('', status_out.stdout));
-				data.version = status_data?.Version || 'Unknown';
+				if (status_data?.Version) {
+					data.version = status_data.Version;
+				}
 				data.health = status_data?.Health || '';
 				data.TUNMode = (status_data?.TUN == false ? 'false' : 'true');
 				if (status_data?.BackendState == 'Running') {
