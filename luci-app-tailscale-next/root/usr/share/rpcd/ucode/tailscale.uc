@@ -105,10 +105,14 @@ methods.get_status = {
 				}
 				data.health = status_data?.Health || '';
 				data.TUNMode = (status_data?.TUN == false ? 'false' : 'true');
-				if (status_data?.BackendState == 'Running') {
+				if (status_data?.BackendState == 'Running' || status_data?.BackendState == 'Starting') {
 					data.status = 'running';
-				} else if (status_data?.BackendState == 'NeedsLogin') {
+				} else if (status_data?.HaveNodeKey == true) {
+					data.status = (status_data?.BackendState == 'Running') ? 'running' : 'stopped';
+				} else if (status_data?.BackendState == 'NeedsLogin' || status_data?.BackendState == 'NoState') {
 					data.status = 'logout';
+				} else {
+					data.status = (status_data?.BackendState == 'Stopped') ? 'stopped' : 'logout';
 				}
 
 				if (status_data?.Self?.TailscaleIPs) {
@@ -199,11 +203,13 @@ methods.get_status = {
 		} else {
 			uci.load('tailscale');
 			let state_file_path = uci.get('tailscale', 'settings', 'state_file') || "/etc/tailscale/tailscaled.state";
+			let has_state = false;
 			if (access(state_file_path) && stat(state_file_path)?.size > 0) {
-				data.status = 'stopped';
-			} else {
-				data.status = 'logout';
+				has_state = true;
+			} else if (access('/var/lib/tailscale/tailscaled.state') && stat('/var/lib/tailscale/tailscaled.state')?.size > 0) {
+				has_state = true;
 			}
+			data.status = has_state ? 'stopped' : 'logout';
 		}
 
 		data.peers = peer_map;
