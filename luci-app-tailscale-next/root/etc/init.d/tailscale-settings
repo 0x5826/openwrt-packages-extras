@@ -418,28 +418,6 @@ apply_settings() {
 		logger -t "$NAME" "Failed to apply settings (exit code: $ret)"
 	fi
 
-	# Ensure tailscale0 interface has its assigned IPv4/IPv6 addresses configured
-	local ts_ip4 ts_ip6
-	ts_ip4=$("$ts_bin" ip -4 2>/dev/null)
-	ts_ip6=$("$ts_bin" ip -6 2>/dev/null)
-	if [ -n "$ts_ip4" ] && [ -d "/sys/class/net/tailscale0" ]; then
-		if ! ip -4 addr show dev tailscale0 2>/dev/null | grep -q "$ts_ip4"; then
-			ip -4 addr add "$ts_ip4/32" dev tailscale0 2>/dev/null || true
-			logger -t "$NAME" "Auto restored tailscale0 IPv4 address: $ts_ip4"
-		fi
-	fi
-	if [ -n "$ts_ip6" ] && [ -d "/sys/class/net/tailscale0" ]; then
-		if ! ip -6 addr show dev tailscale0 2>/dev/null | grep -q "$ts_ip6"; then
-			ip -6 addr add "$ts_ip6/128" dev tailscale0 2>/dev/null || true
-			logger -t "$NAME" "Auto restored tailscale0 IPv6 address: $ts_ip6"
-		fi
-	fi
-
-	# Ensure Tailscale CGNAT routes exist in table 52 for peer communications
-	if [ -d "/sys/class/net/tailscale0" ]; then
-		ip route replace 100.64.0.0/10 dev tailscale0 table 52 2>/dev/null || true
-		ip -6 route replace fd7a:115c:a1e0::/48 dev tailscale0 table 52 2>/dev/null || true
-	fi
 	return 0
 }
 
