@@ -42,7 +42,14 @@ local function b64decode(str)
 end
 
 local function get_connectivity_data()
-	local res = exec_cmd('if [ ! -f /tmp/tailscale_netcheck.json ] || [ $(($(date +%s) - $(date -r /tmp/tailscale_netcheck.json +%s 2>/dev/null || stat -c %Y /tmp/tailscale_netcheck.json 2>/dev/null || echo 0))) -gt 60 ]; then tailscale netcheck --format=json > /tmp/tailscale_netcheck.tmp 2>/dev/null && mv /tmp/tailscale_netcheck.tmp /tmp/tailscale_netcheck.json; fi; cat /tmp/tailscale_netcheck.json 2>/dev/null')
+	local ts_cmd = "tailscale"
+	if fs.access("/usr/sbin/tailscale") then
+		ts_cmd = "/usr/sbin/tailscale"
+	elseif fs.access("/usr/bin/tailscale") then
+		ts_cmd = "/usr/bin/tailscale"
+	end
+
+	local res = exec_cmd('if [ ! -f /tmp/tailscale_netcheck.json ] || [ $(($(date +%s) - $(date -r /tmp/tailscale_netcheck.json +%s 2>/dev/null || stat -c %Y /tmp/tailscale_netcheck.json 2>/dev/null || echo 0))) -gt 60 ]; then ' .. ts_cmd .. ' netcheck --format=json > /tmp/tailscale_netcheck.tmp 2>/dev/null && mv /tmp/tailscale_netcheck.tmp /tmp/tailscale_netcheck.json; fi; cat /tmp/tailscale_netcheck.json 2>/dev/null')
 	if res.raw and #res.raw > 0 then
 		local parsed = json.parse(res.raw)
 		if type(parsed) == "table" then
@@ -139,8 +146,18 @@ methods.get_status = {
 					local ep_list = {}
 					if status_data.Self and status_data.Self.Endpoints and #status_data.Self.Endpoints > 0 then
 						ep_list = status_data.Self.Endpoints
-					elseif netcheck and netcheck.GlobalAddrs and #netcheck.GlobalAddrs > 0 then
-						ep_list = netcheck.GlobalAddrs
+					elseif netcheck then
+						if netcheck.GlobalV4 and netcheck.GlobalV4 ~= "" then
+							table.insert(ep_list, netcheck.GlobalV4)
+						end
+						if netcheck.GlobalV6 and netcheck.GlobalV6 ~= "" then
+							table.insert(ep_list, netcheck.GlobalV6)
+						end
+						if netcheck.GlobalAddrs and #netcheck.GlobalAddrs > 0 then
+							for _, addr in ipairs(netcheck.GlobalAddrs) do
+								table.insert(ep_list, addr)
+							end
+						end
 					end
 
 					data.connectivity = {
