@@ -441,7 +441,7 @@ handle_service_state() {
 }
 
 start_service() {
-	apply_settings
+	handle_service_state
 }
 
 service_triggers() {

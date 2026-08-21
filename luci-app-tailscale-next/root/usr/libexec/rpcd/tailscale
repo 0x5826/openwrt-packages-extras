@@ -117,10 +117,14 @@ methods.get_status = {
 				end
 				data.health = status_data.Health or ''
 				data.TUNMode = (status_data.TUN == false and 'false') or 'true'
-				if status_data.BackendState == 'Running' then
+				if status_data.BackendState == 'Running' or status_data.BackendState == 'Starting' then
 					data.status = 'running'
-				elseif status_data.BackendState == 'NeedsLogin' then
+				elseif status_data.HaveNodeKey == true then
+					data.status = (status_data.BackendState == 'Running') and 'running' or 'stopped'
+				elseif status_data.BackendState == 'NeedsLogin' or status_data.BackendState == 'NoState' then
 					data.status = 'logout'
+				else
+					data.status = (status_data.BackendState == 'Stopped') and 'stopped' or 'logout'
 				end
 
 				if status_data.Self and status_data.Self.TailscaleIPs then
@@ -218,12 +222,17 @@ methods.get_status = {
 		else
 			local uci = UCI.cursor()
 			local state_file_path = uci:get('tailscale', 'settings', 'state_file') or "/etc/tailscale/tailscaled.state"
+			local has_state = false
 			local st = fs.stat(state_file_path)
 			if st and (st.size or 0) > 0 then
-				data.status = 'stopped'
+				has_state = true
 			else
-				data.status = 'logout'
+				local alt_st = fs.stat('/var/lib/tailscale/tailscaled.state')
+				if alt_st and (alt_st.size or 0) > 0 then
+					has_state = true
+				end
 			end
+			data.status = has_state and 'stopped' or 'logout'
 		end
 
 		data.peers = peer_map
