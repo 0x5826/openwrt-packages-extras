@@ -135,8 +135,8 @@ methods.get_status = {
 				if data.status == 'running' then
 					local netcheck = get_connectivity_data()
 					local derp_lat_str = ''
-					local pref_derp = (netcheck and netcheck.PreferredDERP) or 0
-					if pref_derp > 0 and netcheck and netcheck.DERPLatencies then
+					local pref_derp = (netcheck and netcheck.PreferredDERP) or (status_data.Self and status_data.Self.Relay) or 0
+					if pref_derp ~= 0 and pref_derp ~= "" and netcheck and netcheck.DERPLatencies then
 						local lat = netcheck.DERPLatencies[tostring(pref_derp)]
 						if lat then
 							derp_lat_str = string.format("%d ms", math.floor(lat * 1000))
@@ -144,7 +144,9 @@ methods.get_status = {
 					end
 
 					local ep_list = {}
-					if status_data.Self and status_data.Self.Endpoints and #status_data.Self.Endpoints > 0 then
+					if status_data.Self and status_data.Self.Addrs and #status_data.Self.Addrs > 0 then
+						ep_list = status_data.Self.Addrs
+					elseif status_data.Self and status_data.Self.Endpoints and #status_data.Self.Endpoints > 0 then
 						ep_list = status_data.Self.Endpoints
 					elseif netcheck then
 						if netcheck.GlobalV4 and netcheck.GlobalV4 ~= "" then
@@ -162,9 +164,9 @@ methods.get_status = {
 
 					data.connectivity = {
 						varies = (netcheck and netcheck.MappingVariesByDestIP == true) and 'Yes' or 'No',
-						ipv4 = (netcheck and netcheck.IPv4 == true) and 'Yes' or 'No',
+						ipv4 = (netcheck and netcheck.IPv4 == true or (ep_list and #ep_list > 0)) and 'Yes' or 'No',
 						ipv6 = (netcheck and netcheck.IPv6 == true) and 'Yes' or 'No',
-						udp = (netcheck and netcheck.UDP == true) and 'Yes' or 'No',
+						udp = (netcheck and netcheck.UDP == true or (ep_list and #ep_list > 0)) and 'Yes' or 'No',
 						upnp = (netcheck and netcheck.UPnP == true) and 'Yes' or 'No',
 						pcp = (netcheck and netcheck.PCP == true) and 'Yes' or 'No',
 						pmp = (netcheck and netcheck.PMP == true) and 'Yes' or 'No',
