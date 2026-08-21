@@ -272,15 +272,33 @@ methods.do_login = {
 
 methods.do_logout = {
 	call: function() {
-		let status=methods.get_status.call();
-		if (status.status != 'running') {
-			return { error: 'Tailscale is not running. Cannot perform logout.' };
+		let status = methods.get_status.call();
+		if (status.status == 'not_installed') {
+			return { error: 'Tailscale is not installed.' };
+		}
+		if (status.status == 'logout') {
+			return { success: true };
 		}
 
-		let logout_result = exec('tailscale logout');
-		if (logout_result.code != 0) {
-			return { error: 'Failed to logout: ' + logout_result.stderr };
+		uci.load('tailscale');
+		let state_file_path = uci.get('tailscale', 'settings', 'state_file') || "/etc/tailscale/tailscaled.state";
+
+		if (status.status == 'running') {
+			exec('tailscale logout 2>/dev/null');
+		} else {
+			exec('/etc/init.d/tailscale start >/dev/null 2>&1');
+			for (let i = 0; i < 3; i++) {
+				sleep(1000);
+				let res = exec('tailscale logout 2>/dev/null');
+				if (res.code == 0) break;
+			}
+			exec('/etc/init.d/tailscale stop >/dev/null 2>&1');
 		}
+
+		if (access(state_file_path)) {
+			unlink(state_file_path);
+		}
+
 		return { success: true };
 	}
 };
