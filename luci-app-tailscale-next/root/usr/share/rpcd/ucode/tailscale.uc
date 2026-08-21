@@ -122,8 +122,8 @@ methods.get_status = {
 				if (data.status == 'running') {
 					let netcheck = get_connectivity_data();
 					let derp_lat_str = '';
-					let pref_derp = netcheck?.PreferredDERP || 0;
-					if (pref_derp > 0 && netcheck?.DERPLatencies) {
+					let pref_derp = netcheck?.PreferredDERP || status_data?.Self?.Relay || 0;
+					if (pref_derp != 0 && pref_derp != '' && netcheck?.DERPLatencies) {
 						let lat = netcheck.DERPLatencies[tostring(pref_derp)];
 						if (lat) {
 							derp_lat_str = sprintf('%d ms', int(lat * 1000));
@@ -131,7 +131,9 @@ methods.get_status = {
 					}
 
 					let ep_list = [];
-					if (status_data?.Self?.Endpoints && length(status_data.Self.Endpoints) > 0) {
+					if (status_data?.Self?.Addrs && length(status_data.Self.Addrs) > 0) {
+						ep_list = status_data.Self.Addrs;
+					} else if (status_data?.Self?.Endpoints && length(status_data.Self.Endpoints) > 0) {
 						ep_list = status_data.Self.Endpoints;
 					} else if (netcheck) {
 						if (netcheck.GlobalV4) push(ep_list, netcheck.GlobalV4);
@@ -143,9 +145,9 @@ methods.get_status = {
 
 					data.connectivity = {
 						varies: (netcheck?.MappingVariesByDestIP == true) ? 'Yes' : 'No',
-						ipv4: (netcheck?.IPv4 == true) ? 'Yes' : 'No',
+						ipv4: (netcheck?.IPv4 == true || (ep_list && length(ep_list) > 0)) ? 'Yes' : 'No',
 						ipv6: (netcheck?.IPv6 == true) ? 'Yes' : 'No',
-						udp: (netcheck?.UDP == true) ? 'Yes' : 'No',
+						udp: (netcheck?.UDP == true || (ep_list && length(ep_list) > 0)) ? 'Yes' : 'No',
 						upnp: (netcheck?.UPnP == true) ? 'Yes' : 'No',
 						pcp: (netcheck?.PCP == true) ? 'Yes' : 'No',
 						pmp: (netcheck?.PMP == true) ? 'Yes' : 'No',
