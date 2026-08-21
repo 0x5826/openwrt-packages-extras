@@ -88,9 +88,19 @@ methods.get_status = {
 					data.ipv6 = status_data.Self.TailscaleIPs[1] || null;
 				}
 
-				if (status_data?.CurrentTailnet) {
-					data.domain_name = status_data.CurrentTailnet.Name || '';
+				let account_str = '';
+				if (status_data?.CurrentTailnet?.Name) {
+					account_str = status_data.CurrentTailnet.Name;
 				}
+				if (status_data?.Self?.UserID && status_data?.User) {
+					let uid = tostring(status_data.Self.UserID);
+					let uinfo = status_data.User[uid];
+					if (uinfo?.DisplayName && uinfo.DisplayName != '' && uinfo.DisplayName != account_str) {
+						account_str = (account_str != '' ? (account_str + ' (' + uinfo.DisplayName + ')') : uinfo.DisplayName);
+					}
+				}
+				data.account = account_str;
+				data.domain_name = account_str;
 
 				if (status_data?.Peer) {
 					for (let id, p in status_data.Peer) {

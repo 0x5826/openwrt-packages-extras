@@ -465,6 +465,10 @@ msgstr "TUN 模式"
 msgid "TX"
 msgstr "傳送"
 
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:222
+msgid "Tailnet Account"
+msgstr "Tailnet 帳號"
+
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:232
 msgid "Tailnet Name"
 msgstr "Tailnet 名稱"
