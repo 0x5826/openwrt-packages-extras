@@ -100,9 +100,19 @@ methods.get_status = {
 					data.ipv6 = status_data.Self.TailscaleIPs[2] or json.null
 				end
 
-				if status_data.CurrentTailnet then
-					data.domain_name = status_data.CurrentTailnet.Name or ''
+				local account_str = ''
+				if status_data.CurrentTailnet and status_data.CurrentTailnet.Name then
+					account_str = status_data.CurrentTailnet.Name
 				end
+				if status_data.Self and status_data.Self.UserID and status_data.User then
+					local uid = tostring(status_data.Self.UserID)
+					local uinfo = status_data.User[uid]
+					if uinfo and uinfo.DisplayName and uinfo.DisplayName ~= '' and uinfo.DisplayName ~= account_str then
+						account_str = (account_str ~= '' and (account_str .. ' (' .. uinfo.DisplayName .. ')') or uinfo.DisplayName)
+					end
+				end
+				data.account = account_str
+				data.domain_name = account_str
 
 				if status_data.Peer then
 					for _, p in pairs(status_data.Peer) do

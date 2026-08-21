@@ -219,7 +219,7 @@ function renderStatus(status) {
 		{ label: _('TUN Mode'), value: status.TUNMode ? _('Enabled') : _('Disabled') },
 		{ label: _('Tailscale IPv4'), value: status.ipv4 || 'N/A' },
 		{ label: _('Tailscale IPv6'), value: status.ipv6 || 'N/A' },
-		{ label: _('Tailnet Name'), value: status.domain_name || 'N/A' }
+		{ label: _('Tailnet Account'), value: status.account || status.domain_name || 'N/A' }
 	];
 
 	// Build the horizontal status table using the data array.

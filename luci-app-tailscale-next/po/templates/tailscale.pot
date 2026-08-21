@@ -460,6 +460,10 @@ msgstr ""
 msgid "TX"
 msgstr ""
 
+#: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:222
+msgid "Tailnet Account"
+msgstr ""
+
 #: applications/luci-app-tailscale-next/htdocs/luci-static/resources/view/tailscale.js:232
 msgid "Tailnet Name"
 msgstr ""
