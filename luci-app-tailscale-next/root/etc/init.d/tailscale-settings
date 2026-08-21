@@ -267,7 +267,7 @@ apply_settings() {
 	config_load tailscale
 
 	local accept_routes advertise_exit_node exit_node exit_node_allow_lan_access
-	local ssh shields_up runwebclient nosnat hostname
+	local ssh shields_up runwebclient nosnat hostname dns_mode
 	local enable_relay relay_server_port disable_fw_config
 
 	config_get accept_routes              settings accept_routes              '0'
