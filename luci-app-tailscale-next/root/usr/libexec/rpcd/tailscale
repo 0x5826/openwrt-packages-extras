@@ -42,21 +42,34 @@ local function b64decode(str)
 end
 
 local function get_connectivity_data()
-	local ts_cmd = "tailscale"
-	if fs.access("/usr/sbin/tailscale") then
-		ts_cmd = "/usr/sbin/tailscale"
-	elseif fs.access("/usr/bin/tailscale") then
-		ts_cmd = "/usr/bin/tailscale"
-	end
+	local ts_cmd = fs.access("/usr/sbin/tailscale") and "/usr/sbin/tailscale" or (fs.access("/usr/bin/tailscale") and "/usr/bin/tailscale" or nil)
+	if not ts_cmd then return nil end
 
-	local res = exec_cmd('if [ ! -f /tmp/tailscale_netcheck.json ] || [ $(($(date +%s) - $(date -r /tmp/tailscale_netcheck.json +%s 2>/dev/null || stat -c %Y /tmp/tailscale_netcheck.json 2>/dev/null || echo 0))) -gt 60 ]; then ' .. ts_cmd .. ' netcheck --format=json > /tmp/tailscale_netcheck.tmp 2>/dev/null && mv /tmp/tailscale_netcheck.tmp /tmp/tailscale_netcheck.json; fi; cat /tmp/tailscale_netcheck.json 2>/dev/null')
-	if res.raw and #res.raw > 0 then
-		local parsed = json.parse(res.raw)
-		if type(parsed) == "table" then
-			return parsed
+	local cache_file = '/tmp/tailscale_netcheck.json'
+	local lock_file = '/tmp/tailscale_netcheck.lock'
+
+	local cached_data = nil
+	if fs.access(cache_file) then
+		local content = fs.readfile(cache_file)
+		if content and #content > 0 then
+			local parsed = json.parse(content)
+			if type(parsed) == "table" then
+				cached_data = parsed
+			end
 		end
 	end
-	return nil
+
+	local cache_st = fs.stat(cache_file)
+	local now = os.time()
+	if not cache_st or (now - (cache_st.mtime or 0)) > 60 then
+		local lock_st = fs.stat(lock_file)
+		if not lock_st or (now - (lock_st.mtime or 0)) > 30 then
+			fs.writefile(lock_file, tostring(now))
+			os.execute('(' .. ts_cmd .. ' netcheck --format=json > /tmp/tailscale_netcheck.tmp 2>/dev/null && mv /tmp/tailscale_netcheck.tmp /tmp/tailscale_netcheck.json; rm -f ' .. lock_file .. ') >/dev/null 2>&1 &')
+		end
+	end
+
+	return cached_data
 end
 
 local function get_cached_version()
