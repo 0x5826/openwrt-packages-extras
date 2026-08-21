@@ -187,6 +187,15 @@ methods.get_status = {
 					}
 				end
 			end
+		else
+			local uci = UCI.cursor()
+			local state_file_path = uci:get('tailscale', 'settings', 'state_file') or "/etc/tailscale/tailscaled.state"
+			local st = fs.stat(state_file_path)
+			if st and (st.size or 0) > 0 then
+				data.status = 'stopped'
+			else
+				data.status = 'logout'
+			end
 		end
 
 		data.peers = peer_map
@@ -320,8 +329,9 @@ methods.do_logout = {
 				local res = exec_cmd('tailscale logout 2>/dev/null')
 				if res.code == 0 then break end
 			end
-			exec_cmd('/etc/init.d/tailscale stop >/dev/null 2>&1')
 		end
+
+		exec_cmd('/etc/init.d/tailscale stop >/dev/null 2>&1')
 
 		if fs.access(state_file_path) then
 			fs.unlink(state_file_path)
