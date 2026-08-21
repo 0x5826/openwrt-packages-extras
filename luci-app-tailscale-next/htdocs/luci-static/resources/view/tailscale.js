@@ -265,6 +265,11 @@ function renderStatus(status) {
 		}, _('Login'));
 	} else if (status.status !== 'running') {
 		statusBadge = E('span', { 'style': 'color:orange;' }, E('strong', {}, _('NOT RUNNING')));
+		actionButton = E('button', {
+			'class': 'cbi-button cbi-button-remove',
+			'style': 'margin-left: 10px; padding: 2px 10px;',
+			'click': ui.createHandlerFn(this, handleLogout)
+		}, _('Logout'));
 	} else {
 		statusBadge = E('span', { 'style': 'color:green;' }, E('strong', {}, _('RUNNING')));
 		actionButton = E('button', {

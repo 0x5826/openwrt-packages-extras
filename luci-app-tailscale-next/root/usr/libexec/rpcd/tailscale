@@ -291,14 +291,32 @@ methods.do_login = {
 methods.do_logout = {
 	call = function()
 		local status = methods.get_status.call()
-		if status.status ~= 'running' then
-			return { error = 'Tailscale is not running. Cannot perform logout.' }
+		if status.status == 'not_installed' then
+			return { error = 'Tailscale is not installed.' }
+		end
+		if status.status == 'logout' then
+			return { success = true }
 		end
 
-		local logout_result = exec_cmd('tailscale logout 2>&1')
-		if logout_result.code ~= 0 then
-			return { error = 'Failed to logout: ' .. (logout_result.raw or "") }
+		local uci = UCI.cursor()
+		local state_file_path = uci:get('tailscale', 'settings', 'state_file') or "/etc/tailscale/tailscaled.state"
+
+		if status.status == 'running' then
+			exec_cmd('tailscale logout 2>/dev/null')
+		else
+			exec_cmd('/etc/init.d/tailscale start >/dev/null 2>&1')
+			for i = 1, 3 do
+				nixio.nanosleep(1, 0)
+				local res = exec_cmd('tailscale logout 2>/dev/null')
+				if res.code == 0 then break end
+			end
+			exec_cmd('/etc/init.d/tailscale stop >/dev/null 2>&1')
 		end
+
+		if fs.access(state_file_path) then
+			fs.unlink(state_file_path)
+		end
+
 		return { success = true }
 	end
 }
