@@ -133,9 +133,6 @@ msgstr "加载设备列表失败：%s"
 msgid "Failed to load logs: %s"
 msgstr "加载日志失败：%s"
 
-msgid "Firewall Mode"
-msgstr "防火墙模式"
-
 msgid "General Settings"
 msgstr "常规设置"
 
@@ -252,9 +249,6 @@ msgstr "正在请求 Tailscale 登录地址，请稍候..."
 
 msgid "Select an exit node from the list (--exit-node). If enabled, Allow LAN Access is enabled implicitly."
 msgstr "从列表中选择出口节点 (--exit-node)。启用后将隐式开启允许访问局域网。"
-
-msgid "Select the firewall backend for Tailscale (TS_DEBUG_FIREWALL_MODE=auto/nftables/iptables). Requires service restart to take effect."
-msgstr "选择 Tailscale 底层防火墙模式 (TS_DEBUG_FIREWALL_MODE=auto/nftables/iptables)。需要重启服务以生效。"
 
 msgid "Service Status"
 msgstr "服务状态"

@@ -133,9 +133,6 @@ msgstr ""
 msgid "Failed to load logs: %s"
 msgstr ""
 
-msgid "Firewall Mode"
-msgstr ""
-
 msgid "General Settings"
 msgstr ""
 
@@ -251,9 +248,6 @@ msgid "Requesting Tailscale login URL... Please wait."
 msgstr ""
 
 msgid "Select an exit node from the list (--exit-node). If enabled, Allow LAN Access is enabled implicitly."
-msgstr ""
-
-msgid "Select the firewall backend for Tailscale (TS_DEBUG_FIREWALL_MODE=auto/nftables/iptables). Requires service restart to take effect."
 msgstr ""
 
 msgid "Service Status"
