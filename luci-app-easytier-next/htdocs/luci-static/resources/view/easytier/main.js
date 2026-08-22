@@ -48,12 +48,21 @@ const callServiceAction = rpc.declare({
 	params: ['action']
 });
 
-function renderStatusBadge(stateObj, title, extraAction) {
+function createActionBtn(label, btnClass, onClick) {
+	return E('button', {
+		'class': 'btn cbi-button ' + btnClass,
+		'style': 'margin-left: 10px; padding: 2px 10px; font-size: 12px; vertical-align: middle;',
+		'click': onClick
+	}, label);
+}
+
+function renderCoreStatus(stateObj) {
 	const state = stateObj ? stateObj.state : 'stopped';
 	const pid = stateObj ? stateObj.pid : null;
+	const isRunning = (state === 'managed' || state === 'unmanaged');
+
 	let text = _('Stopped');
 	let color = 'red';
-
 	if (state === 'managed') {
 		text = _('Running (Managed)');
 		color = 'green';
@@ -61,34 +70,72 @@ function renderStatusBadge(stateObj, title, extraAction) {
 		text = _('Running (Unmanaged)');
 		color = 'orange';
 	}
-
-	if (pid) {
-		text += ' [PID: ' + pid + ']';
-	}
+	if (pid) text += ' [PID: ' + pid + ']';
 
 	const fields = [
 		E('strong', { 'style': 'color: ' + color + '; font-size: 1.1em;' }, text)
 	];
 
-	if (extraAction && (state === 'managed' || state === 'unmanaged')) {
-		fields.push(extraAction);
+	if (isRunning) {
+		fields.push(
+			createActionBtn(_('Restart'), 'cbi-button-action', function(ev) {
+				ui.showModal(_('Action'), [ E('p', {}, _('Restarting service...')) ]);
+				return callServiceAction('restart').then(function() {
+					window.location.reload();
+				});
+			})
+		);
 	}
 
 	return E('div', { 'class': 'cbi-value' }, [
-		E('label', { 'class': 'cbi-value-title' }, title),
+		E('label', { 'class': 'cbi-value-title' }, _('Core Service Status')),
 		E('div', { 'class': 'cbi-value-field' }, fields)
 	]);
 }
 
-function getWebConsoleBtn() {
-	const port = uci.get('easytier', 'settings', 'web_html_port') || '22020';
-	const url = 'http://' + window.location.hostname + ':' + port;
-	return E('a', {
-		'class': 'btn cbi-button cbi-button-action',
-		'style': 'margin-left: 12px; padding: 2px 10px; font-size: 12px; vertical-align: middle;',
-		'href': url,
-		'target': '_blank'
-	}, _('Open Console'));
+function renderWebStatus(stateObj) {
+	const state = stateObj ? stateObj.state : 'stopped';
+	const pid = stateObj ? stateObj.pid : null;
+	const isRunning = (state === 'managed' || state === 'unmanaged');
+
+	let text = _('Stopped');
+	let color = 'red';
+	if (state === 'managed') {
+		text = _('Running (Managed)');
+		color = 'green';
+	} else if (state === 'unmanaged') {
+		text = _('Running (Unmanaged)');
+		color = 'orange';
+	}
+	if (pid) text += ' [PID: ' + pid + ']';
+
+	const fields = [
+		E('strong', { 'style': 'color: ' + color + '; font-size: 1.1em;' }, text)
+	];
+
+	if (isRunning) {
+		const port = uci.get('easytier', 'settings', 'web_html_port') || '22020';
+		const url = 'http://' + window.location.hostname + ':' + port;
+		fields.push(
+			createActionBtn(_('Restart'), 'cbi-button-action', function(ev) {
+				ui.showModal(_('Action'), [ E('p', {}, _('Restarting service...')) ]);
+				return callServiceAction('restart').then(function() {
+					window.location.reload();
+				});
+			}),
+			E('a', {
+				'class': 'btn cbi-button cbi-button-action',
+				'style': 'margin-left: 10px; padding: 2px 10px; font-size: 12px; vertical-align: middle;',
+				'href': url,
+				'target': '_blank'
+			}, _('Open Console'))
+		);
+	}
+
+	return E('div', { 'class': 'cbi-value' }, [
+		E('label', { 'class': 'cbi-value-title' }, _('Web Console Status')),
+		E('div', { 'class': 'cbi-value-field' }, fields)
+	]);
 }
 
 function renderLocalNodeInfo(peerData) {
@@ -107,14 +154,18 @@ function renderLocalNodeInfo(peerData) {
 		}
 	}
 
-	const ipv4Val = (local && local.ipv4) ? String(local.ipv4).trim() : '-';
-	const hostnameVal = (local && local.hostname) ? String(local.hostname).trim() : '-';
-	const natVal = (local && local.nat) ? String(local.nat).trim() : '-';
-	const versionVal = (local && local.version) ? String(local.version).trim() : '-';
+	if (!local) {
+		return E('em', {}, _('Local service is not running.'));
+	}
+
+	const ipv4Val = local.ipv4 ? String(local.ipv4).trim() : '-';
+	const hostnameVal = local.hostname ? String(local.hostname).trim() : '-';
+	const natVal = local.nat ? String(local.nat).trim() : '-';
+	const versionVal = local.version ? String(local.version).trim() : '-';
 	const netNameVal = uci.get('easytier', 'settings', 'network_name') || 'easytier';
 	const devNameVal = uci.get('easytier', 'settings', 'dev_name') || 'easytier0';
 
-	let localProxy = (local && local.proxy_cidrs) ? String(local.proxy_cidrs).trim() : '';
+	let localProxy = local.proxy_cidrs ? String(local.proxy_cidrs).trim() : '';
 	if (!localProxy) {
 		let cfgProxy = uci.get('easytier', 'settings', 'proxy_networks');
 		if (Array.isArray(cfgProxy) && cfgProxy.length > 0) localProxy = cfgProxy.join(', ');
@@ -679,8 +730,8 @@ return view.extend({
 					const statusContainer = document.getElementById('easytier_service_status_display');
 					if (statusContainer) {
 						statusContainer.replaceChildren(
-							renderStatusBadge(curStatus.core, _('Core Service Status')),
-							renderStatusBadge(curStatus.web, _('Web Console Status'), getWebConsoleBtn())
+							renderCoreStatus(curStatus.core),
+							renderWebStatus(curStatus.web)
 						);
 					}
 
@@ -706,31 +757,8 @@ return view.extend({
 				E('div', { 'class': 'cbi-section' }, [
 					E('h3', {}, _('Service Status')),
 					E('div', { 'id': 'easytier_service_status_display' }, [
-						renderStatusBadge(status.core, _('Core Service Status')),
-						renderStatusBadge(status.web, _('Web Console Status'), getWebConsoleBtn())
-					]),
-					E('div', { 'class': 'cbi-value' }, [
-						E('label', { 'class': 'cbi-value-title' }, _('Service Actions')),
-						E('div', { 'class': 'cbi-value-field' }, [
-							E('button', {
-								'class': 'btn cbi-button cbi-button-action',
-								'click': function(ev) {
-									ui.showModal(_('Action'), [ E('p', {}, _('Restarting service...')) ]);
-									return callServiceAction('restart').then(function() {
-										window.location.reload();
-									});
-								}
-							}, _('Restart Service')),
-							' ',
-							E('button', {
-								'class': 'btn cbi-button cbi-button-reset',
-								'click': function(ev) {
-									return callServiceAction('stop').then(function() {
-										window.location.reload();
-									});
-								}
-							}, _('Stop Service'))
-						])
+						renderCoreStatus(status.core),
+						renderWebStatus(status.web)
 					])
 				]),
 				E('div', { 'class': 'cbi-section' }, [

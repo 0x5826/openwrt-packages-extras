@@ -316,5 +316,25 @@ msgstr ""
 msgid "Absolute path to the TOML configuration file. Ensure the file exists with valid EasyTier configuration."
 msgstr ""
 
+msgid "Local service is not running."
+msgstr ""
+
+msgid "Restart"
+msgstr ""
+
+msgid "Stop"
+msgstr ""
+
+msgid "Start Service"
+msgstr ""
+
+msgid "Starting service..."
+msgstr ""
+
+msgid "Stopping service..."
+msgstr ""
+
+
+
 
 

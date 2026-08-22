@@ -316,5 +316,25 @@ msgstr "配置文件路径"
 msgid "Absolute path to the TOML configuration file. Ensure the file exists with valid EasyTier configuration."
 msgstr "TOML 格式配置文件的绝对路径。请确保该文件已存在并包含有效的 EasyTier 配置。"
 
+msgid "Local service is not running."
+msgstr "本地服务未运行。"
+
+msgid "Restart"
+msgstr "重启"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Start Service"
+msgstr "启动服务"
+
+msgid "Starting service..."
+msgstr "正在启动服务..."
+
+msgid "Stopping service..."
+msgstr "正在停止服务..."
+
+
+
 
 
