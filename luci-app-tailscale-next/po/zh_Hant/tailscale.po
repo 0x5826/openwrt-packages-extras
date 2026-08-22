@@ -166,9 +166,6 @@ msgstr "執行日誌"
 msgid "MagicDNS: Tailscale overrides resolv.conf."
 msgstr "MagicDNS：Tailscale 將根據設定覆寫系統 resolv.conf 配置。"
 
-msgid "Masquerade outbound traffic from local network with the virtual interface IP. Recommended to enable for broad compatibility, or disable for transparent end-to-end routing."
-msgstr "使用虛擬介面 IP 偽裝本地區域網路的出站流量。推薦開啟以獲得最佳相容性，或關閉以實現透明的端到端路由。"
-
 msgid "N/A"
 msgstr "不適用"
 
@@ -219,9 +216,6 @@ msgstr "可選：指定自訂控制伺服器位址（例如 Headscale 實例，-
 
 msgid "Optional: Specify an authentication key for the custom control server (--auth-key). Leave blank if not required."
 msgstr "可選：指定自訂控制伺服器的預認證密鑰（--auth-key）。留空則無需認證密鑰。"
-
-msgid "Outbound Source NAT"
-msgstr "出站來源位址偽裝"
 
 msgid "Peer Relay Port"
 msgstr "節點中繼連接埠"

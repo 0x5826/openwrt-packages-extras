@@ -166,9 +166,6 @@ msgstr ""
 msgid "MagicDNS: Tailscale overrides resolv.conf."
 msgstr ""
 
-msgid "Masquerade outbound traffic from local network with the virtual interface IP. Recommended to enable for broad compatibility, or disable for transparent end-to-end routing."
-msgstr ""
-
 msgid "N/A"
 msgstr ""
 
@@ -218,9 +215,6 @@ msgid "Optional: Specify a custom control server URL (e.g., a Headscale instance
 msgstr ""
 
 msgid "Optional: Specify an authentication key for the custom control server (--auth-key). Leave blank if not required."
-msgstr ""
-
-msgid "Outbound Source NAT"
 msgstr ""
 
 msgid "Peer Relay Port"
