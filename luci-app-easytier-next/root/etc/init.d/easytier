@@ -14,25 +14,35 @@ setup_firewall_and_network() {
 	local dev_name="$1"
 	[ -z "$dev_name" ] && dev_name="easytier0"
 
-	# Ensure network interface exists in UCI for firewall zone association
-	if ! uci -q get network.easytier >/dev/null; then
+	local changed_net=0
+	local changed_fw=0
+
+	# 1. Ensure network interface exists in UCI for broad OpenWrt compatibility
+	local dev ifname
+	dev=$(uci -q get network.easytier.device)
+	ifname=$(uci -q get network.easytier.ifname)
+
+	if [ -z "$dev" ] && [ -z "$ifname" ]; then
 		uci -q set network.easytier=interface
 		uci -q set network.easytier.proto='none'
 		uci -q set network.easytier.device="$dev_name"
-		uci -q commit network
+		uci -q set network.easytier.ifname="$dev_name"
+		changed_net=1
+	else
+		if [ -z "$dev" ]; then
+			uci -q set network.easytier.device="$dev_name"
+			changed_net=1
+		fi
+		if [ -z "$ifname" ]; then
+			uci -q set network.easytier.ifname="$dev_name"
+			changed_net=1
+		fi
 	fi
 
 	# 2. Zone MASQUERADE (controlled by tunnel_snat)
 	local tunnel_snat target_masq="0"
 	tunnel_snat=$(uci -q get easytier.settings.tunnel_snat)
-	# 兼容历史 outbound_masq
-	if [ -z "$tunnel_snat" ]; then
-		local old_masq
-		old_masq=$(uci -q get easytier.settings.outbound_masq)
-		[ "$old_masq" = "1" ] && target_masq="1"
-	else
-		[ "$tunnel_snat" = "1" ] && target_masq="1"
-	fi
+	[ "$tunnel_snat" = "1" ] && target_masq="1"
 
 	# Ensure firewall zone exists
 	if ! uci -q get firewall.easytier >/dev/null; then
@@ -44,6 +54,7 @@ setup_firewall_and_network() {
 		uci -q set firewall.easytier.masq="$target_masq"
 		uci -q set firewall.easytier.mtu_fix='1'
 		uci -q add_list firewall.easytier.network='easytier'
+		uci -q add_list firewall.easytier.device="$dev_name"
 
 		# Allow forwarding from LAN to EasyTier
 		uci -q set firewall.easytier_fwd_lan=forwarding
@@ -55,18 +66,49 @@ setup_firewall_and_network() {
 		uci -q set firewall.easytier_fwd_et.src='easytier'
 		uci -q set firewall.easytier_fwd_et.dest='lan'
 
-		uci -q commit firewall
-		/etc/init.d/firewall reload 2>/dev/null
+		# Allow forwarding from EasyTier to WAN
+		uci -q set firewall.easytier_fwd_wan=forwarding
+		uci -q set firewall.easytier_fwd_wan.src='easytier'
+		uci -q set firewall.easytier_fwd_wan.dest='wan'
+		changed_fw=1
 	else
 		local cur_masq
 		cur_masq=$(uci -q get firewall.easytier.masq)
 		if [ "$cur_masq" != "$target_masq" ]; then
 			uci -q set firewall.easytier.masq="$target_masq"
-			uci -q commit firewall
-			/etc/init.d/firewall reload 2>/dev/null
+			changed_fw=1
+		fi
+
+		local has_dev=0
+		for d in $(uci -q get firewall.easytier.device); do
+			[ "$d" = "$dev_name" ] && has_dev=1
+		done
+		if [ "$has_dev" = "0" ]; then
+			uci -q add_list firewall.easytier.device="$dev_name"
+			changed_fw=1
+		fi
+
+		local has_net=0
+		for n in $(uci -q get firewall.easytier.network); do
+			[ "$n" = "easytier" ] && has_net=1
+		done
+		if [ "$has_net" = "0" ]; then
+			uci -q add_list firewall.easytier.network='easytier'
+			changed_fw=1
 		fi
 	fi
 
+	if [ "$changed_net" = "1" ]; then
+		uci -q commit network
+		/etc/init.d/network reload 2>/dev/null
+	fi
+
+	if [ "$changed_fw" = "1" ]; then
+		uci -q commit firewall
+		/etc/init.d/firewall reload 2>/dev/null
+	fi
+
+	# 3. Kernel forwarding
 	sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1
 	sysctl -w net.ipv6.conf.all.forwarding=1 >/dev/null 2>&1
 }
