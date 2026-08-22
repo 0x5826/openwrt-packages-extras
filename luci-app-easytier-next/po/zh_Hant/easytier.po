@@ -255,3 +255,15 @@ msgstr "未發現已連接的遠端對等節點。"
 
 msgid "Log Actions"
 msgstr "日誌操作"
+
+msgid "Collecting data ..."
+msgstr "正在收集資料..."
+
+msgid "Failed to load logs: %s"
+msgstr "載入日誌失敗：%s"
+
+msgid "Failed to load peers: %s"
+msgstr "載入對等節點失敗：%s"
+
+msgid "Refresh"
+msgstr "重新整理"

@@ -256,4 +256,16 @@ msgstr ""
 msgid "Log Actions"
 msgstr ""
 
+msgid "Collecting data ..."
+msgstr ""
+
+msgid "Failed to load logs: %s"
+msgstr ""
+
+msgid "Failed to load peers: %s"
+msgstr ""
+
+msgid "Refresh"
+msgstr ""
+
 
