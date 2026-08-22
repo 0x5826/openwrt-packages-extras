@@ -22,7 +22,7 @@ const callGetPeers = rpc.declare({
 const callGetLogs = rpc.declare({
 	object: 'easytier',
 	method: 'get_logs',
-	expect: { logs: [] }
+	expect: { }
 });
 
 const callClearLogs = rpc.declare({
@@ -168,11 +168,31 @@ function renderPeersTable(peerData) {
 }
 
 function renderLogsView(logData) {
-	const lines = (logData && logData.logs) ? logData.logs : [];
+	let lines = [];
+	if (Array.isArray(logData)) {
+		lines = logData;
+	} else if (logData && Array.isArray(logData.logs)) {
+		lines = logData.logs;
+	} else if (typeof logData === 'string') {
+		lines = logData.split('\n');
+	} else if (logData && typeof logData.logs === 'string') {
+		lines = logData.logs.split('\n');
+	}
+
+	lines = lines.filter(function(l) {
+		return l && String(l).trim().length > 0;
+	});
+
 	if (lines.length === 0) {
 		return E('em', {}, _('No logs available.'));
 	}
-	const content = lines.map(line => E('div', { 'style': 'white-space: pre-wrap; font-family: monospace; font-size: 12px; line-height: 1.4;' }, line));
+
+	const content = lines.map(function(line) {
+		return E('div', {
+			'style': 'white-space: pre-wrap; font-family: monospace; font-size: 12px; line-height: 1.4;'
+		}, String(line));
+	});
+
 	return E('div', {
 		'style': 'max-height: 450px; overflow-y: auto; background: #1e1e1e; color: #f1f1f1; padding: 12px; border-radius: 4px;'
 	}, content);
@@ -435,6 +455,17 @@ return view.extend({
 		// --- Logs ---
 		const logsSection = s.taboption('logs', form.DummyValue, '_logs');
 		logsSection.render = function() {
+			window.setTimeout(function() {
+				const display = document.getElementById('easytier_logs_display');
+				if (display) {
+					callGetLogs().then(function(res) {
+						display.replaceChildren(renderLogsView(res));
+					}).catch(function(err) {
+						display.replaceChildren(E('em', {}, _('No logs available.')));
+					});
+				}
+			}, 100);
+
 			return E('div', { 'id': 'easytier_logs_display', 'class': 'cbi-value' },
 				E('em', {}, _('Collecting logs...'))
 			);
@@ -451,6 +482,11 @@ return view.extend({
 				if (display) {
 					display.replaceChildren(renderLogsView(res));
 				}
+			}).catch(function(err) {
+				if (display) {
+					display.replaceChildren(E('em', {}, _('No logs available.')));
+				}
+				ui.addTimeLimitedNotification(null, [ E('p', {}, _('Failed to load logs: %s').format(err.message || err)) ], 5000, 'error');
 			});
 		};
 
