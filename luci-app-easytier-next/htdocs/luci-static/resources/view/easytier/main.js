@@ -138,6 +138,20 @@ function renderWebStatus(stateObj) {
 	]);
 }
 
+function renderProxyCidrBadges(proxyStr) {
+	if (!proxyStr || typeof proxyStr !== 'string' || proxyStr.trim() === '' || proxyStr === '-') {
+		return '-';
+	}
+	const list = proxyStr.split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
+	if (list.length === 0) return '-';
+
+	return E('div', { 'style': 'display: flex; flex-direction: column; gap: 4px;' }, list.map(function(cidr) {
+		return E('span', {
+			'style': 'display: inline-block; padding: 1px 6px; font-size: 11px; font-family: monospace; font-weight: 600; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 3px; white-space: nowrap; width: fit-content;'
+		}, cidr);
+	}));
+}
+
 function renderLocalNodeInfo(peerData) {
 	let peers = [];
 	if (Array.isArray(peerData)) {
@@ -171,7 +185,8 @@ function renderLocalNodeInfo(peerData) {
 		if (Array.isArray(cfgProxy) && cfgProxy.length > 0) localProxy = cfgProxy.join(', ');
 		else if (typeof cfgProxy === 'string' && cfgProxy.trim() !== '') localProxy = cfgProxy.trim();
 	}
-	const proxyDisp = localProxy ? E('span', { 'style': 'color: #059669; font-weight: 600; font-family: monospace;' }, localProxy) : '-';
+
+	const proxyDisp = renderProxyCidrBadges(localProxy);
 
 	const infoItems = [
 		{ label: _('EasyTier IPv4'), value: E('strong', { 'style': 'color: #007bff;' }, ipv4Val) },
@@ -238,10 +253,7 @@ function renderPeersTable(peerData) {
 		const costStr = p.cost ? String(p.cost).trim() : '-';
 		const latencyVal = p.latency ? String(p.latency).trim() : '-';
 		const latencyColor = (latencyVal !== '-' && !isNaN(parseFloat(latencyVal))) ? '#28a745' : '#6c757d';
-		const proxyStr = (p.proxy_cidrs && String(p.proxy_cidrs).trim() !== '') ? String(p.proxy_cidrs).trim() : '-';
-		const proxyNode = (proxyStr !== '-') ? E('span', {
-			'style': 'display: inline-block; padding: 2px 6px; font-size: 11px; font-family: monospace; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 4px; font-weight: 600;'
-		}, proxyStr) : '-';
+		const proxyNode = renderProxyCidrBadges(p.proxy_cidrs);
 
 		rows.push(E('tr', { 'class': 'cbi-row' }, [
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, E('strong', {}, p.ipv4 ? String(p.ipv4).trim() : '-')),
@@ -492,17 +504,20 @@ function renderTopologySvg(topoData, peerData) {
 		}));
 	}
 
-	// 2. 中层：绘制节点卡片（紧凑尺寸，支持子网胶囊徽标）
+	// 2. 中层：绘制节点卡片（紧凑尺寸，支持多子网逐行排版）
 	for (let i = 0; i < nodeCount; i++) {
 		const n = nodes[i];
 		const pos = posMap[n.node_id];
 		if (!pos) continue;
 
-		const hasProxy = (n.proxy_cidrs && String(n.proxy_cidrs).trim() !== '');
-		const proxyText = hasProxy ? String(n.proxy_cidrs).trim() : '';
+		const proxyList = (n.proxy_cidrs && String(n.proxy_cidrs).trim() !== '') ?
+			String(n.proxy_cidrs).split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; }) : [];
+		const proxyCount = proxyList.length;
 
 		const cardW = 146;
-		const cardH = hasProxy ? 62 : 46;
+		const baseHeaderH = 46;
+		const itemH = 18;
+		const cardH = (proxyCount > 0) ? (baseHeaderH + proxyCount * itemH + 2) : baseHeaderH;
 		const isSelf = (i === 0 && localNode);
 		const hostname = n.hostname ? String(n.hostname).trim() : 'Unknown';
 		const ipv4 = n.ipv4 ? String(n.ipv4).trim() : '-';
@@ -514,10 +529,12 @@ function renderTopologySvg(topoData, peerData) {
 		const titleColor = isSelf ? '#1e3a8a' : '#334155';
 		const ipColor = isSelf ? '#2563eb' : '#64748b';
 
+		const topY = pos.y - cardH / 2;
+
 		const gChildren = [
 			createSvg('rect', {
 				'x': pos.x - cardW / 2,
-				'y': pos.y - cardH / 2,
+				'y': topY,
 				'width': cardW,
 				'height': cardH,
 				'rx': '6',
@@ -527,7 +544,7 @@ function renderTopologySvg(topoData, peerData) {
 			}),
 			createSvg('text', {
 				'x': pos.x,
-				'y': hasProxy ? (pos.y - 13) : (pos.y - 4),
+				'y': topY + 18,
 				'text-anchor': 'middle',
 				'font-family': 'sans-serif',
 				'font-size': '12',
@@ -536,7 +553,7 @@ function renderTopologySvg(topoData, peerData) {
 			}, titleStr),
 			createSvg('text', {
 				'x': pos.x,
-				'y': hasProxy ? (pos.y + 1) : (pos.y + 11),
+				'y': topY + 34,
 				'text-anchor': 'middle',
 				'font-family': 'monospace, sans-serif',
 				'font-size': '10.5',
@@ -545,30 +562,34 @@ function renderTopologySvg(topoData, peerData) {
 			}, ipv4)
 		];
 
-		if (hasProxy) {
-			const badgeW = 130;
-			const badgeH = 16;
-			gChildren.push(
-				createSvg('rect', {
-					'x': pos.x - badgeW / 2,
-					'y': pos.y + 10,
-					'width': badgeW,
-					'height': badgeH,
-					'rx': '3',
-					'fill': '#ecfdf5',
-					'stroke': '#a7f3d0',
-					'stroke-width': '1'
-				}),
-				createSvg('text', {
-					'x': pos.x,
-					'y': pos.y + 22,
-					'text-anchor': 'middle',
-					'font-family': 'monospace, sans-serif',
-					'font-size': '9.5',
-					'font-weight': '600',
-					'fill': '#047857'
-				}, 'Subnet: ' + proxyText)
-			);
+		if (proxyCount > 0) {
+			const badgeW = 132;
+			const badgeH = 15;
+			for (let pIdx = 0; pIdx < proxyCount; pIdx++) {
+				const badgeY = topY + baseHeaderH + pIdx * itemH;
+				const labelText = (proxyCount === 1) ? ('Subnet: ' + proxyList[pIdx]) : proxyList[pIdx];
+				gChildren.push(
+					createSvg('rect', {
+						'x': pos.x - badgeW / 2,
+						'y': badgeY,
+						'width': badgeW,
+						'height': badgeH,
+						'rx': '3',
+						'fill': '#ecfdf5',
+						'stroke': '#a7f3d0',
+						'stroke-width': '1'
+					}),
+					createSvg('text', {
+						'x': pos.x,
+						'y': badgeY + 11,
+						'text-anchor': 'middle',
+						'font-family': 'monospace, sans-serif',
+						'font-size': '9.5',
+						'font-weight': '600',
+						'fill': '#047857'
+					}, labelText)
+				);
+			}
 		}
 
 		nodesLayer.push(createSvg('g', {}, gChildren));
