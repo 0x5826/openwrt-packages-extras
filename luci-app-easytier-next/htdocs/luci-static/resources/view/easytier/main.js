@@ -51,13 +51,13 @@ function renderStatusBadge(stateObj, title) {
 	}
 
 	if (pid) {
-		text += ` [PID: ${pid}]`;
+		text += ' [PID: ' + pid + ']';
 	}
 
 	return E('div', { 'class': 'cbi-value' }, [
 		E('label', { 'class': 'cbi-value-title' }, title),
 		E('div', { 'class': 'cbi-value-field' }, [
-			E('strong', { 'style': `color: ${color}; font-size: 1.1em;` }, text)
+			E('strong', { 'style': 'color: ' + color + '; font-size: 1.1em;' }, text)
 		])
 	]);
 }
@@ -139,7 +139,7 @@ function renderPeersTable(peerData) {
 
 	const rows = [
 		E('tr', { 'class': 'cbi-table-header' }, headers.map(function(h) {
-			return E('th', { 'class': 'cbi-table-cell', 'style': thStyle + (h.minWidth ? ` min-width: ${h.minWidth};` : '') }, h.title);
+			return E('th', { 'class': 'cbi-table-cell', 'style': thStyle + (h.minWidth ? (' min-width: ' + h.minWidth + ';') : '') }, h.title);
 		}))
 	];
 
@@ -153,7 +153,7 @@ function renderPeersTable(peerData) {
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, E('strong', {}, p.ipv4 ? String(p.ipv4).trim() : '-')),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.hostname ? String(p.hostname).trim() : '-'),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, costStr),
-			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, (latencyVal !== '-') ? E('span', { 'style': `color: ${latencyColor}; font-weight: bold;' }, latencyVal + ' ms') : '-'),
+			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, (latencyVal !== '-') ? E('span', { 'style': 'color: ' + latencyColor + '; font-weight: bold;' }, latencyVal + ' ms') : '-'),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.loss_rate ? String(p.loss_rate).trim() : '-'),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.rx ? String(p.rx).trim() : '-'),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.tx ? String(p.tx).trim() : '-'),
@@ -419,7 +419,7 @@ return view.extend({
 		const webConsoleLink = s.taboption('web', form.DummyValue, '_web_link', _('Open Web Console'));
 		webConsoleLink.render = function() {
 			const port = uci.get('easytier', 'settings', 'web_html_port') || '22020';
-			const url = `http://${window.location.hostname}:${port}`;
+			const url = 'http://' + window.location.hostname + ':' + port;
 			return E('div', { 'class': 'cbi-value' }, [
 				E('label', { 'class': 'cbi-value-title' }, _('Dashboard URL')),
 				E('div', { 'class': 'cbi-value-field' }, [
