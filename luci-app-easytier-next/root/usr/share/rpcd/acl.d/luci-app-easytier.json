@@ -9,6 +9,7 @@
 					"get_topology",
 					"get_config",
 					"get_logs",
+					"get_subroutes",
 					"get_web_status",
 					"get_version_info"
 				]
