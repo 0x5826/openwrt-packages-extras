@@ -19,13 +19,13 @@ const tailscaleSettingsConf = [
 	[form.Flag, 'service_enabled', _('Enable Tailscale Service'), _('Enable or disable the Tailscale background service (/etc/init.d/tailscale).'), { rmempty: false }],
 	[form.Flag, 'runwebclient', _('Enable Web Interface'), _('Expose a local web interface on port 5252 for managing this node over Tailscale (--webclient).'), { rmempty: false }],
 	[form.ListValue, 'fw_mode', _('Firewall Mode'), _('Select the firewall backend for Tailscale (TS_DEBUG_FIREWALL_MODE=auto/nftables/iptables). Requires service restart to take effect.'), { values: ['nftables', 'iptables'], rmempty: false }],
+	[form.Flag, 'outbound_masq', _('Outbound Source NAT'), _('Masquerade outbound traffic from local network with the virtual interface IP. Recommended to enable for broad compatibility, or disable for transparent end-to-end routing.'), { default: '1', rmempty: false }],
 	[form.Flag, 'disable_fw_config', _('Disable Firewall Auto Configuration'), _('Disable Tailscale netfilter auto-configuration (--netfilter-mode=off).'), { rmempty: false }],
 	[form.Flag, 'accept_routes', _('Accept Routes'), _('Allow accepting subnet routes announced by other nodes (--accept-routes).'), { rmempty: false }],
 	[form.Flag, 'advertise_exit_node', _('Advertise Exit Node'), _('Declare this device as an exit node, allowing other nodes to route all traffic through it (--advertise-exit-node).'), { rmempty: false }],
 	[form.Flag, 'exit_node_allow_lan_access', _('Allow LAN Access'), _('When using or advertising the exit node, allow access to the local LAN (--exit-node-allow-lan-access).'), { rmempty: false, depends: { 'advertise_exit_node': '1' } }],
 	[form.Flag, 'ssh', _('Enable Tailscale SSH'), _('Allow connecting to this device through the native SSH function of Tailscale (--ssh).'), { rmempty: false }],
 	[form.Flag, 'shields_up', _('Shields Up'), _('When enabled, blocks all inbound connections from the Tailscale network (--shields-up).'), { rmempty: false }],
-	[form.Flag, 'outbound_masq', _('Outbound Source NAT'), _('Masquerade outbound traffic from local network with the virtual interface IP. Recommended to enable for broad compatibility, or disable for transparent end-to-end routing.'), { default: '1', rmempty: false }],
 	[form.ListValue, 'dns_mode', _('DNS Mode'), _('Controls how Tailscale DNS is handled (--accept-dns).') + '<br>' + _('Disabled: system DNS only.') + '<br>' + _('MagicDNS: Tailscale overrides resolv.conf.') + '<br>' + _('OpenWrt Forward: MagicDNS via dnsmasq forwarding.(Only support ts.net)'), { values: [['disabled', _('Disabled')], ['magicdns', 'MagicDNS'], ['openwrt_forward', _('OpenWrt Forward')]], rmempty: false }],
 	[form.Flag, 'enable_relay', _('Enable Peer Relay'), _('Enable this device as a Peer Relay server (--peer-relay). Requires a public IP and an UDP port open on the router.'), { rmempty: false }]
 ];
