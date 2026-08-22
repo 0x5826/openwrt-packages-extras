@@ -559,3 +559,10 @@ msgstr ""
 
 msgid "Enabling this option can reduce memory usage, but it may sacrifice some performance (set GOGC=10)."
 msgstr ""
+
+msgid "Outbound Source NAT"
+msgstr ""
+
+msgid "Masquerade outbound traffic from local network with the virtual interface IP. Recommended to enable for broad compatibility, or disable for transparent end-to-end routing."
+msgstr ""
+

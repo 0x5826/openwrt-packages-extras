@@ -22,6 +22,9 @@ setup_firewall_and_network() {
 		uci -q commit network
 	fi
 
+	local outbound_masq
+	config_get_bool outbound_masq settings outbound_masq 1
+
 	# Ensure firewall zone exists
 	if ! uci -q get firewall.easytier >/dev/null; then
 		uci -q set firewall.easytier=zone
@@ -29,7 +32,7 @@ setup_firewall_and_network() {
 		uci -q set firewall.easytier.input='ACCEPT'
 		uci -q set firewall.easytier.output='ACCEPT'
 		uci -q set firewall.easytier.forward='ACCEPT'
-		uci -q set firewall.easytier.masq='1'
+		uci -q set firewall.easytier.masq="$outbound_masq"
 		uci -q set firewall.easytier.mtu_fix='1'
 		uci -q add_list firewall.easytier.network='easytier'
 
@@ -45,6 +48,14 @@ setup_firewall_and_network() {
 
 		uci -q commit firewall
 		/etc/init.d/firewall reload 2>/dev/null
+	else
+		local cur_masq
+		cur_masq=$(uci -q get firewall.easytier.masq)
+		if [ "$cur_masq" != "$outbound_masq" ]; then
+			uci -q set firewall.easytier.masq="$outbound_masq"
+			uci -q commit firewall
+			/etc/init.d/firewall reload 2>/dev/null
+		fi
 	fi
 
 	sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1

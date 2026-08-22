@@ -559,3 +559,10 @@ msgstr "通告子網路由"
 
 msgid "Enabling this option can reduce memory usage, but it may sacrifice some performance (set GOGC=10)."
 msgstr "啟用此選項可以減少記憶體佔用，但可能會犧牲部分效能（設定 GOGC=10）。"
+
+msgid "Outbound Source NAT"
+msgstr "出站來源位址偽裝"
+
+msgid "Masquerade outbound traffic from local network with the virtual interface IP. Recommended to enable for broad compatibility, or disable for transparent end-to-end routing."
+msgstr "使用虛擬介面 IP 偽裝本地區域網路的出站流量。推薦開啟以獲得最佳相容性，或關閉以實現透明的端到端路由。"
+

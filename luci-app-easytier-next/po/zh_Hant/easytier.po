@@ -228,3 +228,10 @@ msgstr "清空日誌"
 
 msgid "Logs cleared."
 msgstr "日誌已清空。"
+
+msgid "Outbound Source NAT"
+msgstr "出站來源位址偽裝"
+
+msgid "Masquerade outbound traffic from local network with the virtual interface IP. Recommended to enable for broad compatibility, or disable for transparent end-to-end routing."
+msgstr "使用虛擬介面 IP 偽裝本地區域網路的出站流量。推薦開啟以獲得最佳相容性，或關閉以實現透明的端到端路由。"
+

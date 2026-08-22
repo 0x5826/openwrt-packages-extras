@@ -115,6 +115,10 @@ setup_firewall_rules() {
 	fi
 
 	# 2. Zone
+	local outbound_masq
+	outbound_masq=$(uci -q get tailscale.settings.outbound_masq)
+	[ -z "$outbound_masq" ] && outbound_masq="1"
+
 	config_load firewall
 	FOUND_TS_ZONE=""
 	config_foreach check_zone zone
@@ -126,11 +130,18 @@ setup_firewall_rules() {
 		uci -q set firewall."$zid".input='ACCEPT'
 		uci -q set firewall."$zid".output='ACCEPT'
 		uci -q set firewall."$zid".forward='ACCEPT'
-		uci -q set firewall."$zid".masq='1'
+		uci -q set firewall."$zid".masq="$outbound_masq"
 		uci -q set firewall."$zid".mtu_fix='1'
 		uci -q add_list firewall."$zid".network='tailscale'
 		changed_fw=1
 	else
+		local cur_masq
+		cur_masq=$(uci -q get firewall."$FOUND_TS_ZONE".masq)
+		if [ "$cur_masq" != "$outbound_masq" ]; then
+			uci -q set firewall."$FOUND_TS_ZONE".masq="$outbound_masq"
+			changed_fw=1
+		fi
+
 		local has_net=0
 		local net
 		for net in $(uci -q get firewall."$FOUND_TS_ZONE".network); do
