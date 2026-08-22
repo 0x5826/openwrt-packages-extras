@@ -847,6 +847,14 @@ return view.extend({
 		o.rmempty = false;
 		o.depends('etcmd', 'etcmd');
 
+		// Config File Path under 'config' mode
+		o = s.taboption('general', form.Value, 'custom_config_file', _('Configuration File Path'),
+			_('Absolute path to the TOML configuration file. Ensure the file exists with valid EasyTier configuration.')
+		);
+		o.default = '/etc/easytier/config.toml';
+		o.placeholder = '/etc/easytier/config.toml';
+		o.depends('etcmd', 'config');
+
 		// Web Server URL under 'web' mode
 		o = s.taboption('general', form.Value, 'web_config', _('Web Config Server URL'),
 			_('Remote web configuration server address.')

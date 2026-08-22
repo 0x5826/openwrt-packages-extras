@@ -310,4 +310,11 @@ msgstr ""
 msgid "The web console may consume significant memory, please enable as needed."
 msgstr ""
 
+msgid "Configuration File Path"
+msgstr ""
+
+msgid "Absolute path to the TOML configuration file. Ensure the file exists with valid EasyTier configuration."
+msgstr ""
+
+
 

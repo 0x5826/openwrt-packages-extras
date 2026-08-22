@@ -310,4 +310,11 @@ msgstr "子网代理"
 msgid "The web console may consume significant memory, please enable as needed."
 msgstr "Web 控制台可能会占用较多内存，请按需开启。"
 
+msgid "Configuration File Path"
+msgstr "配置文件路径"
+
+msgid "Absolute path to the TOML configuration file. Ensure the file exists with valid EasyTier configuration."
+msgstr "TOML 格式配置文件的绝对路径。请确保该文件已存在并包含有效的 EasyTier 配置。"
+
+
 
