@@ -73,12 +73,6 @@ msgstr "將此裝置宣告為出口節點，允許其他節點透過它路由所
 msgid "Devices List"
 msgstr "裝置列表"
 
-msgid "Disable Source NAT (SNAT) for traffic to advertised routes (--snat-subnet-routes=false). Recommended when OpenWrt is the default gateway to preserve client IPs."
-msgstr "為通告子網流量禁用來源位址轉換 (--snat-subnet-routes=false)。當 OpenWrt 作為預設閘道時推薦開啟，保留用戶端真實 IP。"
-
-msgid "Disable Subnet SNAT"
-msgstr "禁用子網 SNAT"
-
 msgid "Disabled"
 msgstr "已停用"
 
@@ -93,6 +87,9 @@ msgstr "啟用 Tailscale SSH"
 
 msgid "Enable Tailscale Service"
 msgstr "啟用 Tailscale 服務"
+
+msgid "Enable Tunnel Traffic SNAT"
+msgstr "開啟隧道流量 SNAT"
 
 msgid "Enable Web Interface"
 msgstr "啟用 Web 管理介面"
@@ -303,6 +300,9 @@ msgstr "節點中繼服務的 UDP 連接埠 (--peer-relay-port)。請確保在�
 
 msgid "Unknown error"
 msgstr "未知錯誤"
+
+msgid "Use OpenWrt system firewall to manage NAT for Tailscale tunnel and subnet traffic. Disabling this option disables source address masquerading to preserve real source IPs of remote peers and subnets in the local network."
+msgstr "由 OpenWrt 系統防火牆統一接管 Tailscale 隧道及對端子網流量的位址轉換。停用此項將停用來源位址偽裝，在區域網路中保留對端節點和子網的真實來源 IP。"
 
 msgid "Version"
 msgstr "版本資訊"

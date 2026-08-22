@@ -18,7 +18,7 @@ let map;
 const tailscaleSettingsConf = [
 	[form.Flag, 'service_enabled', _('Enable Tailscale Service'), _('Enable or disable the Tailscale background service (/etc/init.d/tailscale).'), { rmempty: false }],
 	[form.Flag, 'runwebclient', _('Enable Web Interface'), _('Expose a local web interface on port 5252 for managing this node over Tailscale (--webclient).'), { rmempty: false }],
-	[form.Flag, 'nosnat', _('Disable Subnet SNAT'), _('Disable Source NAT (SNAT) for traffic to advertised routes (--snat-subnet-routes=false). Recommended when OpenWrt is the default gateway to preserve client IPs.'), { default: '0', rmempty: false }],
+	[form.Flag, 'tunnel_snat', _('Enable Tunnel Traffic SNAT'), _('Use OpenWrt system firewall to manage NAT for Tailscale tunnel and subnet traffic. Disabling this option disables source address masquerading to preserve real source IPs of remote peers and subnets in the local network.'), { default: '0', rmempty: false }],
 	[form.Flag, 'accept_routes', _('Accept Routes'), _('Allow accepting subnet routes announced by other nodes (--accept-routes).'), { rmempty: false }],
 	[form.Flag, 'advertise_exit_node', _('Advertise Exit Node'), _('Declare this device as an exit node, allowing other nodes to route all traffic through it (--advertise-exit-node).'), { rmempty: false }],
 	[form.Flag, 'exit_node_allow_lan_access', _('Allow LAN Access'), _('When using or advertising the exit node, allow access to the local LAN (--exit-node-allow-lan-access).'), { rmempty: false, depends: { 'advertise_exit_node': '1' } }],
@@ -414,20 +414,44 @@ return view.extend({
 					uci.set('tailscale', 'settings', 'ssh', ((settings_from_rpc.ssh || false) ? '1' : '0'));
 					uci.set('tailscale', 'settings', 'shields_up', ((settings_from_rpc.shields_up || false) ? '1' : '0'));
 					uci.set('tailscale', 'settings', 'runwebclient', ((settings_from_rpc.runwebclient || false) ? '1' : '0'));
-					uci.set('tailscale', 'settings', 'nosnat', ((settings_from_rpc.nosnat || false) ? '1' : '0'));
+					uci.set('tailscale', 'settings', 'tunnel_snat', (settings_from_rpc.tunnel_snat || '0'));
 					uci.set('tailscale', 'settings', 'dns_mode', 'disabled');
-					uci.set('tailscale', 'settings', 'outbound_masq', '1');
 
 					uci.set('tailscale', 'settings', 'daemon_reduce_memory', '0');
 					uci.set('tailscale', 'settings', 'daemon_mtu', '');
 					return uci.save();
 				}
 			}).then(function() {
+				var dirty = false;
 				// Migrate from old disable_magic_dns to dns_mode if needed
 				if (uci.get('tailscale', 'settings', 'dns_mode') === null) {
 					var oldMagicDns = uci.get('tailscale', 'settings', 'disable_magic_dns');
 					uci.set('tailscale', 'settings', 'dns_mode', oldMagicDns === '1' ? 'disabled' : 'magicdns');
 					uci.unset('tailscale', 'settings', 'disable_magic_dns');
+					dirty = true;
+				}
+				// Migrate and clean up legacy nosnat and outbound_masq options
+				if (uci.get('tailscale', 'settings', 'tunnel_snat') === null) {
+					var oldNosnat = uci.get('tailscale', 'settings', 'nosnat');
+					var oldMasq = uci.get('tailscale', 'settings', 'outbound_masq');
+					if (oldNosnat !== null) {
+						uci.set('tailscale', 'settings', 'tunnel_snat', oldNosnat === '1' ? '0' : '1');
+					} else if (oldMasq !== null) {
+						uci.set('tailscale', 'settings', 'tunnel_snat', oldMasq === '1' ? '1' : '0');
+					} else {
+						uci.set('tailscale', 'settings', 'tunnel_snat', '0');
+					}
+					dirty = true;
+				}
+				if (uci.get('tailscale', 'settings', 'nosnat') !== null) {
+					uci.unset('tailscale', 'settings', 'nosnat');
+					dirty = true;
+				}
+				if (uci.get('tailscale', 'settings', 'outbound_masq') !== null) {
+					uci.unset('tailscale', 'settings', 'outbound_masq');
+					dirty = true;
+				}
+				if (dirty) {
 					return uci.save();
 				}
 			}).then(function() {

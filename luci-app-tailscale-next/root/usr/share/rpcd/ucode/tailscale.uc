@@ -274,7 +274,7 @@ methods.get_settings = {
 					settings.shields_up = status_data?.ShieldsUp || false;
 					settings.ssh = status_data?.RunSSH || false;
 					settings.runwebclient = status_data?.RunWebClient || false;
-					settings.nosnat = status_data?.NoSNAT || false;
+					settings.tunnel_snat = uci.get('tailscale', 'settings', 'tunnel_snat') || '0';
 					settings.dns_mode = uci.get('tailscale', 'settings', 'dns_mode') || 'disabled';
 				}
 				}
@@ -449,17 +449,25 @@ methods.setup_firewall = {
 					if (s['src'] == 'tailscale' && s['dest'] == 'lan') fwd_ts_to_lan = true;
 				});
 
+			let tunnel_snat = uci.get('tailscale', 'settings', 'tunnel_snat') || '0';
+			let target_masq = (tunnel_snat == '1') ? '1' : '0';
+
 			if (ts_zone_section == null) {
 				let zid = uci.add('firewall', 'zone');
 				uci.set('firewall', zid, 'name', 'tailscale');
 				uci.set('firewall', zid, 'input', 'ACCEPT');
 				uci.set('firewall', zid, 'output', 'ACCEPT');
 				uci.set('firewall', zid, 'forward', 'ACCEPT');
-				uci.set('firewall', zid, 'masq', '1');
+				uci.set('firewall', zid, 'masq', target_masq);
 				uci.set('firewall', zid, 'mtu_fix', '1');
 				uci.set('firewall', zid, 'network', ['tailscale']);
 				changed_firewall = true;
 			} else {
+				let cur_masq = uci.get('firewall', ts_zone_section, 'masq');
+				if (cur_masq != target_masq) {
+					uci.set('firewall', ts_zone_section, 'masq', target_masq);
+					changed_firewall = true;
+				}
 				let nets = uci.get('firewall', ts_zone_section, 'network');
 				let net_list = [];
 				let has_ts_net = false;

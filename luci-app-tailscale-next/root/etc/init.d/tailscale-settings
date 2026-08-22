@@ -115,19 +115,9 @@ setup_firewall_rules() {
 	fi
 
 	# 2. Zone
-	local nosnat outbound_masq target_masq="1"
-	nosnat=$(uci -q get tailscale.settings.nosnat)
-	outbound_masq=$(uci -q get tailscale.settings.outbound_masq)
-
-	if [ "$nosnat" = "1" ]; then
-		target_masq="0"
-	elif [ "$nosnat" = "0" ]; then
-		target_masq="1"
-	elif [ "$outbound_masq" = "0" ]; then
-		target_masq="0"
-	else
-		target_masq="1"
-	fi
+	local tunnel_snat target_masq="0"
+	tunnel_snat=$(uci -q get tailscale.settings.tunnel_snat)
+	[ "$tunnel_snat" = "1" ] && target_masq="1"
 
 	config_load firewall
 	FOUND_TS_ZONE=""
@@ -282,7 +272,7 @@ apply_settings() {
 	config_load tailscale
 
 	local accept_routes advertise_exit_node exit_node exit_node_allow_lan_access
-	local ssh shields_up runwebclient nosnat hostname dns_mode
+	local ssh shields_up runwebclient tunnel_snat hostname dns_mode
 	local enable_relay relay_server_port
 
 	config_get accept_routes              settings accept_routes              '0'
@@ -293,7 +283,7 @@ apply_settings() {
 	config_get dns_mode                   settings dns_mode                   'disabled'
 	config_get shields_up                 settings shields_up                 '0'
 	config_get runwebclient               settings runwebclient               '0'
-	config_get nosnat                     settings nosnat                     '0'
+	config_get tunnel_snat                settings tunnel_snat                '0'
 	config_get hostname                   settings hostname                   ''
 	config_get enable_relay               settings enable_relay               '0'
 	config_get relay_server_port          settings relay_server_port          '40000'
@@ -318,11 +308,9 @@ apply_settings() {
 		|| set -- "$@" --accept-routes=false
 
 	# --advertise-exit-node (only when no exit node is selected)
-	if [ "$advertise_exit_node" = "1" ] && [ -z "$exit_node" ]; then
-		set -- "$@" --advertise-exit-node=true
-	else
-		set -- "$@" --advertise-exit-node=false
-	fi
+	[ "$advertise_exit_node" = "1" ] && [ -z "$exit_node" ] \
+		&& set -- "$@" --advertise-exit-node=true \
+		|| set -- "$@" --advertise-exit-node=false
 
 	# --exit-node-allow-lan-access (only when no exit node is selected)
 	if [ -z "$exit_node" ]; then
@@ -363,10 +351,10 @@ apply_settings() {
 		&& set -- "$@" --webclient=true \
 		|| set -- "$@" --webclient=false
 
-	# --snat-subnet-routes (inverse of nosnat)
-	[ "$nosnat" = "1" ] \
-		&& set -- "$@" --snat-subnet-routes=false \
-		|| set -- "$@" --snat-subnet-routes=true
+	# --snat-subnet-routes (aligned with tunnel_snat)
+	[ "$tunnel_snat" = "1" ] \
+		&& set -- "$@" --snat-subnet-routes=true \
+		|| set -- "$@" --snat-subnet-routes=false
 
 	# --advertise-routes (comma-separated, empty clears routes)
 	set -- "$@" "--advertise-routes=$routes"
