@@ -485,8 +485,11 @@ msgstr "可选：指定自定义控制服务器的预认证密钥（Auth Key）�
 msgid "When using or advertising the exit node, allow access to the local LAN."
 msgstr "在使用或通告出口节点时，允许访问本地局域网设备。"
 
-msgid "Disable Firewall Auto Configuration"
-msgstr "禁用防火墙自动配置"
+msgid "Disable Daemon Firewall Management"
+msgstr "禁用服务内置防火墙规则"
+
+msgid "Prevent the Tailscale daemon from directly modifying system netfilter rules. Recommended to enable so that all firewall zones and forwarding policies are managed cleanly by OpenWrt."
+msgstr "禁止 Tailscale 守护进程直接修改系统底层防火墙规则。推荐开启，开启后所有防火墙区域与转发策略由本插件与 OpenWrt 系统统一接管，避免规则冲突。"
 
 msgid "Not logged in. Please authenticate first."
 msgstr "未登录，请先完成登录认证。"
