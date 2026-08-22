@@ -273,7 +273,7 @@ apply_settings() {
 
 	local accept_routes advertise_exit_node exit_node exit_node_allow_lan_access
 	local ssh shields_up runwebclient nosnat hostname dns_mode
-	local enable_relay relay_server_port disable_fw_config
+	local enable_relay relay_server_port
 
 	config_get accept_routes              settings accept_routes              '0'
 	config_get advertise_exit_node        settings advertise_exit_node        '0'
@@ -287,7 +287,6 @@ apply_settings() {
 	config_get hostname                   settings hostname                   ''
 	config_get enable_relay               settings enable_relay               '0'
 	config_get relay_server_port          settings relay_server_port          '40000'
-	config_get disable_fw_config          settings disable_fw_config          '1'
 
 	# Collect advertise_routes UCI list into comma-separated string
 	local routes=""
@@ -382,10 +381,8 @@ apply_settings() {
 		fi
 	fi
 
-	# --netfilter-mode (only when disable_fw_config is enabled and tailscale init doesn't already handle it)
-	if [ "$disable_fw_config" = "1" ]; then
-		set -- "$@" --netfilter-mode=off
-	fi
+	# Always enforce netfilter-mode=off so OpenWrt manages all firewall rules cleanly
+	set -- "$@" --netfilter-mode=off
 
 	# Wait for tailscaled daemon to be ready (up to 5 seconds)
 	local i=0
