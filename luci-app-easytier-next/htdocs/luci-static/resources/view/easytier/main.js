@@ -344,17 +344,48 @@ function renderTopologySvg(topoData, peerData) {
 		}));
 	}
 
+	const placedBadges = [];
+
 	for (let k = 0; k < linkKeys.length; k++) {
 		const link = linkMap[linkKeys[k]];
 		const p1 = posMap[link.srcId];
 		const p2 = posMap[link.dstId];
 		if (!p1 || !p2) continue;
 
-		const mx = Math.round((p1.x + p2.x) / 2);
-		const my = Math.round((p1.y + p2.y) / 2);
 		const lat = link.latency;
-
 		if (lat !== undefined && lat !== null) {
+			const candidateT = [0.5, 0.35, 0.65, 0.25, 0.75];
+			let bestT = 0.5;
+			let maxMinDist = -1;
+
+			for (let ti = 0; ti < candidateT.length; ti++) {
+				const t = candidateT[ti];
+				const tx = Math.round(p1.x + t * (p2.x - p1.x));
+				const ty = Math.round(p1.y + t * (p2.y - p1.y));
+
+				let minDist = Math.sqrt((tx - cx) * (tx - cx) + (ty - cy) * (ty - cy));
+				if (candidateT.length > 1 && minDist < 25) minDist = 0;
+
+				for (let bi = 0; bi < placedBadges.length; bi++) {
+					const b = placedBadges[bi];
+					const d = Math.sqrt((tx - b.x) * (tx - b.x) + (ty - b.y) * (ty - b.y));
+					if (d < minDist) minDist = d;
+				}
+
+				if (minDist > maxMinDist) {
+					maxMinDist = minDist;
+					bestT = t;
+				}
+				if (minDist >= 55) {
+					bestT = t;
+					break;
+				}
+			}
+
+			const mx = Math.round(p1.x + bestT * (p2.x - p1.x));
+			const my = Math.round(p1.y + bestT * (p2.y - p1.y));
+			placedBadges.push({ x: mx, y: my });
+
 			let badgeBg = '#fef3c7';
 			let badgeText = '#b45309';
 			let badgeBorder = '#fcd34d';
@@ -494,10 +525,12 @@ return view.extend({
 			poll.add(function() {
 				return Promise.all([
 					L.resolveDefault(callGetStatus(), {}),
-					L.resolveDefault(callGetPeers(), {})
+					L.resolveDefault(callGetPeers(), {}),
+					L.resolveDefault(callGetTopology(), {})
 				]).then(function(res) {
 					const curStatus = res[0] || {};
 					const curPeers = res[1] || {};
+					const curTopo = res[2] || {};
 
 					const statusContainer = document.getElementById('easytier_service_status_display');
 					if (statusContainer) {
@@ -515,6 +548,11 @@ return view.extend({
 					const peersContainer = document.getElementById('easytier_peers_display');
 					if (peersContainer) {
 						peersContainer.replaceChildren(renderPeersTable(curPeers));
+					}
+
+					const topoContainer = document.getElementById('easytier_topology_display');
+					if (topoContainer) {
+						topoContainer.replaceChildren(renderTopologySvg(curTopo, curPeers));
 					}
 				});
 			}, 5);
