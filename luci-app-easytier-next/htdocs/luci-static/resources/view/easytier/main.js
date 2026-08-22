@@ -62,6 +62,48 @@ function renderStatusBadge(stateObj, title) {
 	]);
 }
 
+function renderLocalNodeInfo(peerData) {
+	let peers = [];
+	if (Array.isArray(peerData)) {
+		peers = peerData;
+	} else if (peerData && Array.isArray(peerData.peers)) {
+		peers = peerData.peers;
+	}
+
+	let local = null;
+	for (let i = 0; i < peers.length; i++) {
+		if (peers[i].cost && String(peers[i].cost).trim().toLowerCase() === 'local') {
+			local = peers[i];
+			break;
+		}
+	}
+
+	const ipv4Val = (local && local.ipv4) ? String(local.ipv4).trim() : '-';
+	const hostnameVal = (local && local.hostname) ? String(local.hostname).trim() : '-';
+	const natVal = (local && local.nat) ? String(local.nat).trim() : '-';
+	const versionVal = (local && local.version) ? String(local.version).trim() : '-';
+	const netNameVal = uci.get('easytier', 'settings', 'network_name') || 'easytier';
+	const devNameVal = uci.get('easytier', 'settings', 'dev_name') || 'easytier0';
+
+	const infoItems = [
+		{ label: _('EasyTier IPv4'), value: E('strong', { 'style': 'color: #007bff; font-size: 1.1em;' }, ipv4Val) },
+		{ label: _('Hostname'), value: E('strong', {}, hostnameVal) },
+		{ label: _('Network Name'), value: netNameVal },
+		{ label: _('Virtual Interface'), value: devNameVal },
+		{ label: _('NAT Type'), value: natVal },
+		{ label: _('Client Version'), value: versionVal }
+	];
+
+	return E('div', { 'class': 'cbi-section-node' }, [
+		E('div', { 'style': 'overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 10px; border: 1px solid #e5e5e5; border-radius: 4px;' }, [
+			E('table', { 'class': 'cbi-table', 'style': 'width: 100%; border-collapse: separate; border-spacing: 0;' }, [
+				E('tr', { 'class': 'cbi-table-header' }, infoItems.map(item => E('th', { 'class': 'cbi-table-cell', 'style': 'padding: 10px 14px; text-align: left; white-space: nowrap; font-weight: bold; min-width: 120px;' }, item.label))),
+				E('tr', { 'class': 'cbi-row' }, infoItems.map(item => E('td', { 'class': 'cbi-value-field', 'style': 'padding: 8px 14px; text-align: left; white-space: nowrap;' }, item.value)))
+			])
+		])
+	]);
+}
+
 function renderPeersTable(peerData) {
 	let peers = [];
 	if (Array.isArray(peerData)) {
@@ -70,11 +112,13 @@ function renderPeersTable(peerData) {
 		peers = peerData.peers;
 	}
 
-	if (!peers || peers.length === 0) {
-		if (peerData && peerData.raw && peerData.raw.length > 0) {
+	const remotePeers = peers.filter(p => !p.cost || String(p.cost).trim().toLowerCase() !== 'local');
+
+	if (!remotePeers || remotePeers.length === 0) {
+		if (peerData && peerData.raw && peerData.raw.length > 0 && peers.length === 0) {
 			return E('pre', { 'style': 'padding: 10px; border-radius: 4px; overflow-x: auto; max-height: 350px; font-family: monospace;' }, peerData.raw);
 		}
-		return E('em', {}, _('No connected peers found.'));
+		return E('em', {}, _('No connected remote peers found.'));
 	}
 
 	const headers = [
@@ -99,18 +143,17 @@ function renderPeersTable(peerData) {
 		}))
 	];
 
-	for (let i = 0; i < peers.length; i++) {
-		const p = peers[i];
+	for (let i = 0; i < remotePeers.length; i++) {
+		const p = remotePeers[i];
 		const costStr = p.cost ? String(p.cost).trim() : '-';
-		const isLocal = (costStr.toLowerCase() === 'local');
 		const latencyVal = p.latency ? String(p.latency).trim() : '-';
 		const latencyColor = (latencyVal !== '-' && !isNaN(parseFloat(latencyVal))) ? '#28a745' : '#6c757d';
 
 		rows.push(E('tr', { 'class': 'cbi-row' }, [
-			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, E('strong', { 'style': isLocal ? 'color: #007bff;' : '' }, (p.ipv4 ? String(p.ipv4).trim() : '-') + (isLocal ? (' ' + _('(Local)')) : ''))),
+			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, E('strong', {}, p.ipv4 ? String(p.ipv4).trim() : '-')),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.hostname ? String(p.hostname).trim() : '-'),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, costStr),
-			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, (latencyVal !== '-') ? E('span', { 'style': `color: ${latencyColor}; font-weight: bold;` }, latencyVal + ' ms') : '-'),
+			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, (latencyVal !== '-') ? E('span', { 'style': `color: ${latencyColor}; font-weight: bold;' }, latencyVal + ' ms') : '-'),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.loss_rate ? String(p.loss_rate).trim() : '-'),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.rx ? String(p.rx).trim() : '-'),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.tx ? String(p.tx).trim() : '-'),
@@ -172,6 +215,11 @@ return view.extend({
 						);
 					}
 
+					const localNodeContainer = document.getElementById('easytier_local_node_display');
+					if (localNodeContainer) {
+						localNodeContainer.replaceChildren(renderLocalNodeInfo(curPeers));
+					}
+
 					const peersContainer = document.getElementById('easytier_peers_display');
 					if (peersContainer) {
 						peersContainer.replaceChildren(renderPeersTable(curPeers));
@@ -212,18 +260,26 @@ return view.extend({
 					])
 				]),
 				E('div', { 'class': 'cbi-section' }, [
+					E('h3', {}, _('Local Node Information')),
+					E('div', { 'id': 'easytier_local_node_display' }, renderLocalNodeInfo(peerData))
+				]),
+				E('div', { 'class': 'cbi-section' }, [
 					E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;' }, [
 						E('h3', { 'style': 'margin: 0;' }, _('Connected Peer Nodes')),
 						E('button', {
 							'class': 'btn cbi-button cbi-button-action',
 							'click': function(ev) {
-								const container = document.getElementById('easytier_peers_display');
-								if (container) {
-									container.replaceChildren(E('em', {}, _('Collecting data ...')));
+								const localContainer = document.getElementById('easytier_local_node_display');
+								const peersContainer = document.getElementById('easytier_peers_display');
+								if (peersContainer) {
+									peersContainer.replaceChildren(E('em', {}, _('Collecting data ...')));
 								}
 								return callGetPeers().then(function(res) {
-									if (container) {
-										container.replaceChildren(renderPeersTable(res));
+									if (localContainer) {
+										localContainer.replaceChildren(renderLocalNodeInfo(res));
+									}
+									if (peersContainer) {
+										peersContainer.replaceChildren(renderPeersTable(res));
 									}
 								}).catch(function(err) {
 									ui.addTimeLimitedNotification(null, [ E('p', {}, _('Failed to load peers: %s').format(err.message || err)) ], 5000, 'error');
