@@ -298,6 +298,11 @@ return view.extend({
 		);
 		o.default = '1';
 
+		o = s.taboption('advanced', form.Flag, 'proxy_forward_by_system', _('Disable Built-in NAT'),
+			_('Disable user-space built-in NAT and delegate subnet packet forwarding directly to the Linux kernel. Recommended for OpenWrt gateway devices for lower CPU overhead and maximum throughput.')
+		);
+		o.default = '1';
+
 		o = s.taboption('advanced', form.Value, 'custom_params', _('Custom Command Parameters'),
 			_('Additional command-line parameters appended to easytier-core.')
 		);
