@@ -453,6 +453,46 @@ return view.extend({
 		};
 
 		// --- Logs ---
+		const logActions = s.taboption('logs', form.DummyValue, '_log_actions');
+		logActions.render = function() {
+			return E('div', { 'class': 'cbi-value' }, [
+				E('label', { 'class': 'cbi-value-title' }, _('Log Actions')),
+				E('div', { 'class': 'cbi-value-field' }, [
+					E('button', {
+						'class': 'btn cbi-button cbi-button-action',
+						'click': function(ev) {
+							const display = document.getElementById('easytier_logs_display');
+							if (display) {
+								display.replaceChildren(E('em', {}, _('Collecting logs...')));
+							}
+							return callGetLogs().then(function(res) {
+								if (display) {
+									display.replaceChildren(renderLogsView(res));
+								}
+							}).catch(function(err) {
+								if (display) {
+									display.replaceChildren(E('em', {}, _('No logs available.')));
+								}
+								ui.addTimeLimitedNotification(null, [ E('p', {}, _('Failed to load logs: %s').format(err.message || err)) ], 5000, 'error');
+							});
+						}
+					}, _('Refresh Logs')),
+					' ',
+					E('button', {
+						'class': 'btn cbi-button cbi-button-reset',
+						'click': function(ev) {
+							return callClearLogs().then(function() {
+								const display = document.getElementById('easytier_logs_display');
+								if (display) {
+									display.replaceChildren(E('em', {}, _('Logs cleared.')));
+								}
+							});
+						}
+					}, _('Clear Logs'))
+				])
+			]);
+		};
+
 		const logsSection = s.taboption('logs', form.DummyValue, '_logs');
 		logsSection.render = function() {
 			window.setTimeout(function() {
@@ -469,36 +509,6 @@ return view.extend({
 			return E('div', { 'id': 'easytier_logs_display', 'class': 'cbi-value' },
 				E('em', {}, _('Collecting logs...'))
 			);
-		};
-
-		const refreshLogsBtn = s.taboption('logs', form.Button, '_refresh_logs', _('Refresh Logs'));
-		refreshLogsBtn.inputstyle = 'action';
-		refreshLogsBtn.onclick = function() {
-			const display = document.getElementById('easytier_logs_display');
-			if (display) {
-				display.replaceChildren(E('em', {}, _('Collecting logs...')));
-			}
-			return callGetLogs().then(function(res) {
-				if (display) {
-					display.replaceChildren(renderLogsView(res));
-				}
-			}).catch(function(err) {
-				if (display) {
-					display.replaceChildren(E('em', {}, _('No logs available.')));
-				}
-				ui.addTimeLimitedNotification(null, [ E('p', {}, _('Failed to load logs: %s').format(err.message || err)) ], 5000, 'error');
-			});
-		};
-
-		const clearLogsBtn = s.taboption('logs', form.Button, '_clear_logs', _('Clear Logs'));
-		clearLogsBtn.inputstyle = 'reset';
-		clearLogsBtn.onclick = function() {
-			return callClearLogs().then(function() {
-				const display = document.getElementById('easytier_logs_display');
-				if (display) {
-					display.replaceChildren(E('em', {}, _('Logs cleared.')));
-				}
-			});
 		};
 
 		return map.render();

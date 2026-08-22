@@ -253,4 +253,7 @@ msgstr ""
 msgid "No connected remote peers found."
 msgstr ""
 
+msgid "Log Actions"
+msgstr ""
+
 

@@ -252,3 +252,6 @@ msgstr "用戶端版本"
 
 msgid "No connected remote peers found."
 msgstr "未發現已連接的遠端對等節點。"
+
+msgid "Log Actions"
+msgstr "日誌操作"
