@@ -22,8 +22,17 @@ setup_firewall_and_network() {
 		uci -q commit network
 	fi
 
-	local outbound_masq
-	config_get_bool outbound_masq settings outbound_masq 1
+	# 2. Zone MASQUERADE (controlled by tunnel_snat)
+	local tunnel_snat target_masq="0"
+	tunnel_snat=$(uci -q get easytier.settings.tunnel_snat)
+	# 兼容历史 outbound_masq
+	if [ -z "$tunnel_snat" ]; then
+		local old_masq
+		old_masq=$(uci -q get easytier.settings.outbound_masq)
+		[ "$old_masq" = "1" ] && target_masq="1"
+	else
+		[ "$tunnel_snat" = "1" ] && target_masq="1"
+	fi
 
 	# Ensure firewall zone exists
 	if ! uci -q get firewall.easytier >/dev/null; then
@@ -32,7 +41,7 @@ setup_firewall_and_network() {
 		uci -q set firewall.easytier.input='ACCEPT'
 		uci -q set firewall.easytier.output='ACCEPT'
 		uci -q set firewall.easytier.forward='ACCEPT'
-		uci -q set firewall.easytier.masq="$outbound_masq"
+		uci -q set firewall.easytier.masq="$target_masq"
 		uci -q set firewall.easytier.mtu_fix='1'
 		uci -q add_list firewall.easytier.network='easytier'
 
@@ -51,8 +60,8 @@ setup_firewall_and_network() {
 	else
 		local cur_masq
 		cur_masq=$(uci -q get firewall.easytier.masq)
-		if [ "$cur_masq" != "$outbound_masq" ]; then
-			uci -q set firewall.easytier.masq="$outbound_masq"
+		if [ "$cur_masq" != "$target_masq" ]; then
+			uci -q set firewall.easytier.masq="$target_masq"
 			uci -q commit firewall
 			/etc/init.d/firewall reload 2>/dev/null
 		fi
@@ -64,7 +73,7 @@ setup_firewall_and_network() {
 
 start_core() {
 	local enabled etcmd network_name network_secret ip_dhcp ipaddr ip6addr
-	local external_node rpc_port encryption_algorithm dev_name proxy_cidrs proxy_forward_by_system
+	local external_node rpc_port encryption_algorithm dev_name proxy_cidrs
 	local custom_params custom_config_file web_config multi_thread
 
 	config_get_bool enabled settings enabled 0
@@ -89,7 +98,6 @@ start_core() {
 	config_get web_config settings web_config ''
 	config_get custom_params settings custom_params ''
 	config_get_bool multi_thread settings multi_thread 0
-	config_get_bool proxy_forward_by_system settings proxy_forward_by_system 1
 
 	mkdir -p "$CONF_DIR"
 
@@ -117,7 +125,9 @@ start_core() {
 		[ -n "$encryption_algorithm" ] && procd_append_param command --encryption-algorithm "$encryption_algorithm"
 		[ -n "$dev_name" ] && procd_append_param command --dev-name "$dev_name"
 		[ "$multi_thread" -eq 1 ] && procd_append_param command --multi-thread
-		[ "$proxy_forward_by_system" -eq 1 ] && procd_append_param command --proxy-forward-by-system
+
+		# Always disable user-space built-in NAT and delegate forwarding to Linux kernel
+		procd_append_param command --proxy-forward-by-system
 
 		# Peer nodes
 		append_peer() {

@@ -293,15 +293,10 @@ return view.extend({
 		);
 		o.default = '0';
 
-		o = s.taboption('advanced', form.Flag, 'outbound_masq', _('Outbound Source NAT'),
-			_('Masquerade outbound traffic from local network with the virtual interface IP. Recommended to enable for broad compatibility, or disable for transparent end-to-end routing.')
+		o = s.taboption('advanced', form.Flag, 'tunnel_snat', _('Enable Tunnel Traffic SNAT'),
+			_('Use OpenWrt system firewall to manage NAT for EasyTier tunnel and subnet traffic. Disabling this option disables source address masquerading to preserve real source IPs of remote peers and subnets in the local network.')
 		);
-		o.default = '1';
-
-		o = s.taboption('advanced', form.Flag, 'proxy_forward_by_system', _('Disable Built-in NAT'),
-			_('Disable user-space built-in NAT and delegate subnet packet forwarding directly to the Linux kernel. Recommended for OpenWrt gateway devices for lower CPU overhead and maximum throughput.')
-		);
-		o.default = '1';
+		o.default = '0';
 
 		o = s.taboption('advanced', form.Value, 'custom_params', _('Custom Command Parameters'),
 			_('Additional command-line parameters appended to easytier-core.')
