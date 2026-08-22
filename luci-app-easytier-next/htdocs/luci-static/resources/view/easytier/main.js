@@ -73,7 +73,7 @@ function renderCoreStatus(stateObj) {
 	if (pid) text += ' [PID: ' + pid + ']';
 
 	const fields = [
-		E('strong', { 'style': 'color: ' + color + '; font-size: 1.1em;' }, text)
+		E('span', { 'style': 'font-weight: bold; color: ' + color + ';' }, text)
 	];
 
 	if (isRunning) {
@@ -110,7 +110,7 @@ function renderWebStatus(stateObj) {
 	if (pid) text += ' [PID: ' + pid + ']';
 
 	const fields = [
-		E('strong', { 'style': 'color: ' + color + '; font-size: 1.1em;' }, text)
+		E('span', { 'style': 'font-weight: bold; color: ' + color + ';' }, text)
 	];
 
 	if (isRunning) {
@@ -174,7 +174,7 @@ function renderLocalNodeInfo(peerData) {
 	const proxyDisp = localProxy ? E('span', { 'style': 'color: #059669; font-weight: 600; font-family: monospace;' }, localProxy) : '-';
 
 	const infoItems = [
-		{ label: _('EasyTier IPv4'), value: E('strong', { 'style': 'color: #007bff; font-size: 1.1em;' }, ipv4Val) },
+		{ label: _('EasyTier IPv4'), value: E('strong', { 'style': 'color: #007bff;' }, ipv4Val) },
 		{ label: _('Hostname'), value: E('strong', {}, hostnameVal) },
 		{ label: _('Network Name'), value: netNameVal },
 		{ label: _('Proxy Networks'), value: proxyDisp },
