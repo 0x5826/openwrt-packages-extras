@@ -671,13 +671,14 @@ return view.extend({
 			_('Automatically determine and assign an IP address.')
 		);
 		o.default = '1';
+		o.rmempty = false;
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Value, 'ipaddr', _('Interface IPv4 Address'),
 			_('The static IPv4 address of this node. Ignored when DHCP is enabled.')
 		);
-		o.datatype = 'ip4addr';
-		o.placeholder = '10.144.144.1';
+		o.datatype = 'or("ip4addr", "cidr4")';
+		o.placeholder = '10.144.144.1/24';
 		o.depends({ 'etcmd': 'etcmd', 'ip_dhcp': '0' });
 
 		o = s.taboption('general', form.Value, 'ip6addr', _('Interface IPv6 Address'),

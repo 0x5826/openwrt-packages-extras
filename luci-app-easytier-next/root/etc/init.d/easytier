@@ -129,7 +129,7 @@ start_core() {
 	config_get etcmd settings etcmd 'etcmd'
 	config_get network_name settings network_name ''
 	config_get network_secret settings network_secret ''
-	config_get_bool ip_dhcp settings ip_dhcp 0
+	config_get_bool ip_dhcp settings ip_dhcp 1
 	config_get ipaddr settings ipaddr ''
 	config_get ip6addr settings ip6addr ''
 	config_get external_node settings external_node ''
