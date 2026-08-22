@@ -25,6 +25,7 @@ const tailscaleSettingsConf = [
 	[form.Flag, 'exit_node_allow_lan_access', _('Allow LAN Access'), _('When using or advertising the exit node, allow access to the local LAN (--exit-node-allow-lan-access).'), { rmempty: false, depends: { 'advertise_exit_node': '1' } }],
 	[form.Flag, 'ssh', _('Enable Tailscale SSH'), _('Allow connecting to this device through the native SSH function of Tailscale (--ssh).'), { rmempty: false }],
 	[form.Flag, 'shields_up', _('Shields Up'), _('When enabled, blocks all inbound connections from the Tailscale network (--shields-up).'), { rmempty: false }],
+	[form.Flag, 'outbound_masq', _('Outbound Source NAT'), _('Masquerade outbound traffic from local network with the virtual interface IP. Recommended to enable for broad compatibility, or disable for transparent end-to-end routing.'), { default: '1', rmempty: false }],
 	[form.ListValue, 'dns_mode', _('DNS Mode'), _('Controls how Tailscale DNS is handled (--accept-dns).') + '<br>' + _('Disabled: system DNS only.') + '<br>' + _('MagicDNS: Tailscale overrides resolv.conf.') + '<br>' + _('OpenWrt Forward: MagicDNS via dnsmasq forwarding.(Only support ts.net)'), { values: [['disabled', _('Disabled')], ['magicdns', 'MagicDNS'], ['openwrt_forward', _('OpenWrt Forward')]], rmempty: false }],
 	[form.Flag, 'enable_relay', _('Enable Peer Relay'), _('Enable this device as a Peer Relay server (--peer-relay). Requires a public IP and an UDP port open on the router.'), { rmempty: false }]
 ];

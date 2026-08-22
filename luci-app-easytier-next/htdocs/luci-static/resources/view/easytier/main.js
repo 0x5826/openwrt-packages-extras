@@ -293,6 +293,11 @@ return view.extend({
 		);
 		o.default = '0';
 
+		o = s.taboption('advanced', form.Flag, 'outbound_masq', _('Outbound Source NAT'),
+			_('Masquerade outbound traffic from local network with the virtual interface IP. Recommended to enable for broad compatibility, or disable for transparent end-to-end routing.')
+		);
+		o.default = '1';
+
 		o = s.taboption('advanced', form.Value, 'custom_params', _('Custom Command Parameters'),
 			_('Additional command-line parameters appended to easytier-core.')
 		);
