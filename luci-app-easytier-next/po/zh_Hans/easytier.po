@@ -292,4 +292,7 @@ msgstr "50 ~ 150ms (良好)"
 msgid "> 150ms (Fair)"
 msgstr "> 150ms (一般)"
 
+msgid "Open Console"
+msgstr "打开控制台"
+
 
