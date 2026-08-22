@@ -16,6 +16,7 @@ define Package/luci-app-easytier-next/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
 	rm -f /tmp/luci-indexcache.* /tmp/luci-modulecache/* 2>/dev/null
+	chmod 0755 /etc/init.d/easytier /etc/hotplug.d/iface/99-easytier-routes 2>/dev/null || true
 	/etc/init.d/rpcd restart 2>/dev/null || true
 }
 exit 0
