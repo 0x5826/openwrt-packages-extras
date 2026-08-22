@@ -74,6 +74,7 @@ endef
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
 	unzip -q -o $(DL_DIR)/$(PKG_SOURCE) -d $(PKG_BUILD_DIR)
+	find $(PKG_BUILD_DIR) -mindepth 2 -type f -exec mv -f {} $(PKG_BUILD_DIR)/ \;
 endef
 
 define Build/Compile
