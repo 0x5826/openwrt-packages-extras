@@ -208,88 +208,88 @@ return view.extend({
 		o.rmempty = false;
 
 		o = s.taboption('general', form.ListValue, 'etcmd', _('Startup Method'));
-		o.value('etcmd', _('Command-line (Default)'));
-		o.value('config', _('Configuration File (/etc/easytier/config.toml)'));
-		o.value('web', _('Web Server Config (-w)'));
+		o.value('etcmd', _('Command-line'));
+		o.value('config', _('Configuration File'));
+		o.value('web', _('Cloud Web Config'));
 		o.default = 'etcmd';
 
 		o = s.taboption('general', form.Value, 'network_name', _('Network Name'),
-			_('The VPN network name to identify this virtual network (--network-name).')
+			_('The VPN network name to identify this virtual network.')
 		);
 		o.placeholder = 'easytier';
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Value, 'network_secret', _('Network Secret'),
-			_('The secret phrase used to authorize and encrypt traffic (--network-secret).')
+			_('The secret phrase used to authorize and encrypt traffic.')
 		);
 		o.password = true;
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Flag, 'ip_dhcp', _('Enable DHCP IP Allocation'),
-			_('Automatically determine and assign an IP address (-d).')
+			_('Automatically determine and assign an IP address.')
 		);
 		o.default = '1';
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Value, 'ipaddr', _('Interface IPv4 Address'),
-			_('The static IPv4 address of this node (-i). Ignored when DHCP is enabled.')
+			_('The static IPv4 address of this node. Ignored when DHCP is enabled.')
 		);
 		o.datatype = 'ip4addr';
 		o.placeholder = '10.144.144.1';
 		o.depends({ 'etcmd': 'etcmd', 'ip_dhcp': '0' });
 
 		o = s.taboption('general', form.Value, 'ip6addr', _('Interface IPv6 Address'),
-			_('The static IPv6 address of this node (--ipv6).')
+			_('The static IPv6 address of this node.')
 		);
 		o.datatype = 'ip6addr';
 		o.placeholder = 'fd00:144::1';
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.DynamicList, 'peeradd', _('Peer Nodes'),
-			_('Initial connection peer node URLs (e.g. tcp://public.easytier.top:11010, -p).')
+			_('Initial connection peer node URLs.')
 		);
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Value, 'external_node', _('Public Discovery Node'),
-			_('Public discovery node URL (-e).')
+			_('Public discovery node URL.')
 		);
 		o.placeholder = 'tcp://public.easytier.top:11010';
 		o.depends('etcmd', 'etcmd');
 
-		o = s.taboption('general', form.DynamicList, 'proxy_networks', _('Proxy Networks (Subnet Routes)'),
-			_('Subnet CIDRs to proxy/announce through this node (e.g. 192.168.1.0/24, -n).')
+		o = s.taboption('general', form.DynamicList, 'proxy_networks', _('Proxy Networks'),
+			_('Subnet CIDRs to proxy and announce through this node.')
 		);
 		o.datatype = 'cidr4';
 		o.depends('etcmd', 'etcmd');
 
 		// Web Server URL under 'web' mode
 		o = s.taboption('general', form.Value, 'web_config', _('Web Config Server URL'),
-			_('Remote web configuration server address (e.g. username or udp://server:22020/username, -w).')
+			_('Remote web configuration server address.')
 		);
 		o.depends('etcmd', 'web');
 
 		// --- Advanced Options ---
 		o = s.taboption('advanced', form.Value, 'rpc_port', _('RPC Management Port'),
-			_('Port for local CLI/RPC management portal (default: 15888).')
+			_('Port for local CLI and RPC management portal.')
 		);
 		o.datatype = 'port';
 		o.default = '15888';
 		o.placeholder = '15888';
 
 		o = s.taboption('advanced', form.Value, 'dev_name', _('TUN Device Name'),
-			_('Virtual TUN network interface name (default: easytier0).')
+			_('Virtual TUN network interface name.')
 		);
 		o.default = 'easytier0';
 		o.placeholder = 'easytier0';
 
 		o = s.taboption('advanced', form.ListValue, 'encryption_algorithm', _('Encryption Algorithm'));
-		o.value('aes-gcm', 'AES-GCM (Default)');
+		o.value('aes-gcm', 'AES-GCM');
 		o.value('chacha20-poly1305', 'ChaCha20-Poly1305');
-		o.value('none', _('None (Unencrypted)'));
+		o.value('none', _('None'));
 		o.default = 'aes-gcm';
 
 		o = s.taboption('advanced', form.Flag, 'multi_thread', _('Multi-threaded Mode'),
-			_('Enable multi-threaded packet processing for higher throughput (--multi-thread).')
+			_('Enable multi-threaded packet processing for higher throughput.')
 		);
 		o.default = '0';
 
