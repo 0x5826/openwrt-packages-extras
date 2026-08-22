@@ -1,0 +1,230 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "EasyTier"
+msgstr ""
+
+msgid "EasyTier Next"
+msgstr ""
+
+msgid "EasyTier is a simple, secure, decentralized mesh VPN for intranet penetration, implemented in Rust."
+msgstr ""
+
+msgid "Service Status"
+msgstr ""
+
+msgid "Core Service Status"
+msgstr ""
+
+msgid "Web Console Status"
+msgstr ""
+
+msgid "Running (Managed)"
+msgstr ""
+
+msgid "Running (Unmanaged)"
+msgstr ""
+
+msgid "Stopped"
+msgstr ""
+
+msgid "Service Actions"
+msgstr ""
+
+msgid "Restart Service"
+msgstr ""
+
+msgid "Stop Service"
+msgstr ""
+
+msgid "Action"
+msgstr ""
+
+msgid "Restarting service..."
+msgstr ""
+
+msgid "Connected Peer Nodes"
+msgstr ""
+
+msgid "No connected peers found."
+msgstr ""
+
+msgid "Peer ID"
+msgstr ""
+
+msgid "Virtual IP"
+msgstr ""
+
+msgid "Hostname"
+msgstr ""
+
+msgid "Cost"
+msgstr ""
+
+msgid "Latency"
+msgstr ""
+
+msgid "Loss Rate"
+msgstr ""
+
+msgid "RX"
+msgstr ""
+
+msgid "TX"
+msgstr ""
+
+msgid "Tunnel"
+msgstr ""
+
+msgid "Settings"
+msgstr ""
+
+msgid "Core Settings"
+msgstr ""
+
+msgid "Advanced Options"
+msgstr ""
+
+msgid "Web Console"
+msgstr ""
+
+msgid "Logs"
+msgstr ""
+
+msgid "Enable Core Service"
+msgstr ""
+
+msgid "Startup Method"
+msgstr ""
+
+msgid "Command-line (Default)"
+msgstr ""
+
+msgid "Configuration File (/etc/easytier/config.toml)"
+msgstr ""
+
+msgid "Web Server Config (-w)"
+msgstr ""
+
+msgid "Network Name"
+msgstr ""
+
+msgid "The VPN network name to identify this virtual network (--network-name)."
+msgstr ""
+
+msgid "Network Secret"
+msgstr ""
+
+msgid "The secret phrase used to authorize and encrypt traffic (--network-secret)."
+msgstr ""
+
+msgid "Enable DHCP IP Allocation"
+msgstr ""
+
+msgid "Automatically determine and assign an IP address (-d)."
+msgstr ""
+
+msgid "Interface IPv4 Address"
+msgstr ""
+
+msgid "The static IPv4 address of this node (-i). Ignored when DHCP is enabled."
+msgstr ""
+
+msgid "Interface IPv6 Address"
+msgstr ""
+
+msgid "The static IPv6 address of this node (--ipv6)."
+msgstr ""
+
+msgid "Peer Nodes"
+msgstr ""
+
+msgid "Initial connection peer node URLs (e.g. tcp://public.easytier.top:11010, -p)."
+msgstr ""
+
+msgid "Public Discovery Node"
+msgstr ""
+
+msgid "Public discovery node URL (-e)."
+msgstr ""
+
+msgid "Proxy Networks (Subnet Routes)"
+msgstr ""
+
+msgid "Subnet CIDRs to proxy/announce through this node (e.g. 192.168.1.0/24, -n)."
+msgstr ""
+
+msgid "Web Config Server URL"
+msgstr ""
+
+msgid "Remote web configuration server address (e.g. username or udp://server:22020/username, -w)."
+msgstr ""
+
+msgid "RPC Management Port"
+msgstr ""
+
+msgid "Port for local CLI/RPC management portal (default: 15888)."
+msgstr ""
+
+msgid "TUN Device Name"
+msgstr ""
+
+msgid "Virtual TUN network interface name (default: easytier0)."
+msgstr ""
+
+msgid "Encryption Algorithm"
+msgstr ""
+
+msgid "None (Unencrypted)"
+msgstr ""
+
+msgid "Multi-threaded Mode"
+msgstr ""
+
+msgid "Enable multi-threaded packet processing for higher throughput (--multi-thread)."
+msgstr ""
+
+msgid "Custom Command Parameters"
+msgstr ""
+
+msgid "Additional command-line parameters appended to easytier-core."
+msgstr ""
+
+msgid "Enable Web Console Service"
+msgstr ""
+
+msgid "Web Console Port"
+msgstr ""
+
+msgid "HTTP listen port for easytier-web embedded web dashboard."
+msgstr ""
+
+msgid "Web Data Directory"
+msgstr ""
+
+msgid "Directory to store SQLite database for easytier-web."
+msgstr ""
+
+msgid "Open Web Console"
+msgstr ""
+
+msgid "Dashboard URL"
+msgstr ""
+
+msgid "Open Web Console in New Tab (%s)"
+msgstr ""
+
+msgid "Collecting logs..."
+msgstr ""
+
+msgid "No logs available."
+msgstr ""
+
+msgid "Refresh Logs"
+msgstr ""
+
+msgid "Clear Logs"
+msgstr ""
+
+msgid "Logs cleared."
+msgstr ""
