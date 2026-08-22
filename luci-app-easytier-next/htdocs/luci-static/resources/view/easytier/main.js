@@ -19,6 +19,12 @@ const callGetPeers = rpc.declare({
 	expect: { }
 });
 
+const callGetTopology = rpc.declare({
+	object: 'easytier',
+	method: 'get_topology',
+	expect: { }
+});
+
 const callGetLogs = rpc.declare({
 	object: 'easytier',
 	method: 'get_logs',
@@ -195,6 +201,230 @@ function renderLogsView(logData) {
 	return E('div', { 'style': 'width: 100%; margin-top: 5px;' }, textarea);
 }
 
+function renderTopologySvg(topoData, peerData) {
+	let rawNodes = [];
+	if (Array.isArray(topoData)) {
+		rawNodes = topoData;
+	} else if (topoData && Array.isArray(topoData.nodes)) {
+		rawNodes = topoData.nodes;
+	}
+
+	if (!rawNodes || rawNodes.length === 0) {
+		return E('em', {}, _('No topology data available.'));
+	}
+
+	let localIpv4 = '';
+	let peers = [];
+	if (Array.isArray(peerData)) peers = peerData;
+	else if (peerData && Array.isArray(peerData.peers)) peers = peerData.peers;
+	for (let i = 0; i < peers.length; i++) {
+		if (peers[i].cost && String(peers[i].cost).trim().toLowerCase() === 'local') {
+			if (peers[i].ipv4) localIpv4 = String(peers[i].ipv4).trim().split('/')[0];
+			break;
+		}
+	}
+
+	let nodes = [];
+	let localNode = null;
+	for (let i = 0; i < rawNodes.length; i++) {
+		const n = rawNodes[i];
+		const nIp = n.ipv4 ? String(n.ipv4).trim().split('/')[0] : '';
+		if (localIpv4 && nIp === localIpv4) {
+			localNode = n;
+		} else {
+			nodes.push(n);
+		}
+	}
+	if (localNode) {
+		nodes.unshift(localNode);
+	}
+
+	const nodeCount = nodes.length;
+	const linkMap = {};
+	for (let i = 0; i < nodeCount; i++) {
+		const src = nodes[i];
+		const dPeers = src.direct_peers || [];
+		for (let j = 0; j < dPeers.length; j++) {
+			const dst = dPeers[j];
+			if (!dst.node_id) continue;
+			const pairKey = [src.node_id, dst.node_id].sort().join('---');
+			if (!linkMap[pairKey]) {
+				linkMap[pairKey] = {
+					srcId: src.node_id,
+					dstId: dst.node_id,
+					latency: dst.latency_ms
+				};
+			} else if (dst.latency_ms && (!linkMap[pairKey].latency || dst.latency_ms < linkMap[pairKey].latency)) {
+				linkMap[pairKey].latency = dst.latency_ms;
+			}
+		}
+	}
+
+	const width = 800;
+	const height = 480;
+	const cx = 400;
+	const cy = 240;
+	const R = (nodeCount <= 2) ? 120 : ((nodeCount <= 4) ? 150 : 180);
+
+	const posMap = {};
+	if (nodeCount === 1) {
+		posMap[nodes[0].node_id] = { x: cx, y: cy };
+	} else {
+		for (let i = 0; i < nodeCount; i++) {
+			const angle = -Math.PI / 2 + (2 * Math.PI * i) / nodeCount;
+			posMap[nodes[i].node_id] = {
+				x: Math.round(cx + R * Math.cos(angle)),
+				y: Math.round(cy + R * Math.sin(angle))
+			};
+		}
+	}
+
+	const svgElements = [];
+	const linkKeys = Object.keys(linkMap);
+
+	for (let k = 0; k < linkKeys.length; k++) {
+		const link = linkMap[linkKeys[k]];
+		const p1 = posMap[link.srcId];
+		const p2 = posMap[link.dstId];
+		if (!p1 || !p2) continue;
+
+		svgElements.push(E('line', {
+			'x1': p1.x, 'y1': p1.y,
+			'x2': p2.x, 'y2': p2.y,
+			'stroke': '#94a3b8',
+			'stroke-width': '2',
+			'stroke-dasharray': '5,5',
+			'opacity': '0.75'
+		}));
+	}
+
+	for (let k = 0; k < linkKeys.length; k++) {
+		const link = linkMap[linkKeys[k]];
+		const p1 = posMap[link.srcId];
+		const p2 = posMap[link.dstId];
+		if (!p1 || !p2) continue;
+
+		const mx = Math.round((p1.x + p2.x) / 2);
+		const my = Math.round((p1.y + p2.y) / 2);
+		const lat = link.latency;
+
+		if (lat !== undefined && lat !== null) {
+			let badgeBg = '#fef3c7';
+			let badgeText = '#b45309';
+			let badgeBorder = '#fcd34d';
+
+			if (lat < 50) {
+				badgeBg = '#dcfce7';
+				badgeText = '#15803d';
+				badgeBorder = '#86efac';
+			} else if (lat <= 150) {
+				badgeBg = '#dbeafe';
+				badgeText = '#1d4ed8';
+				badgeBorder = '#93c5fd';
+			}
+
+			const labelStr = lat + ' ms';
+			const bw = 64;
+			const bh = 22;
+
+			svgElements.push(E('g', {}, [
+				E('rect', {
+					'x': mx - bw / 2,
+					'y': my - bh / 2,
+					'width': bw,
+					'height': bh,
+					'rx': '11',
+					'fill': badgeBg,
+					'stroke': badgeBorder,
+					'stroke-width': '1.5'
+				}),
+				E('text', {
+					'x': mx,
+					'y': my + 4,
+					'text-anchor': 'middle',
+					'font-family': 'monospace, sans-serif',
+					'font-size': '11',
+					'font-weight': 'bold',
+					'fill': badgeText
+				}, labelStr)
+			]));
+		}
+	}
+
+	const cardW = 160;
+	const cardH = 54;
+	for (let i = 0; i < nodeCount; i++) {
+		const n = nodes[i];
+		const pos = posMap[n.node_id];
+		if (!pos) continue;
+
+		const isSelf = (i === 0 && localNode);
+		const hostname = n.hostname ? String(n.hostname).trim() : 'Unknown';
+		const ipv4 = n.ipv4 ? String(n.ipv4).trim() : '-';
+		const titleStr = isSelf ? (hostname + ' (Local)') : hostname;
+
+		const cardBg = isSelf ? '#eff6ff' : '#f8fafc';
+		const cardBorder = isSelf ? '#2563eb' : '#cbd5e1';
+		const borderWidth = isSelf ? '2.5' : '1.5';
+		const titleColor = isSelf ? '#1e3a8a' : '#334155';
+		const ipColor = isSelf ? '#2563eb' : '#64748b';
+
+		svgElements.push(E('g', {}, [
+			E('rect', {
+				'x': pos.x - cardW / 2,
+				'y': pos.y - cardH / 2,
+				'width': cardW,
+				'height': cardH,
+				'rx': '8',
+				'fill': cardBg,
+				'stroke': cardBorder,
+				'stroke-width': borderWidth
+			}),
+			E('text', {
+				'x': pos.x,
+				'y': pos.y - 6,
+				'text-anchor': 'middle',
+				'font-family': 'sans-serif',
+				'font-size': '12',
+				'font-weight': isSelf ? 'bold' : '600',
+				'fill': titleColor
+			}, titleStr),
+			E('text', {
+				'x': pos.x,
+				'y': pos.y + 14,
+				'text-anchor': 'middle',
+				'font-family': 'monospace, sans-serif',
+				'font-size': '11',
+				'font-weight': isSelf ? 'bold' : 'normal',
+				'fill': ipColor
+			}, ipv4)
+		]));
+	}
+
+	const svgNode = E('svg', {
+		'viewBox': '0 0 ' + width + ' ' + height,
+		'style': 'width: 100%; height: auto; min-height: 380px; max-height: 520px; display: block; margin: 0 auto; user-select: none; background: transparent;',
+		'xmlns': 'http://www.w3.org/2000/svg'
+	}, svgElements);
+
+	const legend = E('div', {
+		'style': 'text-align: center; margin-top: 10px; font-size: 12px; line-height: 1.6;'
+	}, [
+		E('span', { 'style': 'display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #22c55e; margin-right: 4px; vertical-align: middle;' }),
+		_('< 50ms (Optimal)'),
+		'   ',
+		E('span', { 'style': 'display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #3b82f6; margin-left: 14px; margin-right: 4px; vertical-align: middle;' }),
+		_('50 ~ 150ms (Good)'),
+		'   ',
+		E('span', { 'style': 'display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; margin-left: 14px; margin-right: 4px; vertical-align: middle;' }),
+		_('> 150ms (Fair)')
+	]);
+
+	return E('div', {
+		'style': 'width: 100%; border: 1px solid #e5e5e5; border-radius: 6px; padding: 15px; box-sizing: border-box; margin-top: 5px;'
+	}, [svgNode, legend]);
+}
+
 return view.extend({
 	load: function() {
 		return Promise.all([
@@ -314,6 +544,7 @@ return view.extend({
 		s.tab('general', _('Core Settings'));
 		s.tab('advanced', _('Advanced Options'));
 		s.tab('web', _('Web Console'));
+		s.tab('topology', _('Network Topology'));
 		s.tab('logs', _('Logs'));
 
 		// --- Core Settings ---
@@ -447,6 +678,59 @@ return view.extend({
 					}, _('Open Web Console in New Tab (%s)').format(url))
 				])
 			]);
+		};
+
+		// --- Network Topology ---
+		const topologyActions = s.taboption('topology', form.DummyValue, '_topology_actions');
+		topologyActions.render = function() {
+			return E('div', { 'class': 'cbi-value' }, [
+				E('label', { 'class': 'cbi-value-title' }, _('Topology Actions')),
+				E('div', { 'class': 'cbi-value-field' }, [
+					E('button', {
+						'class': 'btn cbi-button cbi-button-action',
+						'click': function(ev) {
+							const display = document.getElementById('easytier_topology_display');
+							if (display) {
+								display.replaceChildren(E('em', {}, _('Collecting data ...')));
+							}
+							return Promise.all([
+								callGetTopology(),
+								callGetPeers()
+							]).then(function(results) {
+								if (display) {
+									display.replaceChildren(renderTopologySvg(results[0], results[1]));
+								}
+							}).catch(function(err) {
+								if (display) {
+									display.replaceChildren(E('em', {}, _('No topology data available.')));
+								}
+								ui.addTimeLimitedNotification(null, [ E('p', {}, _('Failed to load topology: %s').format(err.message || err)) ], 5000, 'error');
+							});
+						}
+					}, _('Refresh Topology'))
+				])
+			]);
+		};
+
+		const topologySection = s.taboption('topology', form.DummyValue, '_topology');
+		topologySection.render = function() {
+			window.setTimeout(function() {
+				const display = document.getElementById('easytier_topology_display');
+				if (display) {
+					Promise.all([
+						callGetTopology(),
+						callGetPeers()
+					]).then(function(results) {
+						display.replaceChildren(renderTopologySvg(results[0], results[1]));
+					}).catch(function(err) {
+						display.replaceChildren(E('em', {}, _('No topology data available.')));
+					});
+				}
+			}, 100);
+
+			return E('div', { 'id': 'easytier_topology_display', 'class': 'cbi-value' },
+				E('em', {}, _('Collecting data ...'))
+			);
 		};
 
 		// --- Logs ---

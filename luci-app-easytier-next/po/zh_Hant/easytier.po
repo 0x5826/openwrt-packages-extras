@@ -267,3 +267,27 @@ msgstr "載入對等節點失敗：%s"
 
 msgid "Refresh"
 msgstr "重新整理"
+
+msgid "Network Topology"
+msgstr "網路拓撲"
+
+msgid "Refresh Topology"
+msgstr "重新整理拓撲"
+
+msgid "Topology Actions"
+msgstr "拓撲操作"
+
+msgid "No topology data available."
+msgstr "暫無可用拓撲資料。"
+
+msgid "Failed to load topology: %s"
+msgstr "載入拓撲失敗：%s"
+
+msgid "< 50ms (Optimal)"
+msgstr "< 50ms (極佳)"
+
+msgid "50 ~ 150ms (Good)"
+msgstr "50 ~ 150ms (良好)"
+
+msgid "> 150ms (Fair)"
+msgstr "> 150ms (一般)"

@@ -268,4 +268,28 @@ msgstr ""
 msgid "Refresh"
 msgstr ""
 
+msgid "Network Topology"
+msgstr ""
+
+msgid "Refresh Topology"
+msgstr ""
+
+msgid "Topology Actions"
+msgstr ""
+
+msgid "No topology data available."
+msgstr ""
+
+msgid "Failed to load topology: %s"
+msgstr ""
+
+msgid "< 50ms (Optimal)"
+msgstr ""
+
+msgid "50 ~ 150ms (Good)"
+msgstr ""
+
+msgid "> 150ms (Fair)"
+msgstr ""
+
 

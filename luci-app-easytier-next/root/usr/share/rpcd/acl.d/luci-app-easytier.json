@@ -6,6 +6,7 @@
 				"easytier": [
 					"get_status",
 					"get_peers",
+					"get_topology",
 					"get_config",
 					"get_logs",
 					"get_web_status",

@@ -176,6 +176,23 @@ methods.get_logs = {
 	}
 };
 
+methods.get_topology = {
+	call: function() {
+		if (!access('/usr/bin/easytier-cli')) {
+			return { nodes: [] };
+		}
+		let res = exec('/usr/bin/easytier-cli -o json peer-center 2>/dev/null');
+		if (res.code == 0 && length(res.stdout) > 0) {
+			let full_str = join('\n', res.stdout);
+			let data = json(full_str);
+			if (data) {
+				return { nodes: data };
+			}
+		}
+		return { nodes: [] };
+	}
+};
+
 methods.clear_logs = {
 	call: function() {
 		writefile('/tmp/easytier.log', '');
