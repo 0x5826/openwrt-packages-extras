@@ -229,16 +229,10 @@ msgstr "清空日誌"
 msgid "Logs cleared."
 msgstr "日誌已清空。"
 
-msgid "Outbound Source NAT"
-msgstr "出站來源位址偽裝"
+msgid "Enable Tunnel Traffic SNAT"
+msgstr "開啟隧道流量 SNAT"
 
-msgid "Masquerade outbound traffic from local network with the virtual interface IP. Recommended to enable for broad compatibility, or disable for transparent end-to-end routing."
-msgstr "使用虛擬介面 IP 偽裝本地區域網路的出站流量。推薦開啟以獲得最佳相容性，或關閉以實現透明的端到端路由。"
-
-msgid "Disable Built-in NAT"
-msgstr "禁用內建 NAT"
-
-msgid "Disable user-space built-in NAT and delegate subnet packet forwarding directly to the Linux kernel. Recommended for OpenWrt gateway devices for lower CPU overhead and maximum throughput."
-msgstr "禁用使用者態內建 NAT，將子網資料包直接交由 Linux 核心轉發。OpenWrt 路由器閘道推薦開啟，可降低 CPU 佔用並獲得極致轉發吞吐。"
+msgid "Use OpenWrt system firewall to manage NAT for EasyTier tunnel and subnet traffic. Disabling this option disables source address masquerading to preserve real source IPs of remote peers and subnets in the local network."
+msgstr "由 OpenWrt 系統防火牆統一接管 EasyTier 隧道及對端子網流量的位址轉換。停用此項將停用來源位址偽裝，在區域網路中保留對端節點和子網的真實來源 IP。"
 
 

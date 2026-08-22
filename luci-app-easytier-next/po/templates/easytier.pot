@@ -229,16 +229,10 @@ msgstr ""
 msgid "Logs cleared."
 msgstr ""
 
-msgid "Outbound Source NAT"
+msgid "Enable Tunnel Traffic SNAT"
 msgstr ""
 
-msgid "Masquerade outbound traffic from local network with the virtual interface IP. Recommended to enable for broad compatibility, or disable for transparent end-to-end routing."
-msgstr ""
-
-msgid "Disable Built-in NAT"
-msgstr ""
-
-msgid "Disable user-space built-in NAT and delegate subnet packet forwarding directly to the Linux kernel. Recommended for OpenWrt gateway devices for lower CPU overhead and maximum throughput."
+msgid "Use OpenWrt system firewall to manage NAT for EasyTier tunnel and subnet traffic. Disabling this option disables source address masquerading to preserve real source IPs of remote peers and subnets in the local network."
 msgstr ""
 
 
