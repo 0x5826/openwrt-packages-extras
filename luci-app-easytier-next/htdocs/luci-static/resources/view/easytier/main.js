@@ -72,48 +72,56 @@ function renderPeersTable(peerData) {
 
 	if (!peers || peers.length === 0) {
 		if (peerData && peerData.raw && peerData.raw.length > 0) {
-			return E('pre', { 'style': 'padding: 10px; border-radius: 4px; overflow-x: auto; max-height: 350px;' }, peerData.raw);
+			return E('pre', { 'style': 'padding: 10px; border-radius: 4px; overflow-x: auto; max-height: 350px; font-family: monospace;' }, peerData.raw);
 		}
 		return E('em', {}, _('No connected peers found.'));
 	}
 
 	const headers = [
-		_('IPv4'),
-		_('Hostname'),
-		_('Cost'),
-		_('Latency'),
-		_('Loss Rate'),
-		_('RX'),
-		_('TX'),
-		_('Tunnel'),
-		_('NAT Type'),
-		_('Version')
+		{ title: _('IPv4'), minWidth: '140px' },
+		{ title: _('Hostname'), minWidth: '160px' },
+		{ title: _('Cost'), minWidth: '80px' },
+		{ title: _('Latency'), minWidth: '90px' },
+		{ title: _('Loss Rate'), minWidth: '80px' },
+		{ title: _('RX'), minWidth: '90px' },
+		{ title: _('TX'), minWidth: '90px' },
+		{ title: _('Tunnel'), minWidth: '80px' },
+		{ title: _('NAT Type'), minWidth: '130px' },
+		{ title: _('Version'), minWidth: '130px' }
 	];
+
+	const thStyle = 'padding: 10px 14px; text-align: left; white-space: nowrap; font-weight: bold; vertical-align: middle;';
+	const tdStyle = 'padding: 8px 14px; text-align: left; white-space: nowrap; vertical-align: middle;';
 
 	const rows = [
 		E('tr', { 'class': 'cbi-table-header' }, headers.map(function(h) {
-			return E('th', { 'class': 'cbi-table-cell' }, h);
+			return E('th', { 'class': 'cbi-table-cell', 'style': thStyle + (h.minWidth ? ` min-width: ${h.minWidth};` : '') }, h.title);
 		}))
 	];
 
 	for (let i = 0; i < peers.length; i++) {
 		const p = peers[i];
+		const costStr = p.cost ? String(p.cost).trim() : '-';
+		const isLocal = (costStr.toLowerCase() === 'local');
+		const latencyVal = p.latency ? String(p.latency).trim() : '-';
+		const latencyColor = (latencyVal !== '-' && !isNaN(parseFloat(latencyVal))) ? '#28a745' : '#6c757d';
+
 		rows.push(E('tr', { 'class': 'cbi-row' }, [
-			E('td', { 'class': 'cbi-value-field' }, E('strong', {}, p.ipv4 || '-')),
-			E('td', { 'class': 'cbi-value-field' }, p.hostname || '-'),
-			E('td', { 'class': 'cbi-value-field' }, p.cost || '-'),
-			E('td', { 'class': 'cbi-value-field' }, p.latency ? E('span', { 'style': 'color: #28a745; font-weight: bold;' }, p.latency) : '-'),
-			E('td', { 'class': 'cbi-value-field' }, p.loss_rate || '-'),
-			E('td', { 'class': 'cbi-value-field' }, p.rx || '-'),
-			E('td', { 'class': 'cbi-value-field' }, p.tx || '-'),
-			E('td', { 'class': 'cbi-value-field' }, p.tunnel || '-'),
-			E('td', { 'class': 'cbi-value-field' }, p.nat || '-'),
-			E('td', { 'class': 'cbi-value-field' }, p.version || '-')
+			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, E('strong', { 'style': isLocal ? 'color: #007bff;' : '' }, (p.ipv4 ? String(p.ipv4).trim() : '-') + (isLocal ? (' ' + _('(Local)')) : ''))),
+			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.hostname ? String(p.hostname).trim() : '-'),
+			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, costStr),
+			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, (latencyVal !== '-') ? E('span', { 'style': `color: ${latencyColor}; font-weight: bold;` }, latencyVal + ' ms') : '-'),
+			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.loss_rate ? String(p.loss_rate).trim() : '-'),
+			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.rx ? String(p.rx).trim() : '-'),
+			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.tx ? String(p.tx).trim() : '-'),
+			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.tunnel ? String(p.tunnel).trim() : '-'),
+			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.nat ? String(p.nat).trim() : '-'),
+			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.version ? String(p.version).trim() : '-')
 		]));
 	}
 
-	const tableNode = E('table', { 'class': 'cbi-table' }, rows);
-	return E('div', { 'style': 'overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 10px;' }, tableNode);
+	const tableNode = E('table', { 'class': 'cbi-table', 'style': 'width: 100%; border-collapse: separate; border-spacing: 0;' }, rows);
+	return E('div', { 'style': 'overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 10px; border: 1px solid #e5e5e5; border-radius: 4px;' }, tableNode);
 }
 
 function renderLogsView(logData) {

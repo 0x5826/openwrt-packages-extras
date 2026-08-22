@@ -235,4 +235,7 @@ msgstr ""
 msgid "Use OpenWrt system firewall to manage NAT for EasyTier tunnel and subnet traffic. Disabling this option disables source address masquerading to preserve real source IPs of remote peers and subnets in the local network."
 msgstr ""
 
+msgid "(Local)"
+msgstr ""
+
 

@@ -235,4 +235,7 @@ msgstr "开启隧道流量 SNAT"
 msgid "Use OpenWrt system firewall to manage NAT for EasyTier tunnel and subnet traffic. Disabling this option disables source address masquerading to preserve real source IPs of remote peers and subnets in the local network."
 msgstr "由 OpenWrt 系统防火墙统一接管 EasyTier 隧道及对端子网流量的地址转换。禁用此项将禁用源地址伪装，在局域网中保留对端节点和子网的真实源 IP。"
 
+msgid "(Local)"
+msgstr "(本机)"
+
 
