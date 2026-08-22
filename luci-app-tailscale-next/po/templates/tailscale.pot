@@ -485,7 +485,10 @@ msgstr ""
 msgid "When using or advertising the exit node, allow access to the local LAN."
 msgstr ""
 
-msgid "Disable Firewall Auto Configuration"
+msgid "Disable Daemon Firewall Management"
+msgstr ""
+
+msgid "Prevent the Tailscale daemon from directly modifying system netfilter rules. Recommended to enable so that all firewall zones and forwarding policies are managed cleanly by OpenWrt."
 msgstr ""
 
 msgid "Not logged in. Please authenticate first."
