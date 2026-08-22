@@ -1,0 +1,228 @@
+#!/usr/bin/env lua
+
+local json = require "luci.jsonc"
+local nixio = require "nixio"
+local fs = require "nixio.fs"
+
+local function trim(s)
+	if type(s) ~= 'string' then return '' end
+	return s:gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local function exec_cmd(cmd)
+	local f = io.popen(cmd)
+	if not f then
+		return { code = -1, stdout = {}, raw = "" }
+	end
+	local content = f:read("*a") or ""
+	local success, msg, code = f:close()
+	content = trim(content)
+	local lines = {}
+	for line in string.gmatch(content .. "\n", "(.-)\r?\n") do
+		if line ~= "" then
+			table.insert(lines, line)
+		end
+	end
+	return {
+		code = (type(success) == "number" and success) or (code or 0),
+		stdout = lines,
+		raw = content
+	}
+end
+
+local function get_procd_status(instance_name)
+	local ubus_res = exec_cmd("ubus call service list '{\"name\":\"easytier\"}' 2>/dev/null")
+	if ubus_res.raw and #ubus_res.raw > 0 then
+		local parsed = json.parse(ubus_res.raw)
+		if parsed and parsed.easytier and parsed.easytier.instances then
+			local inst = parsed.easytier.instances[instance_name or 'core']
+			if inst and inst.running then
+				return { running = true, pid = inst.pid }
+			end
+		end
+	end
+	return { running = false }
+end
+
+local function get_rogue_pid(bin_name, managed_pid)
+	local res = exec_cmd("pidof " .. bin_name .. " 2>/dev/null")
+	if res.raw and #res.raw > 0 then
+		for pid in string.gmatch(res.raw, "%d+") do
+			local num_pid = tonumber(pid)
+			if num_pid and (managed_pid == nil or num_pid ~= managed_pid) then
+				return num_pid
+			end
+		end
+	end
+	return nil
+end
+
+local function get_service_state(bin_name, instance_name)
+	local procd_st = get_procd_status(instance_name)
+	local rogue_pid = get_rogue_pid(bin_name, procd_st.pid)
+
+	local state = "stopped"
+	if procd_st.running then
+		state = "managed"
+	elseif rogue_pid then
+		state = "unmanaged"
+	end
+
+	return {
+		state = state,
+		running = (state ~= "stopped"),
+		pid = procd_st.pid or rogue_pid
+	}
+end
+
+local function get_cached_version()
+	local cache_file = '/tmp/easytier_version.cache'
+	local bin_path = '/usr/bin/easytier-core'
+	if not fs.access(bin_path) then return 'Unknown' end
+
+	local bin_st = fs.stat(bin_path)
+	local cache_st = fs.stat(cache_file)
+
+	if cache_st and (cache_st.size or 0) > 0 and bin_st and (cache_st.mtime or 0) >= (bin_st.mtime or 0) then
+		local cached = trim(fs.readfile(cache_file) or '')
+		if cached ~= '' then return cached end
+	end
+
+	local ver_res = exec_cmd(bin_path .. ' --version 2>/dev/null')
+	if ver_res.stdout and #ver_res.stdout > 0 then
+		local ver_line = trim(ver_res.stdout[1])
+		if ver_line ~= '' then
+			fs.writefile(cache_file, ver_line .. '\n')
+			return ver_line
+		end
+	end
+	return 'Unknown'
+end
+
+local methods = {
+	get_status = function()
+		local core_st = get_service_state('/usr/bin/easytier-core', 'core')
+		local web_st = get_service_state('/usr/bin/easytier-web', 'web')
+
+		local data = {
+			installed = fs.access('/usr/bin/easytier-core'),
+			version = get_cached_version(),
+			core = core_st,
+			web = web_st,
+			node_info = nil
+		}
+
+		if core_st.running and fs.access('/usr/bin/easytier-cli') then
+			local node_res = exec_cmd('/usr/bin/easytier-cli node 2>/dev/null')
+			if node_res.raw and #node_res.raw > 0 then
+				data.node_info = node_res.raw
+			end
+		end
+
+		return data
+	end,
+
+	get_peers = function()
+		if not fs.access('/usr/bin/easytier-cli') then
+			return { peers = {}, raw = '' }
+		end
+
+		local peer_res = exec_cmd('/usr/bin/easytier-cli peer 2>/dev/null')
+		local raw_output = peer_res.raw or ''
+		local peers = {}
+
+		if peer_res.stdout and #peer_res.stdout > 0 then
+			for _, line in ipairs(peer_res.stdout) do
+				local trimmed = trim(line)
+				if trimmed ~= '' and not trimmed:match("^[Pp]eer_id") and not trimmed:match("^[─━%+%-%=]") then
+					local cols = {}
+					for part in string.gmatch(trimmed, "%S+") do
+						table.insert(cols, part)
+					end
+					if #cols >= 2 then
+						table.insert(peers, {
+							id = cols[1] or '-',
+							ipv4 = cols[2] or '-',
+							hostname = cols[3] or '-',
+							cost = cols[4] or '-',
+							latency = cols[5] or '-',
+							loss_rate = cols[6] or '0%',
+							rx_bytes = cols[7] or '-',
+							tx_bytes = cols[8] or '-',
+							tunnel_info = cols[9] or '-'
+						})
+					end
+				end
+			end
+		end
+
+		return { peers = peers, raw = raw_output }
+	end,
+
+	get_logs = function()
+		local logs = {}
+		local res = exec_cmd("logread -e easytier 2>/dev/null | tail -n 80")
+		if res.stdout and #res.stdout > 0 then
+			logs = res.stdout
+		elseif fs.access('/tmp/easytier.log') then
+			local f_res = exec_cmd("tail -n 80 /tmp/easytier.log 2>/dev/null")
+			if f_res.stdout then logs = f_res.stdout end
+		end
+		return { logs = logs }
+	end,
+
+	clear_logs = function()
+		fs.writefile('/tmp/easytier.log', '')
+		fs.writefile('/tmp/easytier-web.log', '')
+		return { success = true }
+	end,
+
+	service_action = function(args)
+		local action = args and args.action
+		if not action then return { success = false, error = "Missing action" } end
+
+		if action == "restart" or action == "stop" then
+			os.execute("killall -9 easytier-core easytier-web 2>/dev/null")
+		end
+
+		if action == "start" or action == "restart" then
+			os.execute("/etc/init.d/easytier restart >/dev/null 2>&1")
+		elseif action == "stop" then
+			os.execute("/etc/init.d/easytier stop >/dev/null 2>&1")
+		end
+
+		return { success = true }
+	end
+}
+
+local function parse_input()
+	local input = io.read("*a")
+	if input and #input > 0 then
+		return json.parse(input)
+	end
+	return nil
+end
+
+local cmd = arg[1]
+
+if cmd == "list" then
+	local list_data = {
+		get_status = {},
+		get_peers = {},
+		get_logs = {},
+		clear_logs = {},
+		service_action = { action = "action" }
+	}
+	print(json.stringify(list_data))
+elseif cmd == "call" then
+	local method = arg[2]
+	if methods[method] then
+		local args = parse_input()
+		local result = methods[method](args)
+		print(json.stringify(result or {}))
+	else
+		print(json.stringify({ error = "Method not found" }))
+	end
+else
+	print(json.stringify({ error = "Invalid command" }))
+end
