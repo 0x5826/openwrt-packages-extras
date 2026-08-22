@@ -31,6 +31,9 @@ msgstr "向 Tailnet 通告本裝置後方的子網路由 (--advertise-routes)。
 msgid "Are you sure you want to log out?"
 msgstr "確定要登出嗎？"
 
+msgid "Are you sure you want to restart Tailscale service?"
+msgstr "確定要重啟 Tailscale 服務嗎？"
+
 msgid "Cancel"
 msgstr "取消"
 
@@ -130,6 +133,9 @@ msgstr "載入裝置列表失敗：%s"
 msgid "Failed to load logs: %s"
 msgstr "載入日誌失敗：%s"
 
+msgid "Failed to restart: %s"
+msgstr "重啟失敗：%s"
+
 msgid "General Settings"
 msgstr "一般設定"
 
@@ -217,6 +223,9 @@ msgstr "可選：指定自訂控制伺服器的預認證密鑰（--auth-key）�
 msgid "Peer Relay Port"
 msgstr "節點中繼連接埠"
 
+msgid "Please wait while the service is restarting..."
+msgstr "服務正在重啟，請稍候..."
+
 msgid "Please wait."
 msgstr "請稍候。"
 
@@ -233,10 +242,19 @@ msgid "Refresh"
 msgstr "重新整理"
 
 msgid "Requesting Login URL..."
-msgstr "正在請求登入位址..."
+msgstr "正在取得登入連結..."
 
 msgid "Requesting Tailscale login URL... Please wait."
-msgstr "正在請求 Tailscale 登入位址，請稍候..."
+msgstr "正在請求 Tailscale 登入連結，請稍候..."
+
+msgid "Restart"
+msgstr "重啟"
+
+msgid "Restart Service"
+msgstr "重啟服務"
+
+msgid "Restarting Tailscale..."
+msgstr "正在重啟 Tailscale..."
 
 msgid "Select an exit node from the list (--exit-node). If enabled, Allow LAN Access is enabled implicitly."
 msgstr "從列表中選擇出口節點 (--exit-node)。啟用後將隱式開啟允許存取區域網路。"

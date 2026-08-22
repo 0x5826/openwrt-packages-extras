@@ -125,7 +125,7 @@ return view.extend({
 		const status = data[0] || {};
 		const peerData = data[1] || {};
 
-		const map = new form.Map('easytier', _('EasyTier Next'),
+		const map = new form.Map('easytier', _('EasyTier'),
 			_('EasyTier is a simple, secure, decentralized mesh VPN for intranet penetration, implemented in Rust.')
 		);
 

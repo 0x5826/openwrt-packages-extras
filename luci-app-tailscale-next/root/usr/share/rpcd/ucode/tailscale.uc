@@ -566,4 +566,12 @@ methods.reload_settings = {
 	}
 };
 
+methods.restart = {
+	call: function() {
+		exec('/etc/init.d/tailscale restart');
+		exec('/etc/init.d/tailscale-settings reload');
+		return { success: true };
+	}
+};
+
 return { 'tailscale': methods };

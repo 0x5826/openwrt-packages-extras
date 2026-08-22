@@ -13,6 +13,7 @@ const callDoLogout = rpc.declare({ object: 'tailscale', method: 'do_logout' });
 const callGetSubroutes = rpc.declare({ object: 'tailscale', method: 'get_subroutes' });
 const callGetLogs = rpc.declare({ object: 'tailscale', method: 'get_logs' });
 const callReloadSettings = rpc.declare({ object: 'tailscale', method: 'reload_settings' });
+const callRestart = rpc.declare({ object: 'tailscale', method: 'restart' });
 let map;
 
 const tailscaleSettingsConf = [
@@ -211,6 +212,36 @@ function handleLogout() {
 	ui.showModal(_('Confirm Logout'), confirmationContent);
 }
 
+function handleRestart() {
+	ui.showModal(_('Restart Service'), [
+		E('p', {}, _('Are you sure you want to restart Tailscale service?')),
+		E('div', { 'class': 'right', 'style': 'margin-top: 15px;' }, [
+			E('button', {
+				'class': 'cbi-button cbi-button-neutral',
+				'click': ui.hideModal
+			}, _('Cancel')),
+			' ',
+			E('button', {
+				'class': 'cbi-button cbi-button-apply',
+				'click': function(ev) {
+					ui.showModal(_('Restarting Tailscale...'), [
+						E('p', { 'class': 'spinning' }, _('Please wait while the service is restarting...'))
+					]);
+					return L.resolveDefault(callRestart(), {}).then(function() {
+						return new Promise(resolve => setTimeout(resolve, 2000));
+					}).then(function() {
+						ui.hideModal();
+						window.location.reload();
+					}).catch(function(e) {
+						ui.addNotification(null, E('p', {}, _('Failed to restart: %s').format(e.message || e)), 'error');
+						ui.hideModal();
+					});
+				}
+			}, _('Restart'))
+		])
+	]);
+}
+
 function renderStatus(status) {
 	// If status object is not yet available, show a loading message.
 	if (!status || !status.hasOwnProperty('status')) {
@@ -224,35 +255,36 @@ function renderStatus(status) {
 	}
 
 	let statusBadge;
-	let actionButton = null;
+	let actionButtons = [];
 
 	if (status.status === 'not_installed') {
 		statusBadge = E('span', { 'style': 'color:red;' }, E('strong', {}, _('NOT INSTALLED')));
 	} else if (status.status === 'logout') {
 		statusBadge = E('span', { 'style': 'color:red;' }, E('strong', {}, _('NOT LOGGED IN')));
-		actionButton = E('button', {
+		actionButtons.push(E('button', {
 			'class': 'cbi-button cbi-button-action',
 			'style': 'margin-left: 10px; padding: 2px 10px;',
 			'click': ui.createHandlerFn(this, handleLogin)
-		}, _('Login'));
-	} else if (status.status !== 'running') {
-		statusBadge = E('span', { 'style': 'color:orange;' }, E('strong', {}, _('NOT RUNNING')));
-		actionButton = E('button', {
-			'class': 'cbi-button cbi-button-remove',
-			'style': 'margin-left: 10px; padding: 2px 10px;',
-			'click': ui.createHandlerFn(this, handleLogout)
-		}, _('Logout'));
-	} else {
+		}, _('Login')));
+	} else if (status.status === 'running') {
 		statusBadge = E('span', { 'style': 'color:green;' }, E('strong', {}, _('RUNNING')));
-		actionButton = E('button', {
-			'class': 'cbi-button cbi-button-remove',
+		actionButtons.push(E('button', {
+			'class': 'cbi-button cbi-button-apply',
 			'style': 'margin-left: 10px; padding: 2px 10px;',
+			'click': ui.createHandlerFn(this, handleRestart)
+		}, _('Restart')));
+		actionButtons.push(E('button', {
+			'class': 'cbi-button cbi-button-remove',
+			'style': 'margin-left: 8px; padding: 2px 10px;',
 			'click': ui.createHandlerFn(this, handleLogout)
-		}, _('Logout'));
+		}, _('Logout')));
+	} else {
+		// stopped / not running
+		statusBadge = E('span', { 'style': 'color:orange;' }, E('strong', {}, _('NOT RUNNING')));
 	}
 
 	const statusData = [
-		{ label: _('Service Status'), value: E('span', {}, [statusBadge, actionButton || '']) },
+		{ label: _('Service Status'), value: E('span', {}, [statusBadge, ...actionButtons]) },
 		{ label: _('Control Server'), value: serverDisplayText },
 		{ label: _('Version'), value: status.version || 'N/A' },
 		{ label: _('TUN Mode'), value: status.TUNMode ? _('Enabled') : _('Disabled') },
