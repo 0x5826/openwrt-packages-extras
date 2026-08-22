@@ -306,11 +306,11 @@ function renderTopologySvg(topoData, peerData) {
 		}
 	}
 
-	const width = 800;
-	const height = 480;
-	const cx = 400;
-	const cy = 240;
-	const R = (nodeCount <= 2) ? 120 : ((nodeCount <= 4) ? 150 : 180);
+	const width = 840;
+	const height = 500;
+	const cx = 420;
+	const cy = 250;
+	const R = (nodeCount <= 2) ? 140 : ((nodeCount <= 4) ? 180 : 200);
 
 	const posMap = {};
 	if (nodeCount === 1) {
@@ -325,16 +325,19 @@ function renderTopologySvg(topoData, peerData) {
 		}
 	}
 
-	const svgElements = [];
+	const linesLayer = [];
+	const nodesLayer = [];
+	const badgesLayer = [];
 	const linkKeys = Object.keys(linkMap);
 
+	// 1. 底层：绘制链路连线
 	for (let k = 0; k < linkKeys.length; k++) {
 		const link = linkMap[linkKeys[k]];
 		const p1 = posMap[link.srcId];
 		const p2 = posMap[link.dstId];
 		if (!p1 || !p2) continue;
 
-		svgElements.push(createSvg('line', {
+		linesLayer.push(createSvg('line', {
 			'x1': p1.x, 'y1': p1.y,
 			'x2': p2.x, 'y2': p2.y,
 			'stroke': '#94a3b8',
@@ -344,6 +347,58 @@ function renderTopologySvg(topoData, peerData) {
 		}));
 	}
 
+	// 2. 中层：绘制节点卡片
+	const cardW = 150;
+	const cardH = 50;
+	for (let i = 0; i < nodeCount; i++) {
+		const n = nodes[i];
+		const pos = posMap[n.node_id];
+		if (!pos) continue;
+
+		const isSelf = (i === 0 && localNode);
+		const hostname = n.hostname ? String(n.hostname).trim() : 'Unknown';
+		const ipv4 = n.ipv4 ? String(n.ipv4).trim() : '-';
+		const titleStr = isSelf ? (hostname + ' (Local)') : hostname;
+
+		const cardBg = isSelf ? '#eff6ff' : '#f8fafc';
+		const cardBorder = isSelf ? '#2563eb' : '#cbd5e1';
+		const borderWidth = isSelf ? '2.5' : '1.5';
+		const titleColor = isSelf ? '#1e3a8a' : '#334155';
+		const ipColor = isSelf ? '#2563eb' : '#64748b';
+
+		nodesLayer.push(createSvg('g', {}, [
+			createSvg('rect', {
+				'x': pos.x - cardW / 2,
+				'y': pos.y - cardH / 2,
+				'width': cardW,
+				'height': cardH,
+				'rx': '8',
+				'fill': cardBg,
+				'stroke': cardBorder,
+				'stroke-width': borderWidth
+			}),
+			createSvg('text', {
+				'x': pos.x,
+				'y': pos.y - 6,
+				'text-anchor': 'middle',
+				'font-family': 'sans-serif',
+				'font-size': '12',
+				'font-weight': isSelf ? 'bold' : '600',
+				'fill': titleColor
+			}, titleStr),
+			createSvg('text', {
+				'x': pos.x,
+				'y': pos.y + 13,
+				'text-anchor': 'middle',
+				'font-family': 'monospace, sans-serif',
+				'font-size': '11',
+				'font-weight': isSelf ? 'bold' : 'normal',
+				'fill': ipColor
+			}, ipv4)
+		]));
+	}
+
+	// 3. 顶层：绘制延迟胶囊徽标（防重叠避让算法）
 	const placedBadges = [];
 
 	for (let k = 0; k < linkKeys.length; k++) {
@@ -354,17 +409,24 @@ function renderTopologySvg(topoData, peerData) {
 
 		const lat = link.latency;
 		if (lat !== undefined && lat !== null) {
-			const candidateT = [0.5, 0.35, 0.65, 0.25, 0.75];
+			const candidateT = [0.5, 0.4, 0.6, 0.35, 0.65];
 			let bestT = 0.5;
-			let maxMinDist = -1;
+			let maxScore = -1;
 
 			for (let ti = 0; ti < candidateT.length; ti++) {
 				const t = candidateT[ti];
 				const tx = Math.round(p1.x + t * (p2.x - p1.x));
 				const ty = Math.round(p1.y + t * (p2.y - p1.y));
 
+				const distP1 = Math.sqrt((tx - p1.x) * (tx - p1.x) + (ty - p1.y) * (ty - p1.y));
+				const distP2 = Math.sqrt((tx - p2.x) * (tx - p2.x) + (ty - p2.y) * (ty - p2.y));
+				const minNodeDist = Math.min(distP1, distP2);
+
+				// 确保远离节点卡片边缘（至少 85px）
+				if (minNodeDist < 85) continue;
+
 				let minDist = Math.sqrt((tx - cx) * (tx - cx) + (ty - cy) * (ty - cy));
-				if (candidateT.length > 1 && minDist < 25) minDist = 0;
+				if (candidateT.length > 1 && minDist < 28) minDist = 0;
 
 				for (let bi = 0; bi < placedBadges.length; bi++) {
 					const b = placedBadges[bi];
@@ -372,8 +434,8 @@ function renderTopologySvg(topoData, peerData) {
 					if (d < minDist) minDist = d;
 				}
 
-				if (minDist > maxMinDist) {
-					maxMinDist = minDist;
+				if (minDist > maxScore) {
+					maxScore = minDist;
 					bestT = t;
 				}
 				if (minDist >= 55) {
@@ -404,7 +466,7 @@ function renderTopologySvg(topoData, peerData) {
 			const bw = 64;
 			const bh = 22;
 
-			svgElements.push(createSvg('g', {}, [
+			badgesLayer.push(createSvg('g', {}, [
 				createSvg('rect', {
 					'x': mx - bw / 2,
 					'y': my - bh / 2,
@@ -428,60 +490,12 @@ function renderTopologySvg(topoData, peerData) {
 		}
 	}
 
-	const cardW = 160;
-	const cardH = 54;
-	for (let i = 0; i < nodeCount; i++) {
-		const n = nodes[i];
-		const pos = posMap[n.node_id];
-		if (!pos) continue;
-
-		const isSelf = (i === 0 && localNode);
-		const hostname = n.hostname ? String(n.hostname).trim() : 'Unknown';
-		const ipv4 = n.ipv4 ? String(n.ipv4).trim() : '-';
-		const titleStr = isSelf ? (hostname + ' (Local)') : hostname;
-
-		const cardBg = isSelf ? '#eff6ff' : '#f8fafc';
-		const cardBorder = isSelf ? '#2563eb' : '#cbd5e1';
-		const borderWidth = isSelf ? '2.5' : '1.5';
-		const titleColor = isSelf ? '#1e3a8a' : '#334155';
-		const ipColor = isSelf ? '#2563eb' : '#64748b';
-
-		svgElements.push(createSvg('g', {}, [
-			createSvg('rect', {
-				'x': pos.x - cardW / 2,
-				'y': pos.y - cardH / 2,
-				'width': cardW,
-				'height': cardH,
-				'rx': '8',
-				'fill': cardBg,
-				'stroke': cardBorder,
-				'stroke-width': borderWidth
-			}),
-			createSvg('text', {
-				'x': pos.x,
-				'y': pos.y - 6,
-				'text-anchor': 'middle',
-				'font-family': 'sans-serif',
-				'font-size': '12',
-				'font-weight': isSelf ? 'bold' : '600',
-				'fill': titleColor
-			}, titleStr),
-			createSvg('text', {
-				'x': pos.x,
-				'y': pos.y + 14,
-				'text-anchor': 'middle',
-				'font-family': 'monospace, sans-serif',
-				'font-size': '11',
-				'font-weight': isSelf ? 'bold' : 'normal',
-				'fill': ipColor
-			}, ipv4)
-		]));
-	}
+	const allElements = linesLayer.concat(nodesLayer, badgesLayer);
 
 	const svgNode = createSvg('svg', {
 		'viewBox': '0 0 ' + width + ' ' + height,
-		'style': 'width: 100%; height: auto; min-height: 380px; max-height: 520px; display: block; margin: 0 auto; user-select: none; background: transparent;'
-	}, svgElements);
+		'style': 'width: 100%; height: auto; min-height: 400px; max-height: 540px; display: block; margin: 0 auto; user-select: none; background: transparent;'
+	}, allElements);
 
 	const legend = E('div', {
 		'style': 'text-align: center; margin-top: 10px; font-size: 12px; line-height: 1.6;'
