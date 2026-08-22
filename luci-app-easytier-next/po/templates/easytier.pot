@@ -301,4 +301,10 @@ msgstr ""
 msgid "Automatically open and manage firewall traffic rules on WAN zone to allow incoming connections for external peers."
 msgstr ""
 
+msgid "Proxy CIDRs"
+msgstr ""
+
+msgid "Proxy Network"
+msgstr ""
+
 

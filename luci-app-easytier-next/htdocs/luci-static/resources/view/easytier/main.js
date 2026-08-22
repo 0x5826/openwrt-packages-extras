@@ -108,10 +108,19 @@ function renderLocalNodeInfo(peerData) {
 	const netNameVal = uci.get('easytier', 'settings', 'network_name') || 'easytier';
 	const devNameVal = uci.get('easytier', 'settings', 'dev_name') || 'easytier0';
 
+	let localProxy = (local && local.proxy_cidrs) ? String(local.proxy_cidrs).trim() : '';
+	if (!localProxy) {
+		let cfgProxy = uci.get('easytier', 'settings', 'proxy_networks');
+		if (Array.isArray(cfgProxy) && cfgProxy.length > 0) localProxy = cfgProxy.join(', ');
+		else if (typeof cfgProxy === 'string' && cfgProxy.trim() !== '') localProxy = cfgProxy.trim();
+	}
+	const proxyDisp = localProxy ? E('span', { 'style': 'color: #059669; font-weight: 600; font-family: monospace;' }, localProxy) : '-';
+
 	const infoItems = [
 		{ label: _('EasyTier IPv4'), value: E('strong', { 'style': 'color: #007bff; font-size: 1.1em;' }, ipv4Val) },
 		{ label: _('Hostname'), value: E('strong', {}, hostnameVal) },
 		{ label: _('Network Name'), value: netNameVal },
+		{ label: _('Proxy Networks'), value: proxyDisp },
 		{ label: _('Virtual Interface'), value: devNameVal },
 		{ label: _('NAT Type'), value: natVal },
 		{ label: _('Client Version'), value: versionVal }
@@ -146,15 +155,16 @@ function renderPeersTable(peerData) {
 
 	const headers = [
 		{ title: _('IPv4'), minWidth: '140px' },
-		{ title: _('Hostname'), minWidth: '160px' },
-		{ title: _('Cost'), minWidth: '80px' },
-		{ title: _('Latency'), minWidth: '90px' },
+		{ title: _('Hostname'), minWidth: '150px' },
+		{ title: _('Proxy CIDRs'), minWidth: '130px' },
+		{ title: _('Cost'), minWidth: '70px' },
+		{ title: _('Latency'), minWidth: '85px' },
 		{ title: _('Loss Rate'), minWidth: '80px' },
-		{ title: _('RX'), minWidth: '90px' },
-		{ title: _('TX'), minWidth: '90px' },
-		{ title: _('Tunnel'), minWidth: '80px' },
-		{ title: _('NAT Type'), minWidth: '130px' },
-		{ title: _('Version'), minWidth: '130px' }
+		{ title: _('RX'), minWidth: '85px' },
+		{ title: _('TX'), minWidth: '85px' },
+		{ title: _('Tunnel'), minWidth: '75px' },
+		{ title: _('NAT Type'), minWidth: '120px' },
+		{ title: _('Version'), minWidth: '120px' }
 	];
 
 	const thStyle = 'padding: 10px 14px; text-align: left; white-space: nowrap; font-weight: bold; vertical-align: middle;';
@@ -171,10 +181,15 @@ function renderPeersTable(peerData) {
 		const costStr = p.cost ? String(p.cost).trim() : '-';
 		const latencyVal = p.latency ? String(p.latency).trim() : '-';
 		const latencyColor = (latencyVal !== '-' && !isNaN(parseFloat(latencyVal))) ? '#28a745' : '#6c757d';
+		const proxyStr = (p.proxy_cidrs && String(p.proxy_cidrs).trim() !== '') ? String(p.proxy_cidrs).trim() : '-';
+		const proxyNode = (proxyStr !== '-') ? E('span', {
+			'style': 'display: inline-block; padding: 2px 6px; font-size: 11px; font-family: monospace; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 4px; font-weight: 600;'
+		}, proxyStr) : '-';
 
 		rows.push(E('tr', { 'class': 'cbi-row' }, [
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, E('strong', {}, p.ipv4 ? String(p.ipv4).trim() : '-')),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.hostname ? String(p.hostname).trim() : '-'),
+			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, proxyNode),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, costStr),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, (latencyVal !== '-') ? E('span', { 'style': 'color: ' + latencyColor + '; font-weight: bold;' }, latencyVal + ' ms') : '-'),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.loss_rate ? String(p.loss_rate).trim() : '-'),
@@ -347,14 +362,17 @@ function renderTopologySvg(topoData, peerData) {
 		}));
 	}
 
-	// 2. 中层：绘制节点卡片
-	const cardW = 150;
-	const cardH = 50;
+	// 2. 中层：绘制节点卡片（紧凑尺寸，支持子网胶囊徽标）
 	for (let i = 0; i < nodeCount; i++) {
 		const n = nodes[i];
 		const pos = posMap[n.node_id];
 		if (!pos) continue;
 
+		const hasProxy = (n.proxy_cidrs && String(n.proxy_cidrs).trim() !== '');
+		const proxyText = hasProxy ? String(n.proxy_cidrs).trim() : '';
+
+		const cardW = 146;
+		const cardH = hasProxy ? 62 : 46;
 		const isSelf = (i === 0 && localNode);
 		const hostname = n.hostname ? String(n.hostname).trim() : 'Unknown';
 		const ipv4 = n.ipv4 ? String(n.ipv4).trim() : '-';
@@ -362,24 +380,24 @@ function renderTopologySvg(topoData, peerData) {
 
 		const cardBg = isSelf ? '#eff6ff' : '#f8fafc';
 		const cardBorder = isSelf ? '#2563eb' : '#cbd5e1';
-		const borderWidth = isSelf ? '2.5' : '1.5';
+		const borderWidth = isSelf ? '2' : '1';
 		const titleColor = isSelf ? '#1e3a8a' : '#334155';
 		const ipColor = isSelf ? '#2563eb' : '#64748b';
 
-		nodesLayer.push(createSvg('g', {}, [
+		const gChildren = [
 			createSvg('rect', {
 				'x': pos.x - cardW / 2,
 				'y': pos.y - cardH / 2,
 				'width': cardW,
 				'height': cardH,
-				'rx': '8',
+				'rx': '6',
 				'fill': cardBg,
 				'stroke': cardBorder,
 				'stroke-width': borderWidth
 			}),
 			createSvg('text', {
 				'x': pos.x,
-				'y': pos.y - 6,
+				'y': hasProxy ? (pos.y - 13) : (pos.y - 4),
 				'text-anchor': 'middle',
 				'font-family': 'sans-serif',
 				'font-size': '12',
@@ -388,14 +406,42 @@ function renderTopologySvg(topoData, peerData) {
 			}, titleStr),
 			createSvg('text', {
 				'x': pos.x,
-				'y': pos.y + 13,
+				'y': hasProxy ? (pos.y + 1) : (pos.y + 11),
 				'text-anchor': 'middle',
 				'font-family': 'monospace, sans-serif',
-				'font-size': '11',
+				'font-size': '10.5',
 				'font-weight': isSelf ? 'bold' : 'normal',
 				'fill': ipColor
 			}, ipv4)
-		]));
+		];
+
+		if (hasProxy) {
+			const badgeW = 130;
+			const badgeH = 16;
+			gChildren.push(
+				createSvg('rect', {
+					'x': pos.x - badgeW / 2,
+					'y': pos.y + 10,
+					'width': badgeW,
+					'height': badgeH,
+					'rx': '3',
+					'fill': '#ecfdf5',
+					'stroke': '#a7f3d0',
+					'stroke-width': '1'
+				}),
+				createSvg('text', {
+					'x': pos.x,
+					'y': pos.y + 22,
+					'text-anchor': 'middle',
+					'font-family': 'monospace, sans-serif',
+					'font-size': '9.5',
+					'font-weight': '600',
+					'fill': '#047857'
+				}, 'Subnet: ' + proxyText)
+			);
+		}
+
+		nodesLayer.push(createSvg('g', {}, gChildren));
 	}
 
 	// 3. 顶层：绘制延迟胶囊徽标（防重叠避让算法）
@@ -507,7 +553,10 @@ function renderTopologySvg(topoData, peerData) {
 		_('50 ~ 150ms (Good)'),
 		'   ',
 		E('span', { 'style': 'display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; margin-left: 14px; margin-right: 4px; vertical-align: middle;' }),
-		_('> 150ms (Fair)')
+		_('> 150ms (Fair)'),
+		'   ',
+		E('span', { 'style': 'display: inline-block; padding: 1px 6px; font-size: 11px; font-family: monospace; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 3px; margin-left: 14px; vertical-align: middle;' }, 'Subnet: ...'),
+		E('span', { 'style': 'margin-left: 4px; vertical-align: middle;' }, _('Proxy Network'))
 	]);
 
 	return E('div', {

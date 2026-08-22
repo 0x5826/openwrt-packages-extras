@@ -118,10 +118,69 @@ methods.get_status = {
 	}
 };
 
+function get_route_proxy_map() {
+	let proxy_map = {};
+	if (!access('/usr/bin/easytier-cli')) return proxy_map;
+	let r_res = exec('/usr/bin/easytier-cli -o json route 2>/dev/null');
+	if (r_res.code == 0 && length(r_res.stdout) > 0) {
+		let r_data = json(join('\n', r_res.stdout));
+		if (r_data && length(r_data) > 0) {
+			for (let i = 0; i < length(r_data); i++) {
+				let item = r_data[i];
+				let cidrs = trim(item.proxy_cidrs || '');
+				let ip = trim(item.ipv4 || '');
+				let host = trim(item.hostname || '');
+				if (cidrs != '') {
+					if (ip != '') {
+						proxy_map[ip] = cidrs;
+						let ip_clean = split(ip, '/')[0];
+						proxy_map[ip_clean] = cidrs;
+					}
+					if (host != '') {
+						proxy_map[host] = cidrs;
+					}
+				}
+			}
+		}
+	}
+	return proxy_map;
+}
+
 methods.get_peers = {
 	call: function() {
 		if (!access('/usr/bin/easytier-cli')) {
 			return { peers: [], raw: '' };
+		}
+
+		let proxy_map = get_route_proxy_map();
+		let json_res = exec('/usr/bin/easytier-cli -o json peer 2>/dev/null');
+		if (json_res.code == 0 && length(json_res.stdout) > 0) {
+			let j_data = json(join('\n', json_res.stdout));
+			if (j_data && length(j_data) > 0) {
+				let peers = [];
+				for (let i = 0; i < length(j_data); i++) {
+					let item = j_data[i];
+					let p_ip = trim(item.cidr || item.ipv4 || '');
+					let p_host = trim(item.hostname || '');
+					let p_ip_clean = split(p_ip, '/')[0];
+					let proxy_cidrs = proxy_map[p_ip] || proxy_map[p_ip_clean] || proxy_map[p_host] || '';
+
+					push(peers, {
+						ipv4: p_ip,
+						hostname: p_host,
+						proxy_cidrs: proxy_cidrs,
+						cost: trim(item.cost || ''),
+						latency: (item.lat_ms != null && item.lat_ms != '-') ? ('' + item.lat_ms) : '-',
+						loss_rate: trim(item.loss_rate || '-'),
+						rx: trim(item.rx_bytes || '-'),
+						tx: trim(item.tx_bytes || '-'),
+						tunnel: trim(item.tunnel_proto || '-'),
+						nat: trim(item.nat_type || '-'),
+						version: trim(item.version || '-')
+					});
+				}
+				return { peers: peers, raw: '' };
+			}
 		}
 
 		let peer_res = exec('/usr/bin/easytier-cli peer 2>/dev/null');
@@ -135,16 +194,22 @@ methods.get_peers = {
 
 				let parts = split(line, '|');
 				let cols = [];
-				for (let p in parts) {
-					push(cols, trim(p));
+				for (let idx = 0; idx < length(parts); idx++) {
+					push(cols, trim(parts[idx]));
 				}
 				if (length(cols) > 0 && cols[0] == '') shift(cols);
 				if (length(cols) > 0 && cols[length(cols) - 1] == '') pop(cols);
 
 				if (length(cols) >= 2) {
+					let peer_ip = trim(cols[0] || '');
+					let peer_host = trim(cols[1] || '');
+					let peer_ip_clean = split(peer_ip, '/')[0];
+					let proxy_cidrs = proxy_map[peer_ip] || proxy_map[peer_ip_clean] || proxy_map[peer_host] || '';
+
 					push(peers, {
-						ipv4: trim(cols[0] || ''),
-						hostname: trim(cols[1] || ''),
+						ipv4: peer_ip,
+						hostname: peer_host,
+						proxy_cidrs: proxy_cidrs,
 						cost: trim(cols[2] || ''),
 						latency: trim(cols[3] || ''),
 						loss_rate: trim(cols[4] || ''),
@@ -181,11 +246,18 @@ methods.get_topology = {
 		if (!access('/usr/bin/easytier-cli')) {
 			return { nodes: [] };
 		}
+		let proxy_map = get_route_proxy_map();
 		let res = exec('/usr/bin/easytier-cli -o json peer-center 2>/dev/null');
 		if (res.code == 0 && length(res.stdout) > 0) {
 			let full_str = join('\n', res.stdout);
 			let data = json(full_str);
-			if (data) {
+			if (data && length(data) > 0) {
+				for (let i = 0; i < length(data); i++) {
+					let n_ip = trim(data[i].ipv4 || '');
+					let n_ip_clean = split(n_ip, '/')[0];
+					let n_host = trim(data[i].hostname || '');
+					data[i].proxy_cidrs = proxy_map[n_ip] || proxy_map[n_ip_clean] || proxy_map[n_host] || '';
+				}
 				return { nodes: data };
 			}
 		}
