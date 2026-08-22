@@ -302,8 +302,6 @@ methods.get_settings = {
 									settings.runwebclient = status_data.RunWebClient or false
 									settings.nosnat = status_data.NoSNAT or false
 									settings.dns_mode = uci:get('tailscale', 'settings', 'dns_mode') or 'disabled'
-									local fw = uci:get('tailscale', 'settings', 'fw_mode') or 'iptables'
-									settings.fw_mode = fw:match("^(%S+)") or 'iptables'
 								end
 							end
 						end
