@@ -237,3 +237,18 @@ msgstr "由 OpenWrt 系統防火牆統一接管 EasyTier 隧道及對端子網�
 
 msgid "(Local)"
 msgstr "(本機)"
+
+msgid "Local Node Information"
+msgstr "本端網路資訊"
+
+msgid "EasyTier IPv4"
+msgstr "EasyTier IPv4"
+
+msgid "Virtual Interface"
+msgstr "虛擬網卡"
+
+msgid "Client Version"
+msgstr "用戶端版本"
+
+msgid "No connected remote peers found."
+msgstr "未發現已連接的遠端對等節點。"

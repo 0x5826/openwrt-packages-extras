@@ -238,4 +238,19 @@ msgstr ""
 msgid "(Local)"
 msgstr ""
 
+msgid "Local Node Information"
+msgstr ""
+
+msgid "EasyTier IPv4"
+msgstr ""
+
+msgid "Virtual Interface"
+msgstr ""
+
+msgid "Client Version"
+msgstr ""
+
+msgid "No connected remote peers found."
+msgstr ""
+
 
