@@ -201,6 +201,35 @@ function renderLogsView(logData) {
 	return E('div', { 'style': 'width: 100%; margin-top: 5px;' }, textarea);
 }
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function createSvg(tag, attrs, children) {
+	const el = document.createElementNS(SVG_NS, tag);
+	if (attrs) {
+		const keys = Object.keys(attrs);
+		for (let i = 0; i < keys.length; i++) {
+			const k = keys[i];
+			el.setAttribute(k, attrs[k]);
+		}
+	}
+	if (children) {
+		if (Array.isArray(children)) {
+			for (let i = 0; i < children.length; i++) {
+				if (typeof children[i] === 'string') {
+					el.appendChild(document.createTextNode(children[i]));
+				} else if (children[i] instanceof Node) {
+					el.appendChild(children[i]);
+				}
+			}
+		} else if (typeof children === 'string') {
+			el.appendChild(document.createTextNode(children));
+		} else if (children instanceof Node) {
+			el.appendChild(children);
+		}
+	}
+	return el;
+}
+
 function renderTopologySvg(topoData, peerData) {
 	let rawNodes = [];
 	if (Array.isArray(topoData)) {
@@ -288,7 +317,7 @@ function renderTopologySvg(topoData, peerData) {
 		const p2 = posMap[link.dstId];
 		if (!p1 || !p2) continue;
 
-		svgElements.push(E('line', {
+		svgElements.push(createSvg('line', {
 			'x1': p1.x, 'y1': p1.y,
 			'x2': p2.x, 'y2': p2.y,
 			'stroke': '#94a3b8',
@@ -327,8 +356,8 @@ function renderTopologySvg(topoData, peerData) {
 			const bw = 64;
 			const bh = 22;
 
-			svgElements.push(E('g', {}, [
-				E('rect', {
+			svgElements.push(createSvg('g', {}, [
+				createSvg('rect', {
 					'x': mx - bw / 2,
 					'y': my - bh / 2,
 					'width': bw,
@@ -338,7 +367,7 @@ function renderTopologySvg(topoData, peerData) {
 					'stroke': badgeBorder,
 					'stroke-width': '1.5'
 				}),
-				E('text', {
+				createSvg('text', {
 					'x': mx,
 					'y': my + 4,
 					'text-anchor': 'middle',
@@ -369,8 +398,8 @@ function renderTopologySvg(topoData, peerData) {
 		const titleColor = isSelf ? '#1e3a8a' : '#334155';
 		const ipColor = isSelf ? '#2563eb' : '#64748b';
 
-		svgElements.push(E('g', {}, [
-			E('rect', {
+		svgElements.push(createSvg('g', {}, [
+			createSvg('rect', {
 				'x': pos.x - cardW / 2,
 				'y': pos.y - cardH / 2,
 				'width': cardW,
@@ -380,7 +409,7 @@ function renderTopologySvg(topoData, peerData) {
 				'stroke': cardBorder,
 				'stroke-width': borderWidth
 			}),
-			E('text', {
+			createSvg('text', {
 				'x': pos.x,
 				'y': pos.y - 6,
 				'text-anchor': 'middle',
@@ -389,7 +418,7 @@ function renderTopologySvg(topoData, peerData) {
 				'font-weight': isSelf ? 'bold' : '600',
 				'fill': titleColor
 			}, titleStr),
-			E('text', {
+			createSvg('text', {
 				'x': pos.x,
 				'y': pos.y + 14,
 				'text-anchor': 'middle',
@@ -401,10 +430,9 @@ function renderTopologySvg(topoData, peerData) {
 		]));
 	}
 
-	const svgNode = E('svg', {
+	const svgNode = createSvg('svg', {
 		'viewBox': '0 0 ' + width + ' ' + height,
-		'style': 'width: 100%; height: auto; min-height: 380px; max-height: 520px; display: block; margin: 0 auto; user-select: none; background: transparent;',
-		'xmlns': 'http://www.w3.org/2000/svg'
+		'style': 'width: 100%; height: auto; min-height: 380px; max-height: 520px; display: block; margin: 0 auto; user-select: none; background: transparent;'
 	}, svgElements);
 
 	const legend = E('div', {
