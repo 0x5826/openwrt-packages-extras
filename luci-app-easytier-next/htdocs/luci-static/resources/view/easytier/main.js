@@ -90,22 +90,29 @@ function renderPeersTable(peerData) {
 		_('Version')
 	];
 
-	const tableNode = E('table', { 'class': 'cbi-table' }, [
-		E('tr', { 'class': 'cbi-table-header' }, headers.map(h => E('th', { 'class': 'cbi-table-cell' }, h))),
-		...peers.map(p => E('tr', { 'class': 'cbi-row' }, [
+	const rows = [
+		E('tr', { 'class': 'cbi-table-header' }, headers.map(function(h) {
+			return E('th', { 'class': 'cbi-table-cell' }, h);
+		}))
+	];
+
+	for (let i = 0; i < peers.length; i++) {
+		const p = peers[i];
+		rows.push(E('tr', { 'class': 'cbi-row' }, [
 			E('td', { 'class': 'cbi-value-field' }, E('strong', {}, p.ipv4 || '-')),
 			E('td', { 'class': 'cbi-value-field' }, p.hostname || '-'),
 			E('td', { 'class': 'cbi-value-field' }, p.cost || '-'),
-			E('td', { 'class': 'cbi-value-field' }, p.latency ? E('span', { 'style': 'color: green;' }, p.latency) : '-'),
+			E('td', { 'class': 'cbi-value-field' }, p.latency ? E('span', { 'style': 'color: #28a745; font-weight: bold;' }, p.latency) : '-'),
 			E('td', { 'class': 'cbi-value-field' }, p.loss_rate || '-'),
 			E('td', { 'class': 'cbi-value-field' }, p.rx || '-'),
 			E('td', { 'class': 'cbi-value-field' }, p.tx || '-'),
 			E('td', { 'class': 'cbi-value-field' }, p.tunnel || '-'),
 			E('td', { 'class': 'cbi-value-field' }, p.nat || '-'),
 			E('td', { 'class': 'cbi-value-field' }, p.version || '-')
-		]))
-	]);
+		]));
+	}
 
+	const tableNode = E('table', { 'class': 'cbi-table' }, rows);
 	return E('div', { 'style': 'overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 10px;' }, tableNode);
 }
 
@@ -124,7 +131,7 @@ return view.extend({
 	load: function() {
 		return Promise.all([
 			L.resolveDefault(callGetStatus(), {}),
-			L.resolveDefault(callGetPeers(), { peers: [] }),
+			L.resolveDefault(callGetPeers(), {}),
 			uci.load('easytier')
 		]);
 	},
@@ -197,7 +204,25 @@ return view.extend({
 					])
 				]),
 				E('div', { 'class': 'cbi-section' }, [
-					E('h3', {}, _('Connected Peer Nodes')),
+					E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;' }, [
+						E('h3', { 'style': 'margin: 0;' }, _('Connected Peer Nodes')),
+						E('button', {
+							'class': 'btn cbi-button cbi-button-action',
+							'click': function(ev) {
+								const container = document.getElementById('easytier_peers_display');
+								if (container) {
+									container.replaceChildren(E('em', {}, _('Collecting data ...')));
+								}
+								return callGetPeers().then(function(res) {
+									if (container) {
+										container.replaceChildren(renderPeersTable(res));
+									}
+								}).catch(function(err) {
+									ui.addTimeLimitedNotification(null, [ E('p', {}, _('Failed to load peers: %s').format(err.message || err)) ], 5000, 'error');
+								});
+							}
+						}, _('Refresh'))
+					]),
 					E('div', { 'id': 'easytier_peers_display' }, renderPeersTable(peerData))
 				])
 			]);
