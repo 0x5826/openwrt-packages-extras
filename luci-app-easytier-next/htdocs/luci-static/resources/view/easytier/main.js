@@ -567,7 +567,7 @@ function renderTopologySvg(topoData, peerData) {
 			const badgeH = 15;
 			for (let pIdx = 0; pIdx < proxyCount; pIdx++) {
 				const badgeY = topY + baseHeaderH + pIdx * itemH;
-				const labelText = (proxyCount === 1) ? ('Subnet: ' + proxyList[pIdx]) : proxyList[pIdx];
+				const labelText = proxyList[pIdx];
 				gChildren.push(
 					createSvg('rect', {
 						'x': pos.x - badgeW / 2,
@@ -645,18 +645,18 @@ function renderTopologySvg(topoData, peerData) {
 			const my = Math.round(p1.y + bestT * (p2.y - p1.y));
 			placedBadges.push({ x: mx, y: my });
 
-			let badgeBg = '#fef3c7';
-			let badgeText = '#b45309';
-			let badgeBorder = '#fcd34d';
+			let badgeBg = '#f0fdf4';
+			let badgeBorder = '#86efac';
+			let badgeText = '#15803d';
 
-			if (lat < 50) {
-				badgeBg = '#dcfce7';
-				badgeText = '#15803d';
-				badgeBorder = '#86efac';
-			} else if (lat <= 150) {
-				badgeBg = '#dbeafe';
-				badgeText = '#1d4ed8';
+			if (lat > 150) {
+				badgeBg = '#fefce8';
+				badgeBorder = '#fde047';
+				badgeText = '#a16207';
+			} else if (lat >= 50) {
+				badgeBg = '#eff6ff';
 				badgeBorder = '#93c5fd';
+				badgeText = '#1d4ed8';
 			}
 
 			const labelStr = lat + ' ms';
@@ -706,7 +706,7 @@ function renderTopologySvg(topoData, peerData) {
 		E('span', { 'style': 'display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; margin-left: 14px; margin-right: 4px; vertical-align: middle;' }),
 		_('> 150ms (Fair)'),
 		'   ',
-		E('span', { 'style': 'display: inline-block; padding: 1px 6px; font-size: 11px; font-family: monospace; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 3px; margin-left: 14px; vertical-align: middle;' }, 'Subnet: ...'),
+		E('span', { 'style': 'display: inline-block; padding: 1px 6px; font-size: 11px; font-family: monospace; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 3px; margin-left: 14px; vertical-align: middle;' }, 'CIDR'),
 		E('span', { 'style': 'margin-left: 4px; vertical-align: middle;' }, _('Proxy Network'))
 	]);
 
