@@ -557,6 +557,14 @@ methods.reload_settings = {
 	end
 }
 
+methods.restart = {
+	call = function()
+		os.execute('/etc/init.d/tailscale restart')
+		os.execute('/etc/init.d/tailscale-settings reload')
+		return { success = true }
+	end
+}
+
 local function parseInput()
 	local parse = json.new()
 	local done, err

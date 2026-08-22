@@ -17,6 +17,7 @@
 				"tailscale": [
 					"do_login",
 					"do_logout",
+					"restart",
 					"setup_firewall",
 					"reload_settings"
 				]

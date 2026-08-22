@@ -31,6 +31,9 @@ msgstr ""
 msgid "Are you sure you want to log out?"
 msgstr ""
 
+msgid "Are you sure you want to restart Tailscale service?"
+msgstr ""
+
 msgid "Cancel"
 msgstr ""
 
@@ -130,6 +133,9 @@ msgstr ""
 msgid "Failed to load logs: %s"
 msgstr ""
 
+msgid "Failed to restart: %s"
+msgstr ""
+
 msgid "General Settings"
 msgstr ""
 
@@ -217,6 +223,9 @@ msgstr ""
 msgid "Peer Relay Port"
 msgstr ""
 
+msgid "Please wait while the service is restarting..."
+msgstr ""
+
 msgid "Please wait."
 msgstr ""
 
@@ -236,6 +245,15 @@ msgid "Requesting Login URL..."
 msgstr ""
 
 msgid "Requesting Tailscale login URL... Please wait."
+msgstr ""
+
+msgid "Restart"
+msgstr ""
+
+msgid "Restart Service"
+msgstr ""
+
+msgid "Restarting Tailscale..."
 msgstr ""
 
 msgid "Select an exit node from the list (--exit-node). If enabled, Allow LAN Access is enabled implicitly."

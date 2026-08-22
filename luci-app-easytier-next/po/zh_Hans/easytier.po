@@ -4,9 +4,6 @@ msgstr "Content-Type: text/plain; charset=UTF-8\n"
 msgid "EasyTier"
 msgstr "EasyTier"
 
-msgid "EasyTier Next"
-msgstr "EasyTier Next"
-
 msgid "EasyTier is a simple, secure, decentralized mesh VPN for intranet penetration, implemented in Rust."
 msgstr "EasyTier 是一款基于 Rust 实现的极简、安全、去中心化内网穿透 Mesh VPN。"
 
