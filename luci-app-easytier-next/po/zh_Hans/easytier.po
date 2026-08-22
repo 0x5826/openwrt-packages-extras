@@ -268,4 +268,28 @@ msgstr "加载对等节点失败：%s"
 msgid "Refresh"
 msgstr "刷新"
 
+msgid "Network Topology"
+msgstr "网络拓扑"
+
+msgid "Refresh Topology"
+msgstr "刷新拓扑"
+
+msgid "Topology Actions"
+msgstr "拓扑操作"
+
+msgid "No topology data available."
+msgstr "暂无可用拓扑数据。"
+
+msgid "Failed to load topology: %s"
+msgstr "加载拓扑失败：%s"
+
+msgid "< 50ms (Optimal)"
+msgstr "< 50ms (极佳)"
+
+msgid "50 ~ 150ms (Good)"
+msgstr "50 ~ 150ms (良好)"
+
+msgid "> 150ms (Fair)"
+msgstr "> 150ms (一般)"
+
 
