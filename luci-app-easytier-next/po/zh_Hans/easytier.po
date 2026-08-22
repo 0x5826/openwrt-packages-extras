@@ -295,4 +295,10 @@ msgstr "> 150ms (一般)"
 msgid "Open Console"
 msgstr "打开控制台"
 
+msgid "Allow WAN Access"
+msgstr "允许从 WAN 访问"
+
+msgid "Automatically open and manage firewall traffic rules on WAN zone to allow incoming connections for external peers."
+msgstr "自动在 WAN 区域创建并管理防火墙通信规则，放行 EasyTier 监听端口以允许外部节点主动接入。"
+
 

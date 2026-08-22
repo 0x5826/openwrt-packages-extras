@@ -705,6 +705,13 @@ return view.extend({
 		o.datatype = 'cidr4';
 		o.depends('etcmd', 'etcmd');
 
+		o = s.taboption('general', form.Flag, 'allow_wan', _('Allow WAN Access'),
+			_('Automatically open and manage firewall traffic rules on WAN zone to allow incoming connections for external peers.')
+		);
+		o.default = '0';
+		o.rmempty = false;
+		o.depends('etcmd', 'etcmd');
+
 		// Web Server URL under 'web' mode
 		o = s.taboption('general', form.Value, 'web_config', _('Web Config Server URL'),
 			_('Remote web configuration server address.')
