@@ -151,7 +151,7 @@ msgstr ""
 msgid "Proxy Networks"
 msgstr ""
 
-msgid "Subnet CIDRs to proxy and announce through this node."
+msgid "Subnet CIDRs to proxy and announce through this node. Select from the detected local subnets below or enter custom CIDRs."
 msgstr ""
 
 msgid "Web Config Server URL"
@@ -305,6 +305,9 @@ msgid "Proxy CIDRs"
 msgstr ""
 
 msgid "Proxy Network"
+msgstr ""
+
+msgid "The web console may consume significant memory, please enable as needed."
 msgstr ""
 
 

@@ -36,6 +36,12 @@ const callClearLogs = rpc.declare({
 	method: 'clear_logs'
 });
 
+const callGetSubroutes = rpc.declare({
+	object: 'easytier',
+	method: 'get_subroutes',
+	expect: { routes: [] }
+});
+
 const callServiceAction = rpc.declare({
 	object: 'easytier',
 	method: 'service_action',
@@ -270,8 +276,25 @@ function renderTopologySvg(topoData, peerData) {
 		rawNodes = topoData.nodes;
 	}
 
+	// 过滤重启产生的残留/未刷新的 Unknown 幽灵节点及无效 IP 节点
+	rawNodes = (rawNodes || []).filter(function(n) {
+		if (!n) return false;
+		const host = n.hostname ? String(n.hostname).trim().toLowerCase() : '';
+		const ip = n.ipv4 ? String(n.ipv4).trim() : '';
+		if (!host || host === 'unknown') return false;
+		if (!ip || ip === '-' || ip === 'null') return false;
+		return true;
+	});
+
 	if (!rawNodes || rawNodes.length === 0) {
 		return E('em', {}, _('No topology data available.'));
+	}
+
+	const validNodeIdMap = {};
+	for (let i = 0; i < rawNodes.length; i++) {
+		if (rawNodes[i].node_id) {
+			validNodeIdMap[String(rawNodes[i].node_id)] = true;
+		}
 	}
 
 	let localIpv4 = '';
@@ -300,6 +323,19 @@ function renderTopologySvg(topoData, peerData) {
 		nodes.unshift(localNode);
 	}
 
+	const localPeerLatencyMap = {};
+	for (let i = 0; i < peers.length; i++) {
+		const p = peers[i];
+		if (!p.cost || String(p.cost).trim().toLowerCase() === 'local') continue;
+		const latVal = parseFloat(p.latency);
+		if (!isNaN(latVal) && latVal > 0) {
+			const pIp = p.ipv4 ? String(p.ipv4).trim().split('/')[0] : '';
+			const pHost = p.hostname ? String(p.hostname).trim() : '';
+			if (pIp) localPeerLatencyMap[pIp] = Math.round(latVal);
+			if (pHost) localPeerLatencyMap[pHost] = Math.round(latVal);
+		}
+	}
+
 	const nodeCount = nodes.length;
 	const linkMap = {};
 	for (let i = 0; i < nodeCount; i++) {
@@ -308,17 +344,61 @@ function renderTopologySvg(topoData, peerData) {
 		for (let j = 0; j < dPeers.length; j++) {
 			const dst = dPeers[j];
 			if (!dst.node_id) continue;
+			if (!validNodeIdMap[String(dst.node_id)]) continue;
+			const dstHost = dst.hostname ? String(dst.hostname).trim().toLowerCase() : '';
+			if (dstHost === 'unknown') continue;
+
 			const pairKey = [src.node_id, dst.node_id].sort().join('---');
 			if (!linkMap[pairKey]) {
 				linkMap[pairKey] = {
 					srcId: src.node_id,
 					dstId: dst.node_id,
-					latency: dst.latency_ms
+					latencies: []
 				};
-			} else if (dst.latency_ms && (!linkMap[pairKey].latency || dst.latency_ms < linkMap[pairKey].latency)) {
-				linkMap[pairKey].latency = dst.latency_ms;
+			}
+			if (dst.latency_ms !== undefined && dst.latency_ms !== null && !isNaN(dst.latency_ms)) {
+				linkMap[pairKey].latencies.push(Number(dst.latency_ms));
 			}
 		}
+	}
+
+	// 智能仲裁链路真实延迟：优先本地实测 RTT，剔除 peer-center 初始 1ms 占位脏数据
+	const linkKeys = Object.keys(linkMap);
+	for (let k = 0; k < linkKeys.length; k++) {
+		const link = linkMap[linkKeys[k]];
+		const isLocalLink = (localNode && (link.srcId === localNode.node_id || link.dstId === localNode.node_id));
+		const otherNodeId = (localNode && link.srcId === localNode.node_id) ? link.dstId : link.srcId;
+		const otherNode = nodes.find(function(n) { return n.node_id === otherNodeId; });
+
+		let resolvedLat = null;
+
+		// 1. 若包含本端节点，优先采用本地实测 RTT (peerData)
+		if (isLocalLink && otherNode) {
+			const otherIp = otherNode.ipv4 ? String(otherNode.ipv4).trim().split('/')[0] : '';
+			const otherHost = otherNode.hostname ? String(otherNode.hostname).trim() : '';
+			if (otherIp && localPeerLatencyMap[otherIp] !== undefined) {
+				resolvedLat = localPeerLatencyMap[otherIp];
+			} else if (otherHost && localPeerLatencyMap[otherHost] !== undefined) {
+				resolvedLat = localPeerLatencyMap[otherHost];
+			}
+		}
+
+		// 2. 远端节点互联链路仲裁计算
+		if (resolvedLat === null && link.latencies && link.latencies.length > 0) {
+			const validLats = link.latencies.filter(function(v) { return v > 0; });
+			if (validLats.length === 1) {
+				resolvedLat = validLats[0];
+			} else if (validLats.length > 1) {
+				const realLats = validLats.filter(function(v) { return v > 2; });
+				if (realLats.length > 0) {
+					resolvedLat = Math.round(realLats.reduce(function(a, b) { return a + b; }, 0) / realLats.length);
+				} else {
+					resolvedLat = Math.round(validLats.reduce(function(a, b) { return a + b; }, 0) / validLats.length);
+				}
+			}
+		}
+
+		link.latency = resolvedLat;
 	}
 
 	const width = 840;
@@ -343,7 +423,6 @@ function renderTopologySvg(topoData, peerData) {
 	const linesLayer = [];
 	const nodesLayer = [];
 	const badgesLayer = [];
-	const linkKeys = Object.keys(linkMap);
 
 	// 1. 底层：绘制链路连线
 	for (let k = 0; k < linkKeys.length; k++) {
@@ -569,13 +648,15 @@ return view.extend({
 		return Promise.all([
 			L.resolveDefault(callGetStatus(), {}),
 			L.resolveDefault(callGetPeers(), {}),
-			uci.load('easytier')
+			uci.load('easytier'),
+			L.resolveDefault(callGetSubroutes(), { routes: [] })
 		]);
 	},
 
 	render: function(data) {
 		const status = data[0] || {};
 		const peerData = data[1] || {};
+		const subroutes = Array.isArray(data[3]?.routes) ? data[3].routes : (Array.isArray(data[3]) ? data[3] : []);
 
 		const map = new form.Map('easytier', _('EasyTier'),
 			_('EasyTier is a simple, secure, decentralized mesh VPN for intranet penetration, implemented in Rust.')
@@ -749,9 +830,14 @@ return view.extend({
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.DynamicList, 'proxy_networks', _('Proxy Networks'),
-			_('Subnet CIDRs to proxy and announce through this node.')
+			_('Subnet CIDRs to proxy and announce through this node. Select from the detected local subnets below or enter custom CIDRs.')
 		);
 		o.datatype = 'cidr4';
+		if (subroutes && subroutes.length > 0) {
+			subroutes.forEach(function(subnet) {
+				o.value(subnet, subnet);
+			});
+		}
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Flag, 'allow_wan', _('Allow WAN Access'),
@@ -804,7 +890,9 @@ return view.extend({
 		o.depends('etcmd', 'etcmd');
 
 		// --- Web Console ---
-		o = s.taboption('web', form.Flag, 'web_enabled', _('Enable Web Console Service'));
+		o = s.taboption('web', form.Flag, 'web_enabled', _('Enable Web Console Service'),
+			_('The web console may consume significant memory, please enable as needed.')
+		);
 		o.rmempty = false;
 
 		o = s.taboption('web', form.Value, 'web_html_port', _('Web Console Port'),

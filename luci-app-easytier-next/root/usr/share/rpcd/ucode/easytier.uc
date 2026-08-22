@@ -252,16 +252,44 @@ methods.get_topology = {
 			let full_str = join('\n', res.stdout);
 			let data = json(full_str);
 			if (data && length(data) > 0) {
+				let valid_nodes = [];
 				for (let i = 0; i < length(data); i++) {
 					let n_ip = trim(data[i].ipv4 || '');
-					let n_ip_clean = split(n_ip, '/')[0];
 					let n_host = trim(data[i].hostname || '');
+					if (n_host == '' || match(n_host, /^unknown$/i)) continue;
+					if (n_ip == '' || n_ip == '-') continue;
+
+					let n_ip_clean = split(n_ip, '/')[0];
 					data[i].proxy_cidrs = proxy_map[n_ip] || proxy_map[n_ip_clean] || proxy_map[n_host] || '';
+					push(valid_nodes, data[i]);
 				}
-				return { nodes: data };
+				return { nodes: valid_nodes };
 			}
 		}
 		return { nodes: [] };
+	}
+};
+
+methods.get_subroutes = {
+	call: function() {
+		try {
+			let res = exec('ip -j route 2>/dev/null');
+			let subnets = [];
+			if (res.code == 0 && length(res.stdout) > 0) {
+				let routes_json = json(join('', res.stdout));
+				if (routes_json && length(routes_json) > 0) {
+					for (let i = 0; i < length(routes_json); i++) {
+						let r = routes_json[i];
+						if (r.dst && r.dst != 'default' && r.scope == 'link' && index(r.dst, '.') != -1 && r.dev != 'easytier0' && r.dev != 'lo') {
+							push(subnets, r.dst);
+						}
+					}
+				}
+			}
+			return { routes: subnets };
+		} catch(e) {
+			return { routes: [] };
+		}
 	}
 };
 

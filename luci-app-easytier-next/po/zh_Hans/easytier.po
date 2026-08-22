@@ -149,10 +149,10 @@ msgid "Public discovery node URL."
 msgstr "公共对等节点发现服务器地址。"
 
 msgid "Proxy Networks"
-msgstr "子网代理路由"
+msgstr "子网代理"
 
-msgid "Subnet CIDRs to proxy and announce through this node."
-msgstr "宣告并代理本端局域网子网网段。"
+msgid "Subnet CIDRs to proxy and announce through this node. Select from the detected local subnets below or enter custom CIDRs."
+msgstr "本端节点广播的子网代理 CIDR。可从下方探测到的本地子网快捷点选，或手动输入自定义网段。"
 
 msgid "Web Config Server URL"
 msgstr "配置服务器地址"
@@ -302,9 +302,12 @@ msgid "Automatically open and manage firewall traffic rules on WAN zone to allow
 msgstr "自动在 WAN 区域创建并管理防火墙通信规则，放行 EasyTier 监听端口以允许外部节点主动接入。"
 
 msgid "Proxy CIDRs"
-msgstr "代理子网"
+msgstr "子网代理"
 
 msgid "Proxy Network"
-msgstr "代理子网"
+msgstr "子网代理"
+
+msgid "The web console may consume significant memory, please enable as needed."
+msgstr "Web 控制台可能会占用较多内存，请按需开启。"
 
 
