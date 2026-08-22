@@ -46,10 +46,7 @@ msgstr ""
 msgid "No connected peers found."
 msgstr ""
 
-msgid "Peer ID"
-msgstr ""
-
-msgid "Virtual IP"
+msgid "IPv4"
 msgstr ""
 
 msgid "Hostname"
@@ -71,6 +68,12 @@ msgid "TX"
 msgstr ""
 
 msgid "Tunnel"
+msgstr ""
+
+msgid "NAT Type"
+msgstr ""
+
+msgid "Version"
 msgstr ""
 
 msgid "Settings"

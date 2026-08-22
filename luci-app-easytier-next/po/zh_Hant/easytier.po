@@ -46,17 +46,14 @@ msgstr "已連線對等節點"
 msgid "No connected peers found."
 msgstr "未發現已連線的節點。"
 
-msgid "Peer ID"
-msgstr "節點 ID"
-
-msgid "Virtual IP"
-msgstr "虛擬 IP"
+msgid "IPv4"
+msgstr "IPv4"
 
 msgid "Hostname"
 msgstr "主機名稱"
 
 msgid "Cost"
-msgstr "開銷"
+msgstr "路由代價"
 
 msgid "Latency"
 msgstr "延遲"
@@ -68,10 +65,16 @@ msgid "RX"
 msgstr "接收"
 
 msgid "TX"
-msgstr "傳送"
+msgstr "發送"
 
 msgid "Tunnel"
 msgstr "隧道"
+
+msgid "NAT Type"
+msgstr "NAT 類型"
+
+msgid "Version"
+msgstr "版本"
 
 msgid "Settings"
 msgstr "設定"

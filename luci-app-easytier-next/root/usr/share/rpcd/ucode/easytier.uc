@@ -1,7 +1,7 @@
 'use strict';
 
 import { connect } from 'ubus';
-import { access, readfile, writefile, stat, popen, system } from 'fs';
+import { access, readfile, writefile, stat, popen } from 'fs';
 
 function exec(cmd) {
 	let p = popen(cmd, 'r');
@@ -127,23 +127,32 @@ methods.get_peers = {
 		let peer_res = exec('/usr/bin/easytier-cli peer 2>/dev/null');
 		let raw_output = (peer_res.code == 0) ? join('\n', peer_res.stdout) : '';
 		let peers = [];
-
 		if (peer_res.code == 0 && length(peer_res.stdout) > 0) {
 			for (let i = 0; i < length(peer_res.stdout); i++) {
 				let line = trim(peer_res.stdout[i]);
-				if (line == '' || match(line, /^(peer_id|─|━|\+|-)/i)) continue;
-				let cols = split(line, /\s{2,}|\t+|\|/);
-				if (length(cols) >= 3) {
+				if (line == '' || match(line, /ipv4|hostname|--/i) && match(line, /\|/)) continue;
+				if (match(line, /^[-+─━=| ]+$/)) continue;
+
+				let parts = split(line, '|');
+				let cols = [];
+				for (let p in parts) {
+					push(cols, trim(p));
+				}
+				if (length(cols) > 0 && cols[0] == '') shift(cols);
+				if (length(cols) > 0 && cols[length(cols) - 1] == '') pop(cols);
+
+				if (length(cols) >= 2) {
 					push(peers, {
-						id: trim(cols[0]),
-						ipv4: trim(cols[1]),
-						hostname: (length(cols) > 2) ? trim(cols[2]) : '',
-						cost: (length(cols) > 3) ? trim(cols[3]) : '',
-						latency: (length(cols) > 4) ? trim(cols[4]) : '',
-						loss_rate: (length(cols) > 5) ? trim(cols[5]) : '',
-						rx_bytes: (length(cols) > 6) ? trim(cols[6]) : '',
-						tx_bytes: (length(cols) > 7) ? trim(cols[7]) : '',
-						tunnel_info: (length(cols) > 8) ? trim(cols[8]) : ''
+						ipv4: trim(cols[0] || ''),
+						hostname: trim(cols[1] || ''),
+						cost: trim(cols[2] || ''),
+						latency: trim(cols[3] || ''),
+						loss_rate: trim(cols[4] || ''),
+						rx: trim(cols[5] || ''),
+						tx: trim(cols[6] || ''),
+						tunnel: trim(cols[7] || ''),
+						nat: trim(cols[8] || ''),
+						version: trim(cols[9] || '')
 					});
 				}
 			}
@@ -182,13 +191,13 @@ methods.service_action = {
 		if (!action) return { success: false, error: 'Missing action' };
 
 		if (action == 'restart' || action == 'stop') {
-			system('killall -9 easytier-core easytier-web 2>/dev/null');
+			exec('killall -9 easytier-core easytier-web 2>/dev/null');
 		}
 
 		if (action == 'start' || action == 'restart') {
-			system('/etc/init.d/easytier restart >/dev/null 2>&1');
+			exec('/etc/init.d/easytier restart >/dev/null 2>&1');
 		} else if (action == 'stop') {
-			system('/etc/init.d/easytier stop >/dev/null 2>&1');
+			exec('/etc/init.d/easytier stop >/dev/null 2>&1');
 		}
 
 		return { success: true };
