@@ -559,6 +559,11 @@ methods.reload_settings = {
 
 methods.restart = {
 	call = function()
+		local f = io.open('/tmp/tailscale_hotplug.lock', 'w')
+		if f then
+			f:write(tostring(os.time()) .. '\n')
+			f:close()
+		end
 		os.execute('/etc/init.d/tailscale restart')
 		os.execute('/etc/init.d/tailscale-settings reload')
 		return { success = true }
