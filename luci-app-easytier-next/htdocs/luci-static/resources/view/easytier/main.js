@@ -42,7 +42,7 @@ const callServiceAction = rpc.declare({
 	params: ['action']
 });
 
-function renderStatusBadge(stateObj, title) {
+function renderStatusBadge(stateObj, title, extraAction) {
 	const state = stateObj ? stateObj.state : 'stopped';
 	const pid = stateObj ? stateObj.pid : null;
 	let text = _('Stopped');
@@ -60,12 +60,29 @@ function renderStatusBadge(stateObj, title) {
 		text += ' [PID: ' + pid + ']';
 	}
 
+	const fields = [
+		E('strong', { 'style': 'color: ' + color + '; font-size: 1.1em;' }, text)
+	];
+
+	if (extraAction && (state === 'managed' || state === 'unmanaged')) {
+		fields.push(extraAction);
+	}
+
 	return E('div', { 'class': 'cbi-value' }, [
 		E('label', { 'class': 'cbi-value-title' }, title),
-		E('div', { 'class': 'cbi-value-field' }, [
-			E('strong', { 'style': 'color: ' + color + '; font-size: 1.1em;' }, text)
-		])
+		E('div', { 'class': 'cbi-value-field' }, fields)
 	]);
+}
+
+function getWebConsoleBtn() {
+	const port = uci.get('easytier', 'settings', 'web_html_port') || '22020';
+	const url = 'http://' + window.location.hostname + ':' + port;
+	return E('a', {
+		'class': 'btn cbi-button cbi-button-action',
+		'style': 'margin-left: 12px; padding: 2px 10px; font-size: 12px; vertical-align: middle;',
+		'href': url,
+		'target': '_blank'
+	}, _('Open Console'));
 }
 
 function renderLocalNodeInfo(peerData) {
@@ -486,7 +503,7 @@ return view.extend({
 					if (statusContainer) {
 						statusContainer.replaceChildren(
 							renderStatusBadge(curStatus.core, _('Core Service Status')),
-							renderStatusBadge(curStatus.web, _('Web Console Status'))
+							renderStatusBadge(curStatus.web, _('Web Console Status'), getWebConsoleBtn())
 						);
 					}
 
@@ -508,7 +525,7 @@ return view.extend({
 					E('h3', {}, _('Service Status')),
 					E('div', { 'id': 'easytier_service_status_display' }, [
 						renderStatusBadge(status.core, _('Core Service Status')),
-						renderStatusBadge(status.web, _('Web Console Status'))
+						renderStatusBadge(status.web, _('Web Console Status'), getWebConsoleBtn())
 					]),
 					E('div', { 'class': 'cbi-value' }, [
 						E('label', { 'class': 'cbi-value-title' }, _('Service Actions')),
@@ -691,22 +708,6 @@ return view.extend({
 		);
 		o.default = '/etc/easytier';
 		o.placeholder = '/etc/easytier';
-
-		const webConsoleLink = s.taboption('web', form.DummyValue, '_web_link', _('Open Web Console'));
-		webConsoleLink.render = function() {
-			const port = uci.get('easytier', 'settings', 'web_html_port') || '22020';
-			const url = 'http://' + window.location.hostname + ':' + port;
-			return E('div', { 'class': 'cbi-value' }, [
-				E('label', { 'class': 'cbi-value-title' }, _('Dashboard URL')),
-				E('div', { 'class': 'cbi-value-field' }, [
-					E('a', {
-						'class': 'btn cbi-button cbi-button-action',
-						'href': url,
-						'target': '_blank'
-					}, _('Open Web Console in New Tab (%s)').format(url))
-				])
-			]);
-		};
 
 		// --- Network Topology ---
 		const topologyActions = s.taboption('topology', form.DummyValue, '_topology_actions');

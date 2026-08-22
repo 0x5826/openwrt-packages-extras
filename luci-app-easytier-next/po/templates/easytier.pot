@@ -292,4 +292,7 @@ msgstr ""
 msgid "> 150ms (Fair)"
 msgstr ""
 
+msgid "Open Console"
+msgstr ""
+
 
