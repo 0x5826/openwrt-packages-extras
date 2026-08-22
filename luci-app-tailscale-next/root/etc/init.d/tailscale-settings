@@ -381,9 +381,6 @@ apply_settings() {
 		fi
 	fi
 
-	# Always enforce netfilter-mode=off so OpenWrt manages all firewall rules cleanly
-	set -- "$@" --netfilter-mode=off
-
 	# Wait for tailscaled daemon to be ready (up to 5 seconds)
 	local i=0
 	local daemon_ready=0
