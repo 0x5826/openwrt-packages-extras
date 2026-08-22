@@ -256,4 +256,16 @@ msgstr "未发现已连接的远程对等节点。"
 msgid "Log Actions"
 msgstr "日志操作"
 
+msgid "Collecting data ..."
+msgstr "正在收集数据..."
+
+msgid "Failed to load logs: %s"
+msgstr "加载日志失败：%s"
+
+msgid "Failed to load peers: %s"
+msgstr "加载对等节点失败：%s"
+
+msgid "Refresh"
+msgstr "刷新"
+
 
