@@ -176,7 +176,7 @@ start_web() {
 	mkdir -p "$web_dir"
 
 	procd_open_instance "web"
-	procd_set_param command "$WEB_PROG" -p "$web_port" -d "$web_dir"
+	procd_set_param command "$WEB_PROG" --db "$web_dir/easytier.db" --web-server-port "$web_port" --api-server-port "$web_port" --file-log-dir "$web_dir"
 	procd_set_param respawn 3600 5 0
 	procd_set_param stdout 1
 	procd_set_param stderr 1
