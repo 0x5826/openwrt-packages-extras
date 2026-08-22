@@ -183,19 +183,16 @@ function renderLogsView(logData) {
 		return l && String(l).trim().length > 0;
 	});
 
-	if (lines.length === 0) {
-		return E('em', {}, _('No logs available.'));
-	}
+	const logText = (lines.length > 0) ? lines.join('\n') : _('No logs available.');
 
-	const content = lines.map(function(line) {
-		return E('div', {
-			'style': 'white-space: pre-wrap; font-family: monospace; font-size: 12px; line-height: 1.4;'
-		}, String(line));
-	});
+	const textarea = E('textarea', {
+		'class': 'cbi-input-textarea',
+		'style': 'width: 100%; height: 450px; font-family: monospace; font-size: 12px; line-height: 1.5; resize: vertical; box-sizing: border-box; padding: 10px; border-radius: 4px;',
+		'readonly': 'readonly',
+		'wrap': 'off'
+	}, logText);
 
-	return E('div', {
-		'style': 'max-height: 450px; overflow-y: auto; background: #1e1e1e; color: #f1f1f1; padding: 12px; border-radius: 4px;'
-	}, content);
+	return E('div', { 'style': 'width: 100%; margin-top: 5px;' }, textarea);
 }
 
 return view.extend({
