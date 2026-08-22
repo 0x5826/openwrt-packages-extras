@@ -134,22 +134,23 @@ local methods = {
 		if peer_res.stdout and #peer_res.stdout > 0 then
 			for _, line in ipairs(peer_res.stdout) do
 				local trimmed = trim(line)
-				if trimmed ~= '' and not trimmed:match("^[Pp]eer_id") and not trimmed:match("^[─━%+%-%=]") then
+				if trimmed ~= '' and not (trimmed:match("[Ii]pv4") and trimmed:match("|")) and not trimmed:match("^[%-%+─━%=| ]+$") then
 					local cols = {}
-					for part in string.gmatch(trimmed, "%S+") do
-						table.insert(cols, part)
+					for part in string.gmatch(trimmed, "[^|]+") do
+						table.insert(cols, trim(part))
 					end
 					if #cols >= 2 then
 						table.insert(peers, {
-							id = cols[1] or '-',
-							ipv4 = cols[2] or '-',
-							hostname = cols[3] or '-',
-							cost = cols[4] or '-',
-							latency = cols[5] or '-',
-							loss_rate = cols[6] or '0%',
-							rx_bytes = cols[7] or '-',
-							tx_bytes = cols[8] or '-',
-							tunnel_info = cols[9] or '-'
+							ipv4 = cols[1] or '-',
+							hostname = cols[2] or '-',
+							cost = cols[3] or '-',
+							latency = cols[4] or '-',
+							loss_rate = cols[5] or '-',
+							rx = cols[6] or '-',
+							tx = cols[7] or '-',
+							tunnel = cols[8] or '-',
+							nat = cols[9] or '-',
+							version = cols[10] or '-'
 						})
 					end
 				end

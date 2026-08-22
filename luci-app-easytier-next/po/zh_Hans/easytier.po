@@ -46,17 +46,14 @@ msgstr "已连接对等节点"
 msgid "No connected peers found."
 msgstr "未发现已连接的节点。"
 
-msgid "Peer ID"
-msgstr "节点 ID"
-
-msgid "Virtual IP"
-msgstr "虚拟 IP"
+msgid "IPv4"
+msgstr "IPv4"
 
 msgid "Hostname"
 msgstr "主机名"
 
 msgid "Cost"
-msgstr "开销"
+msgstr "路由代价"
 
 msgid "Latency"
 msgstr "延迟"
@@ -72,6 +69,12 @@ msgstr "发送"
 
 msgid "Tunnel"
 msgstr "隧道"
+
+msgid "NAT Type"
+msgstr "NAT 类型"
+
+msgid "Version"
+msgstr "版本"
 
 msgid "Settings"
 msgstr "配置"

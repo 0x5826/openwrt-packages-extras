@@ -72,29 +72,31 @@ function renderPeersTable(peerData) {
 	}
 
 	const headers = [
-		_('Peer ID'),
-		_('Virtual IP'),
+		_('IPv4'),
 		_('Hostname'),
 		_('Cost'),
 		_('Latency'),
 		_('Loss Rate'),
 		_('RX'),
 		_('TX'),
-		_('Tunnel')
+		_('Tunnel'),
+		_('NAT Type'),
+		_('Version')
 	];
 
 	const tableNode = E('table', { 'class': 'cbi-table' }, [
 		E('tr', { 'class': 'cbi-table-header' }, headers.map(h => E('th', { 'class': 'cbi-table-cell' }, h))),
 		...peers.map(p => E('tr', { 'class': 'cbi-row' }, [
-			E('td', { 'class': 'cbi-value-field' }, E('strong', {}, p.id || '-')),
-			E('td', { 'class': 'cbi-value-field' }, p.ipv4 || '-'),
+			E('td', { 'class': 'cbi-value-field' }, E('strong', {}, p.ipv4 || '-')),
 			E('td', { 'class': 'cbi-value-field' }, p.hostname || '-'),
 			E('td', { 'class': 'cbi-value-field' }, p.cost || '-'),
 			E('td', { 'class': 'cbi-value-field' }, p.latency ? E('span', { 'style': 'color: green;' }, p.latency) : '-'),
-			E('td', { 'class': 'cbi-value-field' }, p.loss_rate || '0%'),
-			E('td', { 'class': 'cbi-value-field' }, p.rx_bytes || '-'),
-			E('td', { 'class': 'cbi-value-field' }, p.tx_bytes || '-'),
-			E('td', { 'class': 'cbi-value-field' }, p.tunnel_info || '-')
+			E('td', { 'class': 'cbi-value-field' }, p.loss_rate || '-'),
+			E('td', { 'class': 'cbi-value-field' }, p.rx || '-'),
+			E('td', { 'class': 'cbi-value-field' }, p.tx || '-'),
+			E('td', { 'class': 'cbi-value-field' }, p.tunnel || '-'),
+			E('td', { 'class': 'cbi-value-field' }, p.nat || '-'),
+			E('td', { 'class': 'cbi-value-field' }, p.version || '-')
 		]))
 	]);
 
