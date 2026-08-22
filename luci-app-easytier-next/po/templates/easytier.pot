@@ -97,91 +97,91 @@ msgstr ""
 msgid "Startup Method"
 msgstr ""
 
-msgid "Command-line (Default)"
+msgid "Command-line"
 msgstr ""
 
-msgid "Configuration File (/etc/easytier/config.toml)"
+msgid "Configuration File"
 msgstr ""
 
-msgid "Web Server Config (-w)"
+msgid "Cloud Web Config"
 msgstr ""
 
 msgid "Network Name"
 msgstr ""
 
-msgid "The VPN network name to identify this virtual network (--network-name)."
+msgid "The VPN network name to identify this virtual network."
 msgstr ""
 
 msgid "Network Secret"
 msgstr ""
 
-msgid "The secret phrase used to authorize and encrypt traffic (--network-secret)."
+msgid "The secret phrase used to authorize and encrypt traffic."
 msgstr ""
 
 msgid "Enable DHCP IP Allocation"
 msgstr ""
 
-msgid "Automatically determine and assign an IP address (-d)."
+msgid "Automatically determine and assign an IP address."
 msgstr ""
 
 msgid "Interface IPv4 Address"
 msgstr ""
 
-msgid "The static IPv4 address of this node (-i). Ignored when DHCP is enabled."
+msgid "The static IPv4 address of this node. Ignored when DHCP is enabled."
 msgstr ""
 
 msgid "Interface IPv6 Address"
 msgstr ""
 
-msgid "The static IPv6 address of this node (--ipv6)."
+msgid "The static IPv6 address of this node."
 msgstr ""
 
 msgid "Peer Nodes"
 msgstr ""
 
-msgid "Initial connection peer node URLs (e.g. tcp://public.easytier.top:11010, -p)."
+msgid "Initial connection peer node URLs."
 msgstr ""
 
 msgid "Public Discovery Node"
 msgstr ""
 
-msgid "Public discovery node URL (-e)."
+msgid "Public discovery node URL."
 msgstr ""
 
-msgid "Proxy Networks (Subnet Routes)"
+msgid "Proxy Networks"
 msgstr ""
 
-msgid "Subnet CIDRs to proxy/announce through this node (e.g. 192.168.1.0/24, -n)."
+msgid "Subnet CIDRs to proxy and announce through this node."
 msgstr ""
 
 msgid "Web Config Server URL"
 msgstr ""
 
-msgid "Remote web configuration server address (e.g. username or udp://server:22020/username, -w)."
+msgid "Remote web configuration server address."
 msgstr ""
 
 msgid "RPC Management Port"
 msgstr ""
 
-msgid "Port for local CLI/RPC management portal (default: 15888)."
+msgid "Port for local CLI and RPC management portal."
 msgstr ""
 
 msgid "TUN Device Name"
 msgstr ""
 
-msgid "Virtual TUN network interface name (default: easytier0)."
+msgid "Virtual TUN network interface name."
 msgstr ""
 
 msgid "Encryption Algorithm"
 msgstr ""
 
-msgid "None (Unencrypted)"
+msgid "None"
 msgstr ""
 
 msgid "Multi-threaded Mode"
 msgstr ""
 
-msgid "Enable multi-threaded packet processing for higher throughput (--multi-thread)."
+msgid "Enable multi-threaded packet processing for higher throughput."
 msgstr ""
 
 msgid "Custom Command Parameters"

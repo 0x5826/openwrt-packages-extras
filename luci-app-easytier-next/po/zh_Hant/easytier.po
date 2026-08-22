@@ -14,16 +14,16 @@ msgid "Service Status"
 msgstr "服務狀態"
 
 msgid "Core Service Status"
-msgstr "Core 核心服務狀態"
+msgstr "核心服務狀態"
 
 msgid "Web Console Status"
-msgstr "Web 控制台狀態"
+msgstr "控制台服務狀態"
 
 msgid "Running (Managed)"
 msgstr "運行中 (受控)"
 
 msgid "Running (Unmanaged)"
-msgstr "運行中 (不受控/野進程)"
+msgstr "運行中 (未託管)"
 
 msgid "Stopped"
 msgstr "未運行"
@@ -44,7 +44,7 @@ msgid "Restarting service..."
 msgstr "正在重啟服務..."
 
 msgid "Connected Peer Nodes"
-msgstr "已連線對等節點 (Peers)"
+msgstr "已連線對等節點"
 
 msgid "No connected peers found."
 msgstr "未發現已連線的節點。"
@@ -59,7 +59,7 @@ msgid "Hostname"
 msgstr "主機名稱"
 
 msgid "Cost"
-msgstr "路由開銷"
+msgstr "開銷"
 
 msgid "Latency"
 msgstr "延遲"
@@ -74,7 +74,7 @@ msgid "TX"
 msgstr "傳送"
 
 msgid "Tunnel"
-msgstr "隧道資訊"
+msgstr "隧道"
 
 msgid "Settings"
 msgstr "設定"
@@ -92,118 +92,118 @@ msgid "Logs"
 msgstr "運行日誌"
 
 msgid "Enable Core Service"
-msgstr "啟用 Core 核心服務"
+msgstr "啟用核心服務"
 
 msgid "Startup Method"
 msgstr "啟動方式"
 
-msgid "Command-line (Default)"
-msgstr "命令列參數 (預設推薦)"
+msgid "Command-line"
+msgstr "命令列參數"
 
-msgid "Configuration File (/etc/easytier/config.toml)"
-msgstr "設定檔案 (/etc/easytier/config.toml)"
+msgid "Configuration File"
+msgstr "設定檔案"
 
-msgid "Web Server Config (-w)"
-msgstr "Web 雲端集中設定 (-w)"
+msgid "Cloud Web Config"
+msgstr "雲端集中設定"
 
 msgid "Network Name"
 msgstr "網路名稱"
 
-msgid "The VPN network name to identify this virtual network (--network-name)."
-msgstr "用於識別此虛擬 VPN 網路的網路名稱 (--network-name)。"
+msgid "The VPN network name to identify this virtual network."
+msgstr "用於識別此虛擬 VPN 網路的網路名稱。"
 
 msgid "Network Secret"
-msgstr "網路密鑰 (Secret)"
+msgstr "網路密鑰"
 
-msgid "The secret phrase used to authorize and encrypt traffic (--network-secret)."
-msgstr "用於網路節點驗證與流量加密的密鑰密碼 (--network-secret)。"
+msgid "The secret phrase used to authorize and encrypt traffic."
+msgstr "用於網路節點驗證與流量加密的密鑰密碼。"
 
 msgid "Enable DHCP IP Allocation"
 msgstr "啟用 DHCP 自動分配 IP"
 
-msgid "Automatically determine and assign an IP address (-d)."
-msgstr "自動獲取並分配虛擬網路 IP 位址 (-d)。"
+msgid "Automatically determine and assign an IP address."
+msgstr "自動獲取並分配虛擬網路 IP 位址。"
 
 msgid "Interface IPv4 Address"
 msgstr "靜態 IPv4 位址"
 
-msgid "The static IPv4 address of this node (-i). Ignored when DHCP is enabled."
-msgstr "此節點的靜態 IPv4 位址 (-i)。啟用 DHCP 時將被忽略。"
+msgid "The static IPv4 address of this node. Ignored when DHCP is enabled."
+msgstr "此節點的靜態 IPv4 位址。啟用 DHCP 時將被忽略。"
 
 msgid "Interface IPv6 Address"
 msgstr "靜態 IPv6 位址"
 
-msgid "The static IPv6 address of this node (--ipv6)."
-msgstr "此節點的靜態 IPv6 位址 (--ipv6)。"
+msgid "The static IPv6 address of this node."
+msgstr "此節點的靜態 IPv6 位址。"
 
 msgid "Peer Nodes"
-msgstr "對等節點 (Peers)"
+msgstr "對等節點"
 
-msgid "Initial connection peer node URLs (e.g. tcp://public.easytier.top:11010, -p)."
-msgstr "初始接入的 Peer 節點位址 (如 tcp://public.easytier.top:11010, -p)。"
+msgid "Initial connection peer node URLs."
+msgstr "初始接入的對等節點位址。"
 
 msgid "Public Discovery Node"
 msgstr "公共探索節點"
 
-msgid "Public discovery node URL (-e)."
-msgstr "公共對等節點探索伺服器位址 (-e)。"
+msgid "Public discovery node URL."
+msgstr "公共對等節點探索伺服器位址。"
 
-msgid "Proxy Networks (Subnet Routes)"
-msgstr "子網路代理 / 路由宣告 (CIDR)"
+msgid "Proxy Networks"
+msgstr "子網路代理路由"
 
-msgid "Subnet CIDRs to proxy/announce through this node (e.g. 192.168.1.0/24, -n)."
-msgstr "宣告並代理本端區域網路子網路網段 (如 192.168.1.0/24, -n)。"
+msgid "Subnet CIDRs to proxy and announce through this node."
+msgstr "宣告並代理本端區域網路子網路網段。"
 
 msgid "Web Config Server URL"
-msgstr "Web 設定伺服器位址"
+msgstr "設定伺服器位址"
 
-msgid "Remote web configuration server address (e.g. username or udp://server:22020/username, -w)."
-msgstr "遠端 Web 集中設定伺服器位址 (如使用者名稱或 udp://server:22020/username, -w)。"
+msgid "Remote web configuration server address."
+msgstr "遠端集中設定伺服器位址。"
 
 msgid "RPC Management Port"
 msgstr "RPC 管理埠號"
 
-msgid "Port for local CLI/RPC management portal (default: 15888)."
-msgstr "本機 CLI / RPC 管理通信埠號 (預設: 15888)。"
+msgid "Port for local CLI and RPC management portal."
+msgstr "本機管理通信埠號。"
 
 msgid "TUN Device Name"
-msgstr "TUN 虛擬網卡名稱"
+msgstr "TUN 網卡名稱"
 
-msgid "Virtual TUN network interface name (default: easytier0)."
-msgstr "虛擬 TUN 網路介面名稱 (預設: easytier0)。"
+msgid "Virtual TUN network interface name."
+msgstr "虛擬 TUN 網路介面名稱。"
 
 msgid "Encryption Algorithm"
 msgstr "加密演算法"
 
-msgid "None (Unencrypted)"
-msgstr "無 (不加密)"
+msgid "None"
+msgstr "無加密"
 
 msgid "Multi-threaded Mode"
-msgstr "多執行緒處理模式"
+msgstr "多執行緒模式"
 
-msgid "Enable multi-threaded packet processing for higher throughput (--multi-thread)."
-msgstr "啟用多執行緒資料包處理以獲得更高網路吞吐 (--multi-thread)。"
+msgid "Enable multi-threaded packet processing for higher throughput."
+msgstr "啟用多執行緒資料包處理以獲得更高網路吞吐。"
 
 msgid "Custom Command Parameters"
-msgstr "自訂附加參數"
+msgstr "自訂參數"
 
 msgid "Additional command-line parameters appended to easytier-core."
-msgstr "附加傳遞給 easytier-core 的其他自訂命令列參數。"
+msgstr "附加傳遞給核心進程的其他自訂命令列參數。"
 
 msgid "Enable Web Console Service"
-msgstr "啟用 Web 控制台服務"
+msgstr "啟用 Web 控制台"
 
 msgid "Web Console Port"
-msgstr "Web 控制台埠號"
+msgstr "控制台埠號"
 
 msgid "HTTP listen port for easytier-web embedded web dashboard."
-msgstr "easytier-web 內建儀表板監聽埠號。"
+msgstr "內建儀表板監聽埠號。"
 
 msgid "Web Data Directory"
-msgstr "Web 資料儲存目錄"
+msgstr "資料儲存目錄"
 
 msgid "Directory to store SQLite database for easytier-web."
-msgstr "存放 easytier-web SQLite 資料庫檔案的目錄路徑。"
+msgstr "存放資料庫檔案的目錄路徑。"
 
 msgid "Open Web Console"
 msgstr "打開 Web 控制台"
@@ -212,7 +212,7 @@ msgid "Dashboard URL"
 msgstr "控制台位址"
 
 msgid "Open Web Console in New Tab (%s)"
-msgstr "在新分頁中打開 Web 控制台 (%s)"
+msgstr "在新分頁中打開控制台 (%s)"
 
 msgid "Collecting logs..."
 msgstr "正在收集日誌..."
