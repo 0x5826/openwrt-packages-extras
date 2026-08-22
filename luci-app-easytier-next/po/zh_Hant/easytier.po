@@ -53,7 +53,7 @@ msgid "Hostname"
 msgstr "主機名稱"
 
 msgid "Cost"
-msgstr "路由代價"
+msgstr "開銷"
 
 msgid "Latency"
 msgstr "延遲"
