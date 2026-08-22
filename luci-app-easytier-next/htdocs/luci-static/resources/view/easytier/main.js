@@ -66,7 +66,7 @@ function renderPeersTable(peerData) {
 	const peers = (peerData && peerData.peers) ? peerData.peers : [];
 	if (!peers || peers.length === 0) {
 		if (peerData && peerData.raw && peerData.raw.length > 0) {
-			return E('pre', { 'style': 'background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto;' }, peerData.raw);
+			return E('pre', { 'style': 'padding: 10px; border-radius: 4px; overflow-x: auto; max-height: 350px;' }, peerData.raw);
 		}
 		return E('em', {}, _('No connected peers found.'));
 	}
@@ -83,7 +83,7 @@ function renderPeersTable(peerData) {
 		_('Tunnel')
 	];
 
-	return E('table', { 'class': 'cbi-table' }, [
+	const tableNode = E('table', { 'class': 'cbi-table' }, [
 		E('tr', { 'class': 'cbi-table-header' }, headers.map(h => E('th', { 'class': 'cbi-table-cell' }, h))),
 		...peers.map(p => E('tr', { 'class': 'cbi-row' }, [
 			E('td', { 'class': 'cbi-value-field' }, E('strong', {}, p.id || '-')),
@@ -97,6 +97,8 @@ function renderPeersTable(peerData) {
 			E('td', { 'class': 'cbi-value-field' }, p.tunnel_info || '-')
 		]))
 	]);
+
+	return E('div', { 'style': 'overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 10px;' }, tableNode);
 }
 
 function renderLogsView(logData) {
