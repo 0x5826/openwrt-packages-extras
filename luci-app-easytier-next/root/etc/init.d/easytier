@@ -147,8 +147,16 @@ start_core() {
 	procd_set_param command "$PROG"
 
 	if [ "$etcmd" = "config" ]; then
+		[ -f "$custom_config_file" ] || {
+			logger -t "$NAME" "Custom config file $custom_config_file not found"
+			return 1
+		}
 		procd_append_param command -c "$custom_config_file"
 	elif [ "$etcmd" = "web" ]; then
+		[ -n "$web_config" ] || {
+			logger -t "$NAME" "Web config URL is not configured"
+			return 1
+		}
 		procd_append_param command -w "$web_config"
 	else
 		# Default command-line configuration

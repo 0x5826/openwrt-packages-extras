@@ -684,8 +684,8 @@ return view.extend({
 		o = s.taboption('general', form.Value, 'ip6addr', _('Interface IPv6 Address'),
 			_('The static IPv6 address of this node.')
 		);
-		o.datatype = 'ip6addr';
-		o.placeholder = 'fd00:144::1';
+		o.datatype = 'or("ip6addr", "cidr6")';
+		o.placeholder = 'fd00:144::1/64';
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.DynamicList, 'peeradd', _('Peer Nodes'),
@@ -730,6 +730,7 @@ return view.extend({
 		o.value('chacha20-poly1305', 'ChaCha20-Poly1305');
 		o.value('none', _('None'));
 		o.default = 'aes-gcm';
+		o.rmempty = false;
 
 		o = s.taboption('advanced', form.Flag, 'multi_thread', _('Multi-threaded Mode'),
 			_('Enable multi-threaded packet processing for higher throughput.')
@@ -744,6 +745,7 @@ return view.extend({
 		o = s.taboption('advanced', form.Value, 'custom_params', _('Custom Command Parameters'),
 			_('Additional command-line parameters appended to easytier-core.')
 		);
+		o.depends('etcmd', 'etcmd');
 
 		// --- Web Console ---
 		o = s.taboption('web', form.Flag, 'web_enabled', _('Enable Web Console Service'));
