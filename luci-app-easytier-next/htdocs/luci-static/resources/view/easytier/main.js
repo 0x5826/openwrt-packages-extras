@@ -16,7 +16,7 @@ const callGetStatus = rpc.declare({
 const callGetPeers = rpc.declare({
 	object: 'easytier',
 	method: 'get_peers',
-	expect: { peers: [] }
+	expect: { }
 });
 
 const callGetLogs = rpc.declare({
@@ -63,7 +63,13 @@ function renderStatusBadge(stateObj, title) {
 }
 
 function renderPeersTable(peerData) {
-	const peers = (peerData && peerData.peers) ? peerData.peers : [];
+	let peers = [];
+	if (Array.isArray(peerData)) {
+		peers = peerData;
+	} else if (peerData && Array.isArray(peerData.peers)) {
+		peers = peerData.peers;
+	}
+
 	if (!peers || peers.length === 0) {
 		if (peerData && peerData.raw && peerData.raw.length > 0) {
 			return E('pre', { 'style': 'padding: 10px; border-radius: 4px; overflow-x: auto; max-height: 350px;' }, peerData.raw);
