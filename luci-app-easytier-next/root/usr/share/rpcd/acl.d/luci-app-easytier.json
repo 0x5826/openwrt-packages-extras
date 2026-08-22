@@ -1,5 +1,5 @@
 {
-	"luci-app-easytier-next": {
+	"luci-app-easytier": {
 		"description": "Allow user access to EasyTier",
 		"read": {
 			"ubus": {

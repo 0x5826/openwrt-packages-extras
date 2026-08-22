@@ -1,5 +1,5 @@
 {
-	"luci-app-tailscale-next": {
+	"luci-app-tailscale": {
 		"description": "Allow user access to tailscale",
 		"read": {
 			"ubus": {

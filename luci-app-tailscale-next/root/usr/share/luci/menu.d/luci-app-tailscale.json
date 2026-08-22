@@ -7,7 +7,7 @@
 			"path": "tailscale"
 		},
 		"depends": {
-			"acl": [ "luci-app-tailscale-next" ]
+			"acl": [ "luci-app-tailscale" ]
 		}
 	}
 }
