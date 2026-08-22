@@ -300,7 +300,7 @@ methods.get_settings = {
 									settings.shields_up = status_data.ShieldsUp or false
 									settings.ssh = status_data.RunSSH or false
 									settings.runwebclient = status_data.RunWebClient or false
-									settings.nosnat = status_data.NoSNAT or false
+									settings.tunnel_snat = uci:get('tailscale', 'settings', 'tunnel_snat') or '0'
 									settings.dns_mode = uci:get('tailscale', 'settings', 'dns_mode') or 'disabled'
 								end
 							end

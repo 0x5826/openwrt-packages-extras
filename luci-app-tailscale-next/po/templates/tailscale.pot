@@ -73,12 +73,6 @@ msgstr ""
 msgid "Devices List"
 msgstr ""
 
-msgid "Disable Source NAT (SNAT) for traffic to advertised routes (--snat-subnet-routes=false). Recommended when OpenWrt is the default gateway to preserve client IPs."
-msgstr ""
-
-msgid "Disable Subnet SNAT"
-msgstr ""
-
 msgid "Disabled"
 msgstr ""
 
@@ -92,6 +86,9 @@ msgid "Enable Tailscale SSH"
 msgstr ""
 
 msgid "Enable Tailscale Service"
+msgstr ""
+
+msgid "Enable Tunnel Traffic SNAT"
 msgstr ""
 
 msgid "Enable Web Interface"
@@ -302,6 +299,9 @@ msgid "UDP port for the Peer Relay service (--peer-relay-port). Open this port o
 msgstr ""
 
 msgid "Unknown error"
+msgstr ""
+
+msgid "Use OpenWrt system firewall to manage NAT for Tailscale tunnel and subnet traffic. Disabling this option disables source address masquerading to preserve real source IPs of remote peers and subnets in the local network."
 msgstr ""
 
 msgid "Version"
