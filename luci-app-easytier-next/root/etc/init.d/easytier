@@ -64,7 +64,7 @@ setup_firewall_and_network() {
 
 start_core() {
 	local enabled etcmd network_name network_secret ip_dhcp ipaddr ip6addr
-	local external_node rpc_port encryption_algorithm dev_name proxy_cidrs
+	local external_node rpc_port encryption_algorithm dev_name proxy_cidrs proxy_forward_by_system
 	local custom_params custom_config_file web_config multi_thread
 
 	config_get_bool enabled settings enabled 0
@@ -89,6 +89,7 @@ start_core() {
 	config_get web_config settings web_config ''
 	config_get custom_params settings custom_params ''
 	config_get_bool multi_thread settings multi_thread 0
+	config_get_bool proxy_forward_by_system settings proxy_forward_by_system 1
 
 	mkdir -p "$CONF_DIR"
 
@@ -116,6 +117,7 @@ start_core() {
 		[ -n "$encryption_algorithm" ] && procd_append_param command --encryption-algorithm "$encryption_algorithm"
 		[ -n "$dev_name" ] && procd_append_param command --dev-name "$dev_name"
 		[ "$multi_thread" -eq 1 ] && procd_append_param command --multi-thread
+		[ "$proxy_forward_by_system" -eq 1 ] && procd_append_param command --proxy-forward-by-system
 
 		# Peer nodes
 		append_peer() {
