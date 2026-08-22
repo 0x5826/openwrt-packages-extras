@@ -7,7 +7,7 @@
 			"path": "easytier/main"
 		},
 		"depends": {
-			"acl": [ "luci-app-easytier-next" ]
+			"acl": [ "luci-app-easytier" ]
 		}
 	}
 }
