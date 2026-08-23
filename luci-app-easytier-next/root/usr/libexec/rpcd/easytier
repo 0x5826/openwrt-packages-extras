@@ -99,6 +99,34 @@ local function get_cached_version()
 	return 'Unknown'
 end
 
+local function get_route_proxy_map()
+	local proxy_map = {}
+	if not fs.access('/usr/bin/easytier-cli') then return proxy_map end
+
+	local r_res = exec_cmd('/usr/bin/easytier-cli -o json route 2>/dev/null')
+	if r_res.code == 0 and r_res.raw and #r_res.raw > 0 then
+		local r_data = json.parse(r_res.raw)
+		if r_data and type(r_data) == 'table' then
+			for _, item in ipairs(r_data) do
+				local cidrs = trim(item.proxy_cidrs or '')
+				local ip = trim(item.ipv4 or '')
+				local host = trim(item.hostname or '')
+				if cidrs ~= '' then
+					if ip ~= '' then
+						proxy_map[ip] = cidrs
+						local ip_clean = ip:match("^([^/]+)")
+						if ip_clean then proxy_map[ip_clean] = cidrs end
+					end
+					if host ~= '' then
+						proxy_map[host] = cidrs
+					end
+				end
+			end
+		end
+	end
+	return proxy_map
+end
+
 local methods = {
 	get_status = function()
 		local core_st = get_service_state('/usr/bin/easytier-core', 'core')
@@ -127,6 +155,39 @@ local methods = {
 			return { peers = {}, raw = '' }
 		end
 
+		local proxy_map = get_route_proxy_map()
+
+		-- 优先使用 -o json 模式
+		local json_res = exec_cmd('/usr/bin/easytier-cli -o json peer 2>/dev/null')
+		if json_res.code == 0 and json_res.raw and #json_res.raw > 0 then
+			local j_data = json.parse(json_res.raw)
+			if j_data and type(j_data) == 'table' and #j_data > 0 then
+				local peers = {}
+				for _, item in ipairs(j_data) do
+					local p_ip = trim(item.cidr or item.ipv4 or '')
+					local p_host = trim(item.hostname or '')
+					local p_ip_clean = p_ip:match("^([^/]+)") or p_ip
+					local proxy_cidrs = proxy_map[p_ip] or proxy_map[p_ip_clean] or proxy_map[p_host] or ''
+
+					table.insert(peers, {
+						ipv4 = p_ip,
+						hostname = p_host,
+						proxy_cidrs = proxy_cidrs,
+						cost = trim(item.cost or ''),
+						latency = (item.lat_ms ~= nil and item.lat_ms ~= '-') and tostring(item.lat_ms) or '-',
+						loss_rate = trim(item.loss_rate or '-'),
+						rx = trim(item.rx_bytes or '-'),
+						tx = trim(item.tx_bytes or '-'),
+						tunnel = trim(item.tunnel_proto or '-'),
+						nat = trim(item.nat_type or '-'),
+						version = trim(item.version or '-')
+					})
+				end
+				return { peers = peers, raw = '' }
+			end
+		end
+
+		-- 降级文本表格解析
 		local peer_res = exec_cmd('/usr/bin/easytier-cli peer 2>/dev/null')
 		local raw_output = peer_res.raw or ''
 		local peers = {}
@@ -140,9 +201,15 @@ local methods = {
 						table.insert(cols, trim(part))
 					end
 					if #cols >= 2 then
+						local peer_ip = trim(cols[1] or '')
+						local peer_host = trim(cols[2] or '')
+						local peer_ip_clean = peer_ip:match("^([^/]+)") or peer_ip
+						local proxy_cidrs = proxy_map[peer_ip] or proxy_map[peer_ip_clean] or proxy_map[peer_host] or ''
+
 						table.insert(peers, {
-							ipv4 = cols[1] or '-',
-							hostname = cols[2] or '-',
+							ipv4 = peer_ip,
+							hostname = peer_host,
+							proxy_cidrs = proxy_cidrs,
 							cost = cols[3] or '-',
 							latency = cols[4] or '-',
 							loss_rate = cols[5] or '-',
@@ -158,6 +225,109 @@ local methods = {
 		end
 
 		return { peers = peers, raw = raw_output }
+	end,
+
+	get_topology = function()
+		if not fs.access('/usr/bin/easytier-cli') then
+			return { nodes = {} }
+		end
+
+		local proxy_map = get_route_proxy_map()
+		local res = exec_cmd('/usr/bin/easytier-cli -o json peer-center 2>/dev/null')
+		if res.code == 0 and res.raw and #res.raw > 0 then
+			local data = json.parse(res.raw)
+			if data and type(data) == 'table' and #data > 0 then
+				local valid_nodes = {}
+				for _, n in ipairs(data) do
+					local n_ip = trim(n.ipv4 or '')
+					local n_host = trim(n.hostname or '')
+					if n_host ~= '' and not n_host:lower():match("^unknown$") and n_ip ~= '' and n_ip ~= '-' then
+						local n_ip_clean = n_ip:match("^([^/]+)") or n_ip
+						n.proxy_cidrs = proxy_map[n_ip] or proxy_map[n_ip_clean] or proxy_map[n_host] or ''
+						table.insert(valid_nodes, n)
+					end
+				end
+				return { nodes = valid_nodes }
+			end
+		end
+		return { nodes = {} }
+	end,
+
+	get_subroutes = function()
+		local subnets = {}
+		local seen = {}
+
+		-- 1. 尝试 ip -j route
+		local res = exec_cmd("ip -j route 2>/dev/null")
+		if res.code == 0 and res.raw and #res.raw > 0 then
+			local routes_json = json.parse(res.raw)
+			if routes_json and type(routes_json) == 'table' then
+				for _, r in ipairs(routes_json) do
+					if r.dst and r.dst ~= 'default' and r.scope == 'link' and r.dst:find("%.") and r.dev ~= 'easytier0' and r.dev ~= 'lo' then
+						if not seen[r.dst] then
+							seen[r.dst] = true
+							table.insert(subnets, r.dst)
+						end
+					end
+				end
+			end
+		end
+
+		-- 2. 降级：标准文本 ip route (兼容 OpenWrt 21.02)
+		if #subnets == 0 then
+			local txt_res = exec_cmd("ip route 2>/dev/null")
+			if txt_res.stdout and #txt_res.stdout > 0 then
+				for _, line in ipairs(txt_res.stdout) do
+					line = trim(line)
+					if line ~= '' and not line:lower():match("^default") and not line:find("easytier0") and not line:find("lo") then
+						local subnet, dev = line:match("^(%d+%.%d+%.%d+%.%d+/%d+)%s+dev%s+([^%s]+)")
+						if subnet and dev and dev ~= 'easytier0' and dev ~= 'lo' and not seen[subnet] then
+							seen[subnet] = true
+							table.insert(subnets, subnet)
+						end
+					end
+				end
+			end
+		end
+
+		-- 3. 终极兜底：ubus network.interface dump
+		if #subnets == 0 then
+			local net_res = exec_cmd("ubus call network.interface dump 2>/dev/null")
+			if net_res.raw and #net_res.raw > 0 then
+				local net_data = json.parse(net_res.raw)
+				if net_data and net_data.interface then
+					for _, iface in ipairs(net_data.interface) do
+						if iface.interface ~= 'loopback' and iface.interface ~= 'easytier' and iface['ipv4-address'] then
+							for _, addr in ipairs(iface['ipv4-address']) do
+								local ip_str = addr.address
+								local mask = addr.mask
+								if ip_str and mask then
+									local p1, p2, p3, p4 = ip_str:match("^(%d+)%.(%d+)%.(%d+)%.(%d+)$")
+									if p1 and p2 and p3 and p4 then
+										local subnet = ''
+										if mask == 24 then
+											subnet = string.format("%s.%s.%s.0/24", p1, p2, p3)
+										elseif mask == 16 then
+											subnet = string.format("%s.%s.0.0/16", p1, p2)
+										elseif mask == 8 then
+											subnet = string.format("%s.0.0.0/8", p1)
+										else
+											subnet = string.format("%s/%s", ip_str, mask)
+										end
+										if subnet ~= '' and not seen[subnet] then
+											seen[subnet] = true
+											table.insert(subnets, subnet)
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+
+		return { routes = subnets }
 	end,
 
 	get_logs = function()
@@ -210,6 +380,8 @@ if cmd == "list" then
 	local list_data = {
 		get_status = {},
 		get_peers = {},
+		get_topology = {},
+		get_subroutes = {},
 		get_logs = {},
 		clear_logs = {},
 		service_action = { action = "action" }
