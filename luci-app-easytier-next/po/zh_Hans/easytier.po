@@ -295,6 +295,12 @@ msgstr "> 150ms (一般)"
 msgid "Open Console"
 msgstr "打开控制台"
 
+msgid "Allow other peers in the network to route their Internet traffic through this node (Exit Node)."
+msgstr "允许虚拟网络中的其他节点将此设备作为出口节点，并通过此设备访问互联网。"
+
+msgid "Enable Exit Node"
+msgstr "作为出口节点"
+
 msgid "Enable Magic DNS"
 msgstr "启用魔法 DNS"
 
