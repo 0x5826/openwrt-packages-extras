@@ -162,7 +162,7 @@ setup_dnsmasq() {
 
 	local changed_dhcp=0
 
-	# 1. Clean legacy server rules pointing to 100.100.100.101
+	# 1. Dynamically inspect all server rules pointing to 100.100.100.101, extract old zones, and clean corresponding rebind_domain
 	local cur_servers
 	cur_servers=$(uci -q get dhcp.@dnsmasq[0].server)
 	if [ -n "$cur_servers" ]; then
@@ -170,6 +170,11 @@ setup_dnsmasq() {
 		for s in $cur_servers; do
 			case "$s" in
 				*100.100.100.101*)
+					local old_zone
+					old_zone=$(echo "$s" | sed -n 's|^/\([^/]*\)/100\.100\.100\.101.*|\1|p')
+					if [ -n "$old_zone" ]; then
+						uci -q del_list dhcp.@dnsmasq[0].rebind_domain="$old_zone"
+					fi
 					uci -q del_list dhcp.@dnsmasq[0].server="$s"
 					changed_dhcp=1
 					;;
@@ -177,18 +182,9 @@ setup_dnsmasq() {
 		done
 	fi
 
-	# 2. Clean matching rebind domain entries
-	local cur_rebinds
-	cur_rebinds=$(uci -q get dhcp.@dnsmasq[0].rebind_domain)
-	if [ -n "$cur_rebinds" ]; then
-		local r
-		for r in $cur_rebinds; do
-			if [ "$r" = "$tld_dns_zone" ] || [ "$r" = "et.net" ]; then
-				uci -q del_list dhcp.@dnsmasq[0].rebind_domain="$r"
-				changed_dhcp=1
-			fi
-		done
-	fi
+	# 2. Clean fallback domains
+	uci -q del_list dhcp.@dnsmasq[0].rebind_domain="$tld_dns_zone"
+	uci -q del_list dhcp.@dnsmasq[0].rebind_domain="et.net"
 
 	# 3. Add new Magic DNS forwarding and rebind whitelist if enabled
 	if [ "$magic_dns" -eq 1 ]; then
@@ -210,6 +206,7 @@ cleanup_dnsmasq() {
 
 	local changed_dhcp=0
 
+	# 1. Dynamically inspect all server rules pointing to 100.100.100.101, extract old zones, and clean corresponding rebind_domain
 	local cur_servers
 	cur_servers=$(uci -q get dhcp.@dnsmasq[0].server)
 	if [ -n "$cur_servers" ]; then
@@ -217,6 +214,11 @@ cleanup_dnsmasq() {
 		for s in $cur_servers; do
 			case "$s" in
 				*100.100.100.101*)
+					local old_zone
+					old_zone=$(echo "$s" | sed -n 's|^/\([^/]*\)/100\.100\.100\.101.*|\1|p')
+					if [ -n "$old_zone" ]; then
+						uci -q del_list dhcp.@dnsmasq[0].rebind_domain="$old_zone"
+					fi
 					uci -q del_list dhcp.@dnsmasq[0].server="$s"
 					changed_dhcp=1
 					;;
@@ -224,17 +226,10 @@ cleanup_dnsmasq() {
 		done
 	fi
 
-	local cur_rebinds
-	cur_rebinds=$(uci -q get dhcp.@dnsmasq[0].rebind_domain)
-	if [ -n "$cur_rebinds" ]; then
-		local r
-		for r in $cur_rebinds; do
-			if [ "$r" = "$tld_dns_zone" ] || [ "$r" = "et.net" ]; then
-				uci -q del_list dhcp.@dnsmasq[0].rebind_domain="$r"
-				changed_dhcp=1
-			fi
-		done
-	fi
+	# 2. Clean fallback domains
+	uci -q del_list dhcp.@dnsmasq[0].rebind_domain="$tld_dns_zone"
+	uci -q del_list dhcp.@dnsmasq[0].rebind_domain="et.net"
+	changed_dhcp=1
 
 	if [ "$changed_dhcp" -eq 1 ]; then
 		uci -q commit dhcp
