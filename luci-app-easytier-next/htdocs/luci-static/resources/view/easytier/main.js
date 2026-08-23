@@ -728,7 +728,8 @@ return view.extend({
 	render: function(data) {
 		const status = data[0] || {};
 		const peerData = data[1] || {};
-		const subroutes = Array.isArray(data[3]?.routes) ? data[3].routes : (Array.isArray(data[3]) ? data[3] : []);
+		const subroutesData = data[3] || {};
+		const subroutes = (subroutesData && Array.isArray(subroutesData.routes)) ? subroutesData.routes : (Array.isArray(subroutesData) ? subroutesData : []);
 
 		const map = new form.Map('easytier', _('EasyTier'),
 			_('EasyTier is a simple, secure, decentralized mesh VPN for intranet penetration, implemented in Rust.')
@@ -881,13 +882,13 @@ return view.extend({
 		o = s.taboption('general', form.DynamicList, 'proxy_networks', _('Proxy Networks'),
 			_('Subnet CIDRs to proxy and announce through this node. Select from the detected local subnets below or enter custom CIDRs.')
 		);
-		o.datatype = 'cidr4';
-		if (subroutes && subroutes.length > 0) {
-			subroutes.forEach(function(subnet) {
-				o.value(subnet, subnet);
-			});
-		}
-		o.depends('etcmd', 'etcmd');
+ 		if (subroutes && subroutes.length > 0) {
+ 			subroutes.forEach(function(subnet) {
+ 				o.value(subnet, subnet);
+ 			});
+ 		}
+ 		o.rmempty = true;
+ 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Flag, 'allow_wan', _('Allow WAN Access'),
 			_('Automatically open and manage firewall traffic rules on WAN zone to allow incoming connections for external peers.')
