@@ -897,6 +897,13 @@ return view.extend({
 		o.rmempty = false;
 		o.depends('etcmd', 'etcmd');
 
+		o = s.taboption('general', form.Flag, 'enable_exit_node', _('Enable Exit Node'),
+			_('Allow other peers in the network to route their Internet traffic through this node (Exit Node).')
+		);
+		o.default = '0';
+		o.rmempty = false;
+		o.depends('etcmd', 'etcmd');
+
 		o = s.taboption('general', form.Flag, 'magic_dns', _('Enable Magic DNS'),
 			_('Allow resolving peer node domain names (such as hostname.et.net) without memorizing virtual IP addresses. Automatically forwards DNS queries via dnsmasq.')
 		);

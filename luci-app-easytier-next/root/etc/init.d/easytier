@@ -273,6 +273,7 @@ start_core() {
 	config_get_bool magic_dns settings magic_dns 0
 	config_get tld_dns_zone settings tld_dns_zone 'et.net'
 	[ -z "$tld_dns_zone" ] && tld_dns_zone='et.net'
+	config_get_bool enable_exit_node settings enable_exit_node 0
 
 	mkdir -p "$CONF_DIR"
 
@@ -311,6 +312,9 @@ start_core() {
 
 		# Always disable user-space built-in NAT and delegate forwarding to Linux kernel
 		procd_append_param command --proxy-forward-by-system
+
+		# Exit Node
+		[ "$enable_exit_node" -eq 1 ] && procd_append_param command --enable-exit-node
 
 		# Magic DNS
 		if [ "$magic_dns" -eq 1 ]; then

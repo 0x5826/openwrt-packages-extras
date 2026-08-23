@@ -295,6 +295,12 @@ msgstr ""
 msgid "Open Console"
 msgstr ""
 
+msgid "Allow other peers in the network to route their Internet traffic through this node (Exit Node)."
+msgstr ""
+
+msgid "Enable Exit Node"
+msgstr ""
+
 msgid "Enable Magic DNS"
 msgstr ""
 
