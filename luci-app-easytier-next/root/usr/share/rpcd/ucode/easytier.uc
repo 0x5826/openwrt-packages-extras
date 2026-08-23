@@ -273,19 +273,87 @@ methods.get_topology = {
 methods.get_subroutes = {
 	call: function() {
 		try {
-			let res = exec('ip -j route 2>/dev/null');
 			let subnets = [];
-			if (res.code == 0 && length(res.stdout) > 0) {
+			let seen = {};
+
+			// 1. 尝试 ip -j route (支持 JSON 的 iproute2)
+			let res = exec('ip -j route 2>/dev/null');
+			if (res && res.code == 0 && length(res.stdout) > 0) {
 				let routes_json = json(join('', res.stdout));
 				if (routes_json && length(routes_json) > 0) {
 					for (let i = 0; i < length(routes_json); i++) {
 						let r = routes_json[i];
 						if (r.dst && r.dst != 'default' && r.scope == 'link' && index(r.dst, '.') != -1 && r.dev != 'easytier0' && r.dev != 'lo') {
-							push(subnets, r.dst);
+							if (!seen[r.dst]) {
+								seen[r.dst] = true;
+								push(subnets, r.dst);
+							}
 						}
 					}
 				}
 			}
+
+			// 2. 降级：标准文本格式 ip route (兼容 OpenWrt 21.02/BusyBox)
+			if (length(subnets) == 0) {
+				let txt_res = exec('ip route 2>/dev/null');
+				if (txt_res && txt_res.code == 0 && length(txt_res.stdout) > 0) {
+					for (let i = 0; i < length(txt_res.stdout); i++) {
+						let line = trim(txt_res.stdout[i]);
+						if (line == '' || match(line, /^default/i)) continue;
+						if (index(line, 'easytier0') != -1 || index(line, 'lo') != -1) continue;
+						let m = match(line, /^([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\/[0-9]+)\s+dev\s+([^\s]+)/);
+						if (m && m[1]) {
+							let subnet = m[1];
+							let dev = m[2];
+							if (dev != 'easytier0' && dev != 'lo' && !seen[subnet]) {
+								seen[subnet] = true;
+								push(subnets, subnet);
+							}
+						}
+					}
+				}
+			}
+
+			// 3. 终极兜底：通过 ubus 调用 network.interface dump 提取各接口 IPv4 直连子网
+			if (length(subnets) == 0) {
+				let net_res = exec('ubus call network.interface dump 2>/dev/null');
+				if (net_res && net_res.code == 0 && length(net_res.stdout) > 0) {
+					let net_data = json(join('', net_res.stdout));
+					if (net_data && net_data.interface && length(net_data.interface) > 0) {
+						for (let i = 0; i < length(net_data.interface); i++) {
+							let iface = net_data.interface[i];
+							if (iface.interface == 'loopback' || iface.interface == 'easytier') continue;
+							if (iface['ipv4-address'] && length(iface['ipv4-address']) > 0) {
+								for (let j = 0; j < length(iface['ipv4-address']); j++) {
+									let addr = iface['ipv4-address'][j];
+									let ip_str = addr.address;
+									let mask = addr.mask;
+									if (ip_str && mask) {
+										let parts = split(ip_str, '.');
+										if (length(parts) == 4) {
+											let subnet = '';
+											if (mask == 24) {
+												subnet = parts[0] + '.' + parts[1] + '.' + parts[2] + '.0/24';
+											} else if (mask == 16) {
+												subnet = parts[0] + '.' + parts[1] + '.0.0/16';
+											} else if (mask == 8) {
+												subnet = parts[0] + '.0.0.0/8';
+											} else {
+												subnet = ip_str + '/' + mask;
+											}
+											if (subnet != '' && !seen[subnet]) {
+												seen[subnet] = true;
+												push(subnets, subnet);
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+
 			return { routes: subnets };
 		} catch(e) {
 			return { routes: [] };
