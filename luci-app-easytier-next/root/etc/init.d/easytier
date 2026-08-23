@@ -154,10 +154,99 @@ setup_firewall_and_network() {
 	sysctl -w net.ipv6.conf.all.forwarding=1 >/dev/null 2>&1
 }
 
+setup_dnsmasq() {
+	local magic_dns tld_dns_zone
+	config_get_bool magic_dns settings magic_dns 0
+	config_get tld_dns_zone settings tld_dns_zone 'et.net'
+	[ -z "$tld_dns_zone" ] && tld_dns_zone='et.net'
+
+	local changed_dhcp=0
+
+	# 1. Clean legacy server rules pointing to 100.100.100.101
+	local cur_servers
+	cur_servers=$(uci -q get dhcp.@dnsmasq[0].server)
+	if [ -n "$cur_servers" ]; then
+		local s
+		for s in $cur_servers; do
+			case "$s" in
+				*100.100.100.101*)
+					uci -q del_list dhcp.@dnsmasq[0].server="$s"
+					changed_dhcp=1
+					;;
+			esac
+		done
+	fi
+
+	# 2. Clean matching rebind domain entries
+	local cur_rebinds
+	cur_rebinds=$(uci -q get dhcp.@dnsmasq[0].rebind_domain)
+	if [ -n "$cur_rebinds" ]; then
+		local r
+		for r in $cur_rebinds; do
+			if [ "$r" = "$tld_dns_zone" ] || [ "$r" = "et.net" ]; then
+				uci -q del_list dhcp.@dnsmasq[0].rebind_domain="$r"
+				changed_dhcp=1
+			fi
+		done
+	fi
+
+	# 3. Add new Magic DNS forwarding and rebind whitelist if enabled
+	if [ "$magic_dns" -eq 1 ]; then
+		uci -q add_list dhcp.@dnsmasq[0].server="/${tld_dns_zone}/100.100.100.101"
+		uci -q add_list dhcp.@dnsmasq[0].rebind_domain="${tld_dns_zone}"
+		changed_dhcp=1
+	fi
+
+	if [ "$changed_dhcp" -eq 1 ]; then
+		uci -q commit dhcp
+		/etc/init.d/dnsmasq reload 2>/dev/null
+	fi
+}
+
+cleanup_dnsmasq() {
+	local tld_dns_zone
+	config_get tld_dns_zone settings tld_dns_zone 'et.net'
+	[ -z "$tld_dns_zone" ] && tld_dns_zone='et.net'
+
+	local changed_dhcp=0
+
+	local cur_servers
+	cur_servers=$(uci -q get dhcp.@dnsmasq[0].server)
+	if [ -n "$cur_servers" ]; then
+		local s
+		for s in $cur_servers; do
+			case "$s" in
+				*100.100.100.101*)
+					uci -q del_list dhcp.@dnsmasq[0].server="$s"
+					changed_dhcp=1
+					;;
+			esac
+		done
+	fi
+
+	local cur_rebinds
+	cur_rebinds=$(uci -q get dhcp.@dnsmasq[0].rebind_domain)
+	if [ -n "$cur_rebinds" ]; then
+		local r
+		for r in $cur_rebinds; do
+			if [ "$r" = "$tld_dns_zone" ] || [ "$r" = "et.net" ]; then
+				uci -q del_list dhcp.@dnsmasq[0].rebind_domain="$r"
+				changed_dhcp=1
+			fi
+		done
+	fi
+
+	if [ "$changed_dhcp" -eq 1 ]; then
+		uci -q commit dhcp
+		/etc/init.d/dnsmasq reload 2>/dev/null
+	fi
+}
+
 start_core() {
 	local enabled etcmd network_name network_secret ip_dhcp ipaddr ip6addr
 	local external_node rpc_port encryption_algorithm dev_name proxy_cidrs
 	local custom_params custom_config_file web_config multi_thread
+	local magic_dns tld_dns_zone
 
 	config_get_bool enabled settings enabled 0
 	[ "$enabled" -eq 1 ] || return 0
@@ -181,6 +270,9 @@ start_core() {
 	config_get web_config settings web_config ''
 	config_get custom_params settings custom_params ''
 	config_get_bool multi_thread settings multi_thread 0
+	config_get_bool magic_dns settings magic_dns 0
+	config_get tld_dns_zone settings tld_dns_zone 'et.net'
+	[ -z "$tld_dns_zone" ] && tld_dns_zone='et.net'
 
 	mkdir -p "$CONF_DIR"
 
@@ -220,6 +312,12 @@ start_core() {
 		# Always disable user-space built-in NAT and delegate forwarding to Linux kernel
 		procd_append_param command --proxy-forward-by-system
 
+		# Magic DNS
+		if [ "$magic_dns" -eq 1 ]; then
+			procd_append_param command --accept-dns true
+			[ -n "$tld_dns_zone" ] && procd_append_param command --tld-dns-zone "$tld_dns_zone"
+		fi
+
 		# Peer nodes
 		append_peer() {
 			[ -n "$1" ] && procd_append_param command -p "$1"
@@ -247,6 +345,7 @@ start_core() {
 	procd_close_instance
 
 	setup_firewall_and_network "$dev_name"
+	setup_dnsmasq
 	logger -t "$NAME" "EasyTier core service started"
 }
 
@@ -287,6 +386,7 @@ stop_service() {
 	# Ensure rogue orphan processes are cleaned up
 	killall -9 easytier-core 2>/dev/null
 	killall -9 easytier-web 2>/dev/null
+	cleanup_dnsmasq
 	logger -t "$NAME" "EasyTier services stopped"
 }
 

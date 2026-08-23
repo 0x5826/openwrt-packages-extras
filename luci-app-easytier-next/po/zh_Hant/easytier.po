@@ -295,6 +295,18 @@ msgstr "> 150ms (一般)"
 msgid "Open Console"
 msgstr "開啟控制台"
 
+msgid "Enable Magic DNS"
+msgstr "啟用魔法 DNS"
+
+msgid "Allow resolving peer node domain names (such as hostname.et.net) without memorizing virtual IP addresses. Automatically forwards DNS queries via dnsmasq."
+msgstr "允許透過網域名稱（如 主機名.et.net）直接存取對等節點，無需記憶虛擬 IP 位址。自動聯動 dnsmasq 完成條件轉發與防重綁定白名單設定。"
+
+msgid "Magic DNS Domain Zone"
+msgstr "魔法 DNS 網域區域"
+
+msgid "The top-level domain zone for Magic DNS. Default is et.net."
+msgstr "魔法 DNS 所使用的頂級網域區域後綴。預設為 et.net。"
+
 msgid "Allow WAN Access"
 msgstr "允許從 WAN 訪問"
 
