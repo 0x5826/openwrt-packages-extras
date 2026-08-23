@@ -857,14 +857,14 @@ return view.extend({
 		o = s.taboption('general', form.Value, 'ipaddr', _('Interface IPv4 Address'),
 			_('The static IPv4 address of this node. Ignored when DHCP is enabled.')
 		);
-		o.datatype = 'or("ip4addr", "cidr4")';
+		o.datatype = 'or(ip4addr, cidr4)';
 		o.placeholder = '10.144.144.1/24';
 		o.depends({ 'etcmd': 'etcmd', 'ip_dhcp': '0' });
 
 		o = s.taboption('general', form.Value, 'ip6addr', _('Interface IPv6 Address'),
 			_('The static IPv6 address of this node.')
 		);
-		o.datatype = 'or("ip6addr", "cidr6")';
+		o.datatype = 'or(ip6addr, cidr6)';
 		o.placeholder = 'fd00:144::1/64';
 		o.depends('etcmd', 'etcmd');
 
