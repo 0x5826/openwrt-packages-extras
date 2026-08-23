@@ -352,6 +352,55 @@ msgstr ""
 msgid "Stopping service..."
 msgstr ""
 
+msgid "The VPN network name to identify this virtual network (--network-name)."
+msgstr ""
+
+msgid "The secret phrase used to authorize and encrypt traffic (--network-secret)."
+msgstr ""
+
+msgid "Automatically determine and assign a virtual IP address (-d, --dhcp)."
+msgstr ""
+
+msgid "The static IPv4 address of this node (-i, --ipv4). Ignored when DHCP is enabled."
+msgstr ""
+
+msgid "The static IPv6 address of this node (--ipv6)."
+msgstr ""
+
+msgid "Initial connection peer node URLs (-p, --peers)."
+msgstr ""
+
+msgid "Public discovery node URL (-e, --external-node)."
+msgstr ""
+
+msgid "Subnet CIDRs to proxy and announce through this node (-n, --proxy-networks). Select from the detected local subnets below or enter custom CIDRs."
+msgstr ""
+
+msgid "Allow other peers in the network to route their Internet traffic through this node (--enable-exit-node)."
+msgstr ""
+
+msgid "Allow resolving peer node domain names (such as hostname.et.net) without memorizing virtual IP addresses (--accept-dns). Automatically forwards DNS queries via dnsmasq. Note: If third-party DNS tools (e.g. MosDNS, AdGuard Home, SmartDNS) are active, ensure this domain zone is excluded from hijacking."
+msgstr ""
+
+msgid "Specify the top-level domain zone for Magic DNS (--tld-dns-zone). Default is et.net. (FQDN ending with dot)."
+msgstr ""
+
+msgid "Absolute path to the TOML configuration file (-c, --config-file). Ensure the file exists with valid EasyTier configuration."
+msgstr ""
+
+msgid "Remote web configuration server address (-w, --web-config)."
+msgstr ""
+
+msgid "Port for local CLI and RPC management portal (--rpc-portal)."
+msgstr ""
+
+msgid "Virtual TUN network interface name (--dev-name)."
+msgstr ""
+
+msgid "Enable multi-threaded packet processing for higher throughput (--multi-thread)."
+msgstr ""
+
+
 
 
 
