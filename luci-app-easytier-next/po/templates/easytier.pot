@@ -400,6 +400,19 @@ msgstr ""
 msgid "Enable multi-threaded packet processing for higher throughput (--multi-thread)."
 msgstr ""
 
+msgid "Zoom In"
+msgstr ""
+
+msgid "Zoom Out"
+msgstr ""
+
+msgid "Reset View"
+msgstr ""
+
+msgid "(Drag to pan, scroll to zoom)"
+msgstr ""
+
+
 
 
 

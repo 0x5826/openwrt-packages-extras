@@ -331,6 +331,13 @@ function createSvg(tag, attrs, children) {
 	return el;
 }
 
+// 持久化拓扑图视口平移与缩放状态（即使数据定时刷新也能完全保持当前缩放与视野位置）
+const topologyViewState = {
+	scale: 1.0,
+	panX: 0,
+	panY: 0
+};
+
 function renderTopologySvg(topoData, peerData) {
 	let rawNodes = [];
 	if (Array.isArray(topoData)) {
@@ -446,7 +453,6 @@ function renderTopologySvg(topoData, peerData) {
 			}
 		}
 
-		// 2. 远端节点互联链路仲裁计算
 		if (resolvedLat === null && link.latencies && link.latencies.length > 0) {
 			const validLats = link.latencies.filter(function(v) { return v > 0; });
 			if (validLats.length === 1) {
@@ -464,21 +470,81 @@ function renderTopologySvg(topoData, peerData) {
 		link.latency = resolvedLat;
 	}
 
-	const width = 840;
-	const height = 500;
-	const cx = 420;
-	const cy = 250;
-	const R = (nodeCount <= 2) ? 140 : ((nodeCount <= 4) ? 180 : 200);
+	// 优雅星型/环形舒展排版算法：本端节点居中，对等节点宽阔环绕
+	const otherNodes = nodes.filter(function(n) {
+		return String(n.node_id) !== String(localNode.node_id);
+	});
+	const otherCount = otherNodes.length;
+
+	// 宽阔舒适的安全间距（确保任何规模下节点之间与连线徽标均有充足舒展空间）
+	let R = 260;
+	if (otherCount <= 2) {
+		R = 260;
+	} else if (otherCount <= 4) {
+		R = 280;
+	} else {
+		R = Math.max(280, Math.round((otherCount * 260) / (2 * Math.PI)));
+	}
+
+	const padding = 150;
+	const size = Math.max(900, Math.round(2 * R + 2 * padding));
+	const width = size;
+	const height = size;
+	const cx = Math.round(size / 2);
+	const cy = Math.round(size / 2);
 
 	const posMap = {};
-	if (nodeCount === 1) {
-		posMap[nodes[0].node_id] = { x: cx, y: cy };
-	} else {
-		for (let i = 0; i < nodeCount; i++) {
-			const angle = -Math.PI / 2 + (2 * Math.PI * i) / nodeCount;
-			posMap[nodes[i].node_id] = {
+	posMap[localNode.node_id] = { x: cx, y: cy };
+
+	if (otherCount === 1) {
+		posMap[otherNodes[0].node_id] = { x: cx + R, y: cy };
+	} else if (otherCount === 2) {
+		posMap[otherNodes[0].node_id] = { x: cx - R, y: cy };
+		posMap[otherNodes[1].node_id] = { x: cx + R, y: cy };
+	} else if (otherCount > 2) {
+		for (let i = 0; i < otherCount; i++) {
+			const angle = -Math.PI / 2 + (2 * Math.PI * i) / otherCount;
+			posMap[otherNodes[i].node_id] = {
 				x: Math.round(cx + R * Math.cos(angle)),
 				y: Math.round(cy + R * Math.sin(angle))
+			};
+		}
+	}
+
+	function getLatencyColor(lat) {
+		if (lat === undefined || lat === null || isNaN(Number(lat))) {
+			return {
+				line: '#94a3b8',
+				text: '#64748b',
+				dash: '5,5',
+				width: '2',
+				opacity: '0.6'
+			};
+		}
+		const val = Number(lat);
+		if (val > 150) {
+			return {
+				line: '#f59e0b',
+				text: '#d97706',
+				dash: '6,4',
+				width: '2.5',
+				opacity: '0.85'
+			};
+		} else if (val >= 50) {
+			return {
+				line: '#3b82f6',
+				text: '#2563eb',
+				dash: '6,4',
+				width: '2.5',
+				opacity: '0.85'
+			};
+		} else {
+			return {
+				line: '#22c55e',
+				text: '#16a34a',
+				dash: '6,4',
+				width: '2.5',
+				opacity: '0.9'
 			};
 		}
 	}
@@ -487,20 +553,22 @@ function renderTopologySvg(topoData, peerData) {
 	const nodesLayer = [];
 	const badgesLayer = [];
 
-	// 1. 底层：绘制链路连线
+	// 1. 底层：绘制链路连线（色彩与延迟区间语义完全联动）
 	for (let k = 0; k < linkKeys.length; k++) {
 		const link = linkMap[linkKeys[k]];
 		const p1 = posMap[link.srcId];
 		const p2 = posMap[link.dstId];
 		if (!p1 || !p2) continue;
 
+		const colorCfg = getLatencyColor(link.latency);
+
 		linesLayer.push(createSvg('line', {
 			'x1': p1.x, 'y1': p1.y,
 			'x2': p2.x, 'y2': p2.y,
-			'stroke': '#94a3b8',
-			'stroke-width': '2',
-			'stroke-dasharray': '5,5',
-			'opacity': '0.75'
+			'stroke': colorCfg.line,
+			'stroke-width': colorCfg.width,
+			'stroke-dasharray': colorCfg.dash,
+			'opacity': colorCfg.opacity
 		}));
 	}
 
@@ -595,9 +663,7 @@ function renderTopologySvg(topoData, peerData) {
 		nodesLayer.push(createSvg('g', {}, gChildren));
 	}
 
-	// 3. 顶层：绘制延迟胶囊徽标（防重叠避让算法）
-	const placedBadges = [];
-
+	// 3. 顶层：绘制延迟数据（与连线色彩同频）
 	for (let k = 0; k < linkKeys.length; k++) {
 		const link = linkMap[linkKeys[k]];
 		const p1 = posMap[link.srcId];
@@ -606,84 +672,82 @@ function renderTopologySvg(topoData, peerData) {
 
 		const lat = link.latency;
 		if (lat !== undefined && lat !== null) {
-			const candidateT = [0.5, 0.4, 0.6, 0.35, 0.65];
-			let bestT = 0.5;
-			let maxScore = -1;
+			const isSrcLocal = (String(link.srcId) === String(localNode.node_id));
+			const isDstLocal = (String(link.dstId) === String(localNode.node_id));
 
-			for (let ti = 0; ti < candidateT.length; ti++) {
-				const t = candidateT[ti];
-				const tx = Math.round(p1.x + t * (p2.x - p1.x));
-				const ty = Math.round(p1.y + t * (p2.y - p1.y));
+			let mx, my;
 
-				const distP1 = Math.sqrt((tx - p1.x) * (tx - p1.x) + (ty - p1.y) * (ty - p1.y));
-				const distP2 = Math.sqrt((tx - p2.x) * (tx - p2.x) + (ty - p2.y) * (ty - p2.y));
-				const minNodeDist = Math.min(distP1, distP2);
-
-				// 确保远离节点卡片边缘（至少 85px）
-				if (minNodeDist < 85) continue;
-
-				let minDist = Math.sqrt((tx - cx) * (tx - cx) + (ty - cy) * (ty - cy));
-				if (candidateT.length > 1 && minDist < 28) minDist = 0;
-
-				for (let bi = 0; bi < placedBadges.length; bi++) {
-					const b = placedBadges[bi];
-					const d = Math.sqrt((tx - b.x) * (tx - b.x) + (ty - b.y) * (ty - b.y));
-					if (d < minDist) minDist = d;
-				}
-
-				if (minDist > maxScore) {
-					maxScore = minDist;
-					bestT = t;
-				}
-				if (minDist >= 55) {
-					bestT = t;
-					break;
+			if (isSrcLocal && !isDstLocal) {
+				// p1 为中心本端，p2 为外围节点：紧密锚定在 p2 前方，根据连线角度精准避让卡片外沿 (+24px 安全缓冲)
+				const dx = p2.x - p1.x;
+				const dy = p2.y - p1.y;
+				const lineLen = Math.sqrt(dx * dx + dy * dy);
+				const angle = Math.atan2(dy, dx);
+				const cardBorderDist = Math.sqrt(Math.pow(74 * Math.cos(angle), 2) + Math.pow(42 * Math.sin(angle), 2));
+				const safeBackDist = Math.max(90, Math.round(cardBorderDist + 24));
+				const targetDist = Math.max(60, lineLen - safeBackDist);
+				const ratio = (lineLen > 0) ? (targetDist / lineLen) : 0.70;
+				mx = Math.round(p1.x + ratio * dx);
+				my = Math.round(p1.y + ratio * dy);
+			} else if (isDstLocal && !isSrcLocal) {
+				// p2 为中心本端，p1 为外围节点：紧密锚定在 p1 前方
+				const dx = p1.x - p2.x;
+				const dy = p1.y - p2.y;
+				const lineLen = Math.sqrt(dx * dx + dy * dy);
+				const angle = Math.atan2(dy, dx);
+				const cardBorderDist = Math.sqrt(Math.pow(74 * Math.cos(angle), 2) + Math.pow(42 * Math.sin(angle), 2));
+				const safeBackDist = Math.max(90, Math.round(cardBorderDist + 24));
+				const targetDist = Math.max(60, lineLen - safeBackDist);
+				const ratio = (lineLen > 0) ? (targetDist / lineLen) : 0.70;
+				mx = Math.round(p2.x + ratio * dx);
+				my = Math.round(p2.y + ratio * dy);
+			} else {
+				// 外围对等节点之间的互联边（Mesh 底边/外围边）：取中点并沿中心向外法线微推 20px，绝不内缩到中心
+				const midX = (p1.x + p2.x) / 2;
+				const midY = (p1.y + p2.y) / 2;
+				const outVecX = midX - cx;
+				const outVecY = midY - cy;
+				const outLen = Math.sqrt(outVecX * outVecX + outVecY * outVecY);
+				const pushDist = 20;
+				if (outLen > 0) {
+					mx = Math.round(midX + (outVecX / outLen) * pushDist);
+					my = Math.round(midY + (outVecY / outLen) * pushDist);
+				} else {
+					mx = Math.round(midX);
+					my = Math.round(midY);
 				}
 			}
 
-			const mx = Math.round(p1.x + bestT * (p2.x - p1.x));
-			const my = Math.round(p1.y + bestT * (p2.y - p1.y));
-			placedBadges.push({ x: mx, y: my });
-
-			let badgeBg = '#f0fdf4';
-			let badgeBorder = '#86efac';
-			let badgeText = '#15803d';
-
-			if (lat > 150) {
-				badgeBg = '#fefce8';
-				badgeBorder = '#fde047';
-				badgeText = '#a16207';
-			} else if (lat >= 50) {
-				badgeBg = '#eff6ff';
-				badgeBorder = '#93c5fd';
-				badgeText = '#1d4ed8';
+			// 全局卡片碰撞二次兜底校验：确保与网络中任意节点卡片保持安全间距
+			for (let ni = 0; ni < nodeCount; ni++) {
+				const npos = posMap[nodes[ni].node_id];
+				if (!npos) continue;
+				if (Math.abs(mx - npos.x) < 78 && Math.abs(my - npos.y) < 42) {
+					// 若触碰卡片包围盒，沿中心向外法线方向微调避让
+					const pushDirX = mx >= npos.x ? 1 : -1;
+					const pushDirY = my >= npos.y ? 1 : -1;
+					mx += pushDirX * 16;
+					my += pushDirY * 12;
+				}
 			}
 
+			const colorCfg = getLatencyColor(lat);
 			const labelStr = lat + ' ms';
-			const bw = 64;
-			const bh = 22;
 
-			badgesLayer.push(createSvg('g', {}, [
-				createSvg('rect', {
-					'x': mx - bw / 2,
-					'y': my - bh / 2,
-					'width': bw,
-					'height': bh,
-					'rx': '11',
-					'fill': badgeBg,
-					'stroke': badgeBorder,
-					'stroke-width': '1.5'
-				}),
-				createSvg('text', {
-					'x': mx,
-					'y': my + 4,
-					'text-anchor': 'middle',
-					'font-family': 'monospace, sans-serif',
-					'font-size': '11',
-					'font-weight': 'bold',
-					'fill': badgeText
-				}, labelStr)
-			]));
+			// 极简纯净排版：直接在线上渲染同色文字，通过背景白色描边实现自然的连线阻断
+			badgesLayer.push(createSvg('text', {
+				'x': mx,
+				'y': my + 4,
+				'text-anchor': 'middle',
+				'font-family': 'monospace, sans-serif',
+				'font-size': '11.5',
+				'font-weight': '700',
+				'fill': colorCfg.text,
+				'stroke': '#fafafa',
+				'stroke-width': '4.5',
+				'paint-order': 'stroke fill',
+				'stroke-linejoin': 'round'
+			}, labelStr));
 		}
 	}
 
@@ -691,28 +755,126 @@ function renderTopologySvg(topoData, peerData) {
 
 	const svgNode = createSvg('svg', {
 		'viewBox': '0 0 ' + width + ' ' + height,
-		'style': 'width: 100%; height: auto; min-height: 400px; max-height: 540px; display: block; margin: 0 auto; user-select: none; background: transparent;'
+		'style': 'width: 100%; height: 100%; display: block; margin: 0 auto; user-select: none; background: transparent; cursor: grab;'
 	}, allElements);
+
+	let currentScale = topologyViewState.scale || 1.0;
+	let panX = topologyViewState.panX || 0;
+	let panY = topologyViewState.panY || 0;
+	let isDragging = false;
+	let dragStartX = 0;
+	let dragStartY = 0;
+
+	function applyViewBox() {
+		topologyViewState.scale = currentScale;
+		topologyViewState.panX = panX;
+		topologyViewState.panY = panY;
+		const vbW = width / currentScale;
+		const vbH = height / currentScale;
+		const vbX = (width - vbW) / 2 - (panX / currentScale);
+		const vbY = (height - vbH) / 2 - (panY / currentScale);
+		svgNode.setAttribute('viewBox', Math.round(vbX) + ' ' + Math.round(vbY) + ' ' + Math.round(vbW) + ' ' + Math.round(vbH));
+	}
+
+	applyViewBox();
+
+	svgNode.addEventListener('wheel', function(ev) {
+		ev.preventDefault();
+		const zoomFactor = ev.deltaY < 0 ? 1.15 : 0.85;
+		currentScale = Math.min(3.5, Math.max(0.35, currentScale * zoomFactor));
+		applyViewBox();
+	}, { passive: false });
+
+	svgNode.addEventListener('mousedown', function(ev) {
+		if (ev.button !== 0) return;
+		isDragging = true;
+		dragStartX = ev.clientX - panX;
+		dragStartY = ev.clientY - panY;
+		svgNode.style.cursor = 'grabbing';
+	});
+
+	window.addEventListener('mousemove', function(ev) {
+		if (!isDragging) return;
+		panX = ev.clientX - dragStartX;
+		panY = ev.clientY - dragStartY;
+		applyViewBox();
+	});
+
+	window.addEventListener('mouseup', function() {
+		if (isDragging) {
+			isDragging = false;
+			svgNode.style.cursor = 'grab';
+		}
+	});
+
+	const btnStyle = 'display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; font-size: 14px; font-weight: bold; color: #475569; background: rgba(255, 255, 255, 0.9); border: 1px solid #cbd5e1; border-radius: 4px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); cursor: pointer; user-select: none; transition: all 0.15s;';
+	
+	const zoomInBtn = E('button', {
+		'type': 'button',
+		'class': 'btn cbi-button',
+		'style': btnStyle,
+		'title': _('Zoom In'),
+		'click': function(ev) {
+			ev.preventDefault();
+			currentScale = Math.min(3.5, currentScale * 1.25);
+			applyViewBox();
+		}
+	}, '+');
+
+	const zoomOutBtn = E('button', {
+		'type': 'button',
+		'class': 'btn cbi-button',
+		'style': btnStyle,
+		'title': _('Zoom Out'),
+		'click': function(ev) {
+			ev.preventDefault();
+			currentScale = Math.max(0.35, currentScale * 0.8);
+			applyViewBox();
+		}
+	}, '−');
+
+	const resetBtn = E('button', {
+		'type': 'button',
+		'class': 'btn cbi-button',
+		'style': btnStyle + ' width: auto; padding: 0 8px; font-size: 11px;',
+		'title': _('Reset View'),
+		'click': function(ev) {
+			ev.preventDefault();
+			currentScale = 1.0;
+			panX = 0;
+			panY = 0;
+			applyViewBox();
+		}
+	}, '1:1');
+
+	const toolbar = E('div', {
+		'style': 'position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; z-index: 10;'
+	}, [zoomInBtn, zoomOutBtn, resetBtn]);
+
+	const graphContainer = E('div', {
+		'style': 'position: relative; width: 100%; aspect-ratio: 1 / 1; max-height: 560px; overflow: hidden; background: #fafafa; border-radius: 4px;'
+	}, [toolbar, svgNode]);
 
 	const legend = E('div', {
 		'style': 'text-align: center; margin-top: 10px; font-size: 12px; line-height: 1.6;'
 	}, [
-		E('span', { 'style': 'display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #22c55e; margin-right: 4px; vertical-align: middle;' }),
+		E('span', { 'style': 'display: inline-block; width: 16px; height: 3px; background: #22c55e; border-radius: 2px; margin-right: 5px; vertical-align: middle;' }),
 		_('< 50ms (Optimal)'),
 		'   ',
-		E('span', { 'style': 'display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #3b82f6; margin-left: 14px; margin-right: 4px; vertical-align: middle;' }),
+		E('span', { 'style': 'display: inline-block; width: 16px; height: 3px; background: #3b82f6; border-radius: 2px; margin-left: 14px; margin-right: 5px; vertical-align: middle;' }),
 		_('50 ~ 150ms (Good)'),
 		'   ',
-		E('span', { 'style': 'display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; margin-left: 14px; margin-right: 4px; vertical-align: middle;' }),
+		E('span', { 'style': 'display: inline-block; width: 16px; height: 3px; background: #f59e0b; border-radius: 2px; margin-left: 14px; margin-right: 5px; vertical-align: middle;' }),
 		_('> 150ms (Fair)'),
 		'   ',
 		E('span', { 'style': 'display: inline-block; padding: 1px 6px; font-size: 11px; font-family: monospace; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 3px; margin-left: 14px; vertical-align: middle;' }, 'CIDR'),
-		E('span', { 'style': 'margin-left: 4px; vertical-align: middle;' }, _('Proxy Network'))
+		E('span', { 'style': 'margin-left: 4px; vertical-align: middle;' }, _('Proxy Network')),
+		E('span', { 'style': 'margin-left: 16px; color: #94a3b8; font-size: 11px; vertical-align: middle;' }, _('(Drag to pan, scroll to zoom)'))
 	]);
 
 	return E('div', {
 		'style': 'width: 100%; border: 1px solid #e5e5e5; border-radius: 6px; padding: 15px; box-sizing: border-box; margin-top: 5px;'
-	}, [svgNode, legend]);
+	}, [graphContainer, legend]);
 }
 
 return view.extend({

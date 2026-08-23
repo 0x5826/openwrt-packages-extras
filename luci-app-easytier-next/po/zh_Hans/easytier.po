@@ -400,6 +400,19 @@ msgstr "创建的虚拟 TUN 网卡接口名称 (--dev-name)。"
 msgid "Enable multi-threaded packet processing for higher throughput (--multi-thread)."
 msgstr "启用多线程数据包处理以提升高吞吐性能 (--multi-thread)。"
 
+msgid "Zoom In"
+msgstr "放大"
+
+msgid "Zoom Out"
+msgstr "缩小"
+
+msgid "Reset View"
+msgstr "复位视图"
+
+msgid "(Drag to pan, scroll to zoom)"
+msgstr "(按住拖拽平移，滚轮缩放画布)"
+
+
 
 
 
