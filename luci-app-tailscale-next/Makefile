@@ -4,7 +4,7 @@ LUCI_TITLE:=LuCI support for Tailscale Next
 LUCI_URL:=https://github.com/tokisaki-galaxy/luci-app-tailscale-community
 PKG_DESCRIPTION:=Provides a LuCI Web management interface for Tailscale, allowing viewing status, configuring nodes and daemons.
 PKG_MAINTAINER:=Tokisaki-Galaxy <moebest@outlook.jp>
-LUCI_DEPENDS:=+tailscale-next +ip-full +luci-base +ucode +ucode-mod-fs +ucode-mod-uci
+LUCI_DEPENDS:=+tailscale-next +ip-full +luci-base
 LUCI_PKGARCH:=all
 
 define Package/luci-app-tailscale-next/postinst
