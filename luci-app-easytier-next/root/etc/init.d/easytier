@@ -98,6 +98,47 @@ setup_firewall_and_network() {
 		fi
 	fi
 
+	# 3. WAN Inbound Traffic Rule (controlled by allow_wan)
+	local allow_wan
+	allow_wan=$(uci -q get easytier.settings.allow_wan)
+
+	if [ "$allow_wan" = "1" ]; then
+		local custom_params wan_ports=""
+		custom_params=$(uci -q get easytier.settings.custom_params)
+
+		# Extract custom listening ports ONLY if -l/--listen/--listeners is specified
+		if [ -n "$custom_params" ]; then
+			local extracted_ports
+			extracted_ports=$(echo "$custom_params" | grep -oE '(-l|--listeners?)[[:space:]=]+[^[:space:]]+' | grep -oE ':[0-9]{2,5}' | tr -d ':' | sort -u | tr '\n' ' ')
+			set -- $extracted_ports
+			extracted_ports="$*"
+			[ -n "$extracted_ports" ] && wan_ports="$extracted_ports"
+		fi
+
+		# Default listener ports fallback: 11010(tcp/udp), 11011(wg/ws), 11012(quic/wss), 11013(faketcp)
+		[ -z "$wan_ports" ] && wan_ports="11010 11011 11012 11013"
+
+		local cur_rule_ports cur_rule_enabled
+		cur_rule_ports=$(uci -q get firewall.easytier_wan_inbound.dest_port)
+		cur_rule_enabled=$(uci -q get firewall.easytier_wan_inbound.enabled)
+
+		if ! uci -q get firewall.easytier_wan_inbound >/dev/null || [ "$cur_rule_ports" != "$wan_ports" ] || [ "$cur_rule_enabled" != "1" ]; then
+			uci -q set firewall.easytier_wan_inbound=rule
+			uci -q set firewall.easytier_wan_inbound.name='Allow-EasyTier-WAN-Inbound'
+			uci -q set firewall.easytier_wan_inbound.src='wan'
+			uci -q set firewall.easytier_wan_inbound.proto='tcp udp'
+			uci -q set firewall.easytier_wan_inbound.dest_port="$wan_ports"
+			uci -q set firewall.easytier_wan_inbound.target='ACCEPT'
+			uci -q set firewall.easytier_wan_inbound.enabled='1'
+			changed_fw=1
+		fi
+	else
+		if uci -q get firewall.easytier_wan_inbound >/dev/null; then
+			uci -q delete firewall.easytier_wan_inbound
+			changed_fw=1
+		fi
+	fi
+
 	if [ "$changed_net" = "1" ]; then
 		uci -q commit network
 		/etc/init.d/network reload 2>/dev/null
@@ -108,7 +149,7 @@ setup_firewall_and_network() {
 		/etc/init.d/firewall reload 2>/dev/null
 	fi
 
-	# 3. Kernel forwarding
+	# 4. Kernel forwarding
 	sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1
 	sysctl -w net.ipv6.conf.all.forwarding=1 >/dev/null 2>&1
 }
@@ -129,7 +170,7 @@ start_core() {
 	config_get etcmd settings etcmd 'etcmd'
 	config_get network_name settings network_name ''
 	config_get network_secret settings network_secret ''
-	config_get_bool ip_dhcp settings ip_dhcp 0
+	config_get_bool ip_dhcp settings ip_dhcp 1
 	config_get ipaddr settings ipaddr ''
 	config_get ip6addr settings ip6addr ''
 	config_get external_node settings external_node ''
@@ -147,8 +188,16 @@ start_core() {
 	procd_set_param command "$PROG"
 
 	if [ "$etcmd" = "config" ]; then
+		[ -f "$custom_config_file" ] || {
+			logger -t "$NAME" "Custom config file $custom_config_file not found"
+			return 1
+		}
 		procd_append_param command -c "$custom_config_file"
 	elif [ "$etcmd" = "web" ]; then
+		[ -n "$web_config" ] || {
+			logger -t "$NAME" "Web config URL is not configured"
+			return 1
+		}
 		procd_append_param command -w "$web_config"
 	else
 		# Default command-line configuration

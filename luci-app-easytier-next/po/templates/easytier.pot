@@ -151,7 +151,7 @@ msgstr ""
 msgid "Proxy Networks"
 msgstr ""
 
-msgid "Subnet CIDRs to proxy and announce through this node."
+msgid "Subnet CIDRs to proxy and announce through this node. Select from the detected local subnets below or enter custom CIDRs."
 msgstr ""
 
 msgid "Web Config Server URL"
@@ -294,5 +294,47 @@ msgstr ""
 
 msgid "Open Console"
 msgstr ""
+
+msgid "Allow WAN Access"
+msgstr ""
+
+msgid "Automatically open and manage firewall traffic rules on WAN zone to allow incoming connections for external peers."
+msgstr ""
+
+msgid "Proxy CIDRs"
+msgstr ""
+
+msgid "Proxy Network"
+msgstr ""
+
+msgid "The web console may consume significant memory, please enable as needed."
+msgstr ""
+
+msgid "Configuration File Path"
+msgstr ""
+
+msgid "Absolute path to the TOML configuration file. Ensure the file exists with valid EasyTier configuration."
+msgstr ""
+
+msgid "Local service is not running."
+msgstr ""
+
+msgid "Restart"
+msgstr ""
+
+msgid "Stop"
+msgstr ""
+
+msgid "Start Service"
+msgstr ""
+
+msgid "Starting service..."
+msgstr ""
+
+msgid "Stopping service..."
+msgstr ""
+
+
+
 
 

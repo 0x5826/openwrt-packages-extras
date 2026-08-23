@@ -149,10 +149,10 @@ msgid "Public discovery node URL."
 msgstr "公共對等節點探索伺服器位址。"
 
 msgid "Proxy Networks"
-msgstr "子網路代理路由"
+msgstr "子網代理"
 
-msgid "Subnet CIDRs to proxy and announce through this node."
-msgstr "宣告並代理本端區域網路子網路網段。"
+msgid "Subnet CIDRs to proxy and announce through this node. Select from the detected local subnets below or enter custom CIDRs."
+msgstr "本端節點廣播的子網代理 CIDR。可從下方探測到的本地子網快捷點選，或手動輸入自定義網段。"
 
 msgid "Web Config Server URL"
 msgstr "設定伺服器位址"
@@ -294,3 +294,47 @@ msgstr "> 150ms (一般)"
 
 msgid "Open Console"
 msgstr "開啟控制台"
+
+msgid "Allow WAN Access"
+msgstr "允許從 WAN 訪問"
+
+msgid "Automatically open and manage firewall traffic rules on WAN zone to allow incoming connections for external peers."
+msgstr "自動在 WAN 區域建立並管理防火牆通訊規則，放行 EasyTier 監聽連接埠以允許外部節點主動接入。"
+
+msgid "Proxy CIDRs"
+msgstr "子網代理"
+
+msgid "Proxy Network"
+msgstr "子網代理"
+
+msgid "The web console may consume significant memory, please enable as needed."
+msgstr "Web 控制台可能會佔用較多記憶體，請按需開啟。"
+
+msgid "Configuration File Path"
+msgstr "設定檔路徑"
+
+msgid "Absolute path to the TOML configuration file. Ensure the file exists with valid EasyTier configuration."
+msgstr "TOML 格式設定檔的絕對路徑。請確保該檔案已存在並包含有效的 EasyTier 設定。"
+
+msgid "Local service is not running."
+msgstr "本地服務未運行。"
+
+msgid "Restart"
+msgstr "重啟"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Start Service"
+msgstr "啟動服務"
+
+msgid "Starting service..."
+msgstr "正在啟動服務..."
+
+msgid "Stopping service..."
+msgstr "正在停止服務..."
+
+
+
+
+
