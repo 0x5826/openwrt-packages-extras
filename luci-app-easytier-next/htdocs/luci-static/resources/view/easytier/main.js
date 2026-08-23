@@ -836,51 +836,51 @@ return view.extend({
 		o.default = 'etcmd';
 
 		o = s.taboption('general', form.Value, 'network_name', _('Network Name'),
-			_('The VPN network name to identify this virtual network.')
+			_('The VPN network name to identify this virtual network (--network-name).')
 		);
 		o.placeholder = 'easytier';
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Value, 'network_secret', _('Network Secret'),
-			_('The secret phrase used to authorize and encrypt traffic.')
+			_('The secret phrase used to authorize and encrypt traffic (--network-secret).')
 		);
 		o.password = true;
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Flag, 'ip_dhcp', _('Enable DHCP IP Allocation'),
-			_('Automatically determine and assign an IP address.')
+			_('Automatically determine and assign a virtual IP address (-d, --dhcp).')
 		);
 		o.default = '1';
 		o.rmempty = false;
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Value, 'ipaddr', _('Interface IPv4 Address'),
-			_('The static IPv4 address of this node. Ignored when DHCP is enabled.')
+			_('The static IPv4 address of this node (-i, --ipv4). Ignored when DHCP is enabled.')
 		);
 		o.datatype = 'or(ip4addr, cidr4)';
 		o.placeholder = '10.144.144.1/24';
 		o.depends({ 'etcmd': 'etcmd', 'ip_dhcp': '0' });
 
 		o = s.taboption('general', form.Value, 'ip6addr', _('Interface IPv6 Address'),
-			_('The static IPv6 address of this node.')
+			_('The static IPv6 address of this node (--ipv6).')
 		);
 		o.datatype = 'or(ip6addr, cidr6)';
 		o.placeholder = 'fd00:144::1/64';
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.DynamicList, 'peeradd', _('Peer Nodes'),
-			_('Initial connection peer node URLs.')
+			_('Initial connection peer node URLs (-p, --peers).')
 		);
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Value, 'external_node', _('Public Discovery Node'),
-			_('Public discovery node URL.')
+			_('Public discovery node URL (-e, --external-node).')
 		);
 		o.placeholder = 'tcp://public.easytier.top:11010';
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.DynamicList, 'proxy_networks', _('Proxy Networks'),
-			_('Subnet CIDRs to proxy and announce through this node. Select from the detected local subnets below or enter custom CIDRs.')
+			_('Subnet CIDRs to proxy and announce through this node (-n, --proxy-networks). Select from the detected local subnets below or enter custom CIDRs.')
 		);
 		if (subroutes && subroutes.length > 0) {
 			subroutes.forEach(function(subnet) {
@@ -898,29 +898,29 @@ return view.extend({
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Flag, 'enable_exit_node', _('Enable Exit Node'),
-			_('Allow other peers in the network to route their Internet traffic through this node (Exit Node).')
+			_('Allow other peers in the network to route their Internet traffic through this node (--enable-exit-node).')
 		);
 		o.default = '0';
 		o.rmempty = false;
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Flag, 'magic_dns', _('Enable Magic DNS'),
-			_('Allow resolving peer node domain names (such as hostname.et.net) without memorizing virtual IP addresses. Automatically forwards DNS queries via dnsmasq.')
+			_('Allow resolving peer node domain names (such as hostname.et.net) without memorizing virtual IP addresses (--accept-dns). Automatically forwards DNS queries via dnsmasq. Note: If third-party DNS tools (e.g. MosDNS, AdGuard Home, SmartDNS) are active, ensure this domain zone is excluded from hijacking.')
 		);
 		o.default = '0';
 		o.rmempty = false;
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Value, 'tld_dns_zone', _('Magic DNS Domain Zone'),
-			_('The top-level domain zone for Magic DNS. Default is et.net.')
+			_('Specify the top-level domain zone for Magic DNS (--tld-dns-zone). Default is et.net. (FQDN ending with dot).')
 		);
-		o.placeholder = 'et.net';
-		o.default = 'et.net';
+		o.placeholder = 'et.net.';
+		o.default = 'et.net.';
 		o.depends('magic_dns', '1');
 
 		// Config File Path under 'config' mode
 		o = s.taboption('general', form.Value, 'custom_config_file', _('Configuration File Path'),
-			_('Absolute path to the TOML configuration file. Ensure the file exists with valid EasyTier configuration.')
+			_('Absolute path to the TOML configuration file (-c, --config-file). Ensure the file exists with valid EasyTier configuration.')
 		);
 		o.default = '/etc/easytier/config.toml';
 		o.placeholder = '/etc/easytier/config.toml';
@@ -928,20 +928,20 @@ return view.extend({
 
 		// Web Server URL under 'web' mode
 		o = s.taboption('general', form.Value, 'web_config', _('Web Config Server URL'),
-			_('Remote web configuration server address.')
+			_('Remote web configuration server address (-w, --web-config).')
 		);
 		o.depends('etcmd', 'web');
 
 		// --- Advanced Options ---
 		o = s.taboption('advanced', form.Value, 'rpc_port', _('RPC Management Port'),
-			_('Port for local CLI and RPC management portal.')
+			_('Port for local CLI and RPC management portal (--rpc-portal).')
 		);
 		o.datatype = 'port';
 		o.default = '15888';
 		o.placeholder = '15888';
 
 		o = s.taboption('advanced', form.Value, 'dev_name', _('TUN Device Name'),
-			_('Virtual TUN network interface name.')
+			_('Virtual TUN network interface name (--dev-name).')
 		);
 		o.default = 'easytier0';
 		o.placeholder = 'easytier0';
@@ -954,7 +954,7 @@ return view.extend({
 		o.rmempty = false;
 
 		o = s.taboption('advanced', form.Flag, 'multi_thread', _('Multi-threaded Mode'),
-			_('Enable multi-threaded packet processing for higher throughput.')
+			_('Enable multi-threaded packet processing for higher throughput (--multi-thread).')
 		);
 		o.default = '0';
 

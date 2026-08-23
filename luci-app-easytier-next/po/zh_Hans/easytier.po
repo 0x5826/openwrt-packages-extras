@@ -352,6 +352,55 @@ msgstr "正在启动服务..."
 msgid "Stopping service..."
 msgstr "正在停止服务..."
 
+msgid "The VPN network name to identify this virtual network (--network-name)."
+msgstr "VPN 虚拟网络名称 (--network-name)。"
+
+msgid "The secret phrase used to authorize and encrypt traffic (--network-secret)."
+msgstr "用于节点认证与加密的密钥短语 (--network-secret)。"
+
+msgid "Automatically determine and assign a virtual IP address (-d, --dhcp)."
+msgstr "自动协商并分配虚拟网卡 IP 地址 (-d, --dhcp)。"
+
+msgid "The static IPv4 address of this node (-i, --ipv4). Ignored when DHCP is enabled."
+msgstr "本节点的静态 IPv4 地址 (-i, --ipv4)。启用 DHCP 时自动忽略。"
+
+msgid "The static IPv6 address of this node (--ipv6)."
+msgstr "本节点的静态 IPv6 地址 (--ipv6)。"
+
+msgid "Initial connection peer node URLs (-p, --peers)."
+msgstr "初始连接的对等节点地址 (-p, --peers)。"
+
+msgid "Public discovery node URL (-e, --external-node)."
+msgstr "公共发现节点 URL (-e, --external-node)。"
+
+msgid "Subnet CIDRs to proxy and announce through this node (-n, --proxy-networks). Select from the detected local subnets below or enter custom CIDRs."
+msgstr "通过此节点代理并通告的子网网段 (-n, --proxy-networks)。可直接下拉选择探测到的本地网段或手动输入。"
+
+msgid "Allow other peers in the network to route their Internet traffic through this node (--enable-exit-node)."
+msgstr "允许网络中的其他对等节点通过本节点路由外网流量 (--enable-exit-node)。"
+
+msgid "Allow resolving peer node domain names (such as hostname.et.net) without memorizing virtual IP addresses (--accept-dns). Automatically forwards DNS queries via dnsmasq. Note: If third-party DNS tools (e.g. MosDNS, AdGuard Home, SmartDNS) are active, ensure this domain zone is excluded from hijacking."
+msgstr "允许直接通过主机名解析节点 (--accept-dns)。自动通过 dnsmasq 转发解析请求至内置 DNS 服务器 (100.100.100.101)。注意：若启用了第三方 DNS 代理工具（如 MosDNS、AdGuard Home、SmartDNS 或分流插件），请确保将该域名区域加入直连/放行名单以防止被劫持导致解析失败。"
+
+msgid "Specify the top-level domain zone for Magic DNS (--tld-dns-zone). Default is et.net. (FQDN ending with dot)."
+msgstr "指定魔法 DNS 的顶级域名区域 (--tld-dns-zone)。默认值为 et.net.（以点结尾的 FQDN 根域）。"
+
+msgid "Absolute path to the TOML configuration file (-c, --config-file). Ensure the file exists with valid EasyTier configuration."
+msgstr "TOML 格式配置文件的绝对路径 (-c, --config-file)。请确保该文件已存在并包含有效的 EasyTier 配置。"
+
+msgid "Remote web configuration server address (-w, --web-config)."
+msgstr "远程 Web 配置服务器地址 (-w, --web-config)。"
+
+msgid "Port for local CLI and RPC management portal (--rpc-portal)."
+msgstr "本地 CLI 与 RPC 交互端口 (--rpc-portal)。"
+
+msgid "Virtual TUN network interface name (--dev-name)."
+msgstr "创建的虚拟 TUN 网卡接口名称 (--dev-name)。"
+
+msgid "Enable multi-threaded packet processing for higher throughput (--multi-thread)."
+msgstr "启用多线程数据包处理以提升高吞吐性能 (--multi-thread)。"
+
+
 
 
 

@@ -157,8 +157,16 @@ setup_firewall_and_network() {
 setup_dnsmasq() {
 	local magic_dns tld_dns_zone
 	config_get_bool magic_dns settings magic_dns 0
-	config_get tld_dns_zone settings tld_dns_zone 'et.net'
-	[ -z "$tld_dns_zone" ] && tld_dns_zone='et.net'
+	config_get tld_dns_zone settings tld_dns_zone 'et.net.'
+	[ -z "$tld_dns_zone" ] && tld_dns_zone='et.net.'
+
+	# 防呆机制：无论用户输入是否带点，核心规范为以点结尾的 FQDN
+	case "$tld_dns_zone" in
+		*.) ;;
+		*) tld_dns_zone="${tld_dns_zone}." ;;
+	esac
+	local tld_clean
+	tld_clean=$(echo "$tld_dns_zone" | sed 's/\.$//')
 
 	local changed_dhcp=0
 
@@ -174,6 +182,7 @@ setup_dnsmasq() {
 					old_zone=$(echo "$s" | sed -n 's|^/\([^/]*\)/100\.100\.100\.101.*|\1|p')
 					if [ -n "$old_zone" ]; then
 						uci -q del_list dhcp.@dnsmasq[0].rebind_domain="$old_zone"
+						uci -q del_list dhcp.@dnsmasq[0].rebind_domain="${old_zone}."
 					fi
 					uci -q del_list dhcp.@dnsmasq[0].server="$s"
 					changed_dhcp=1
@@ -184,12 +193,14 @@ setup_dnsmasq() {
 
 	# 2. Clean fallback domains
 	uci -q del_list dhcp.@dnsmasq[0].rebind_domain="$tld_dns_zone"
+	uci -q del_list dhcp.@dnsmasq[0].rebind_domain="$tld_clean"
 	uci -q del_list dhcp.@dnsmasq[0].rebind_domain="et.net"
+	uci -q del_list dhcp.@dnsmasq[0].rebind_domain="et.net."
 
 	# 3. Add new Magic DNS forwarding and rebind whitelist if enabled
 	if [ "$magic_dns" -eq 1 ]; then
-		uci -q add_list dhcp.@dnsmasq[0].server="/${tld_dns_zone}/100.100.100.101"
-		uci -q add_list dhcp.@dnsmasq[0].rebind_domain="${tld_dns_zone}"
+		uci -q add_list dhcp.@dnsmasq[0].server="/${tld_clean}/100.100.100.101"
+		uci -q add_list dhcp.@dnsmasq[0].rebind_domain="${tld_clean}"
 		changed_dhcp=1
 	fi
 
@@ -201,8 +212,15 @@ setup_dnsmasq() {
 
 cleanup_dnsmasq() {
 	local tld_dns_zone
-	config_get tld_dns_zone settings tld_dns_zone 'et.net'
-	[ -z "$tld_dns_zone" ] && tld_dns_zone='et.net'
+	config_get tld_dns_zone settings tld_dns_zone 'et.net.'
+	[ -z "$tld_dns_zone" ] && tld_dns_zone='et.net.'
+
+	case "$tld_dns_zone" in
+		*.) ;;
+		*) tld_dns_zone="${tld_dns_zone}." ;;
+	esac
+	local tld_clean
+	tld_clean=$(echo "$tld_dns_zone" | sed 's/\.$//')
 
 	local changed_dhcp=0
 
@@ -218,6 +236,7 @@ cleanup_dnsmasq() {
 					old_zone=$(echo "$s" | sed -n 's|^/\([^/]*\)/100\.100\.100\.101.*|\1|p')
 					if [ -n "$old_zone" ]; then
 						uci -q del_list dhcp.@dnsmasq[0].rebind_domain="$old_zone"
+						uci -q del_list dhcp.@dnsmasq[0].rebind_domain="${old_zone}."
 					fi
 					uci -q del_list dhcp.@dnsmasq[0].server="$s"
 					changed_dhcp=1
@@ -228,7 +247,9 @@ cleanup_dnsmasq() {
 
 	# 2. Clean fallback domains
 	uci -q del_list dhcp.@dnsmasq[0].rebind_domain="$tld_dns_zone"
+	uci -q del_list dhcp.@dnsmasq[0].rebind_domain="$tld_clean"
 	uci -q del_list dhcp.@dnsmasq[0].rebind_domain="et.net"
+	uci -q del_list dhcp.@dnsmasq[0].rebind_domain="et.net."
 	changed_dhcp=1
 
 	if [ "$changed_dhcp" -eq 1 ]; then
@@ -266,8 +287,12 @@ start_core() {
 	config_get custom_params settings custom_params ''
 	config_get_bool multi_thread settings multi_thread 0
 	config_get_bool magic_dns settings magic_dns 0
-	config_get tld_dns_zone settings tld_dns_zone 'et.net'
-	[ -z "$tld_dns_zone" ] && tld_dns_zone='et.net'
+	config_get tld_dns_zone settings tld_dns_zone 'et.net.'
+	[ -z "$tld_dns_zone" ] && tld_dns_zone='et.net.'
+	case "$tld_dns_zone" in
+		*.) ;;
+		*) tld_dns_zone="${tld_dns_zone}." ;;
+	esac
 	config_get_bool enable_exit_node settings enable_exit_node 0
 
 	mkdir -p "$CONF_DIR"
