@@ -400,10 +400,17 @@ msgstr "創建的虛擬 TUN 網卡介面名稱 (--dev-name)。"
 msgid "Enable multi-threaded packet processing for higher throughput (--multi-thread)."
 msgstr "啟用多執行緒資料包處理以提升高吞吐效能 (--multi-thread)。"
 
+msgid "Zoom In"
+msgstr "放大"
 
+msgid "Zoom Out"
+msgstr "縮小"
 
+msgid "Reset View"
+msgstr "重設視圖"
 
-
+msgid "(Drag to pan, scroll to zoom)"
+msgstr "(按住拖曳平移，滾輪縮放畫布)"
 
 
 
