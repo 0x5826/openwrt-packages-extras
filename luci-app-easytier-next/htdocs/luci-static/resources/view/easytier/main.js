@@ -897,6 +897,20 @@ return view.extend({
 		o.rmempty = false;
 		o.depends('etcmd', 'etcmd');
 
+		o = s.taboption('general', form.Flag, 'magic_dns', _('Enable Magic DNS'),
+			_('Allow resolving peer node domain names (such as hostname.et.net) without memorizing virtual IP addresses. Automatically forwards DNS queries via dnsmasq.')
+		);
+		o.default = '0';
+		o.rmempty = false;
+		o.depends('etcmd', 'etcmd');
+
+		o = s.taboption('general', form.Value, 'tld_dns_zone', _('Magic DNS Domain Zone'),
+			_('The top-level domain zone for Magic DNS. Default is et.net.')
+		);
+		o.placeholder = 'et.net';
+		o.default = 'et.net';
+		o.depends('magic_dns', '1');
+
 		// Config File Path under 'config' mode
 		o = s.taboption('general', form.Value, 'custom_config_file', _('Configuration File Path'),
 			_('Absolute path to the TOML configuration file. Ensure the file exists with valid EasyTier configuration.')

@@ -295,6 +295,18 @@ msgstr ""
 msgid "Open Console"
 msgstr ""
 
+msgid "Enable Magic DNS"
+msgstr ""
+
+msgid "Allow resolving peer node domain names (such as hostname.et.net) without memorizing virtual IP addresses. Automatically forwards DNS queries via dnsmasq."
+msgstr ""
+
+msgid "Magic DNS Domain Zone"
+msgstr ""
+
+msgid "The top-level domain zone for Magic DNS. Default is et.net."
+msgstr ""
+
 msgid "Allow WAN Access"
 msgstr ""
 
