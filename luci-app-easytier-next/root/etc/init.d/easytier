@@ -482,9 +482,6 @@ start_service() {
 }
 
 stop_service() {
-	# Ensure rogue orphan processes are cleaned up
-	killall -9 easytier-core 2>/dev/null
-	killall -9 easytier-web 2>/dev/null
 	cleanup_dnsmasq
 	logger -t "$NAME" "EasyTier services stopped"
 }
@@ -494,6 +491,5 @@ service_triggers() {
 }
 
 reload_service() {
-	stop
-	start
+	restart
 }
