@@ -82,9 +82,6 @@ msgstr ""
 msgid "EasyTier"
 msgstr ""
 
-msgid "EasyTier IPv4"
-msgstr ""
-
 msgid "EasyTier is a simple, secure, decentralized mesh VPN for intranet penetration, implemented in Rust."
 msgstr ""
 
@@ -127,9 +124,6 @@ msgstr ""
 msgid "Hostname"
 msgstr ""
 
-msgid "IPv4"
-msgstr ""
-
 msgid "Initial connection peer node URLs (Corresponding flag: -p, --peers)."
 msgstr ""
 
@@ -137,6 +131,9 @@ msgid "Interface IPv4 Address"
 msgstr ""
 
 msgid "Interface IPv6 Address"
+msgstr ""
+
+msgid "Invalid URL format, must start with tcp://, udp://, ws://, wss://, wg://, or quic://"
 msgstr ""
 
 msgid "Invalid UUID format (e.g. %s)"
@@ -304,6 +301,9 @@ msgstr ""
 msgid "Version"
 msgstr ""
 
+msgid "Virtual IP"
+msgstr ""
+
 msgid "Virtual Interface"
 msgstr ""
 
@@ -311,6 +311,9 @@ msgid "Virtual TUN network interface name (Corresponding flag: --dev-name)."
 msgstr ""
 
 msgid "Web Config Server URL"
+msgstr ""
+
+msgid "Web Config Server URL cannot be empty."
 msgstr ""
 
 msgid "Web Console"

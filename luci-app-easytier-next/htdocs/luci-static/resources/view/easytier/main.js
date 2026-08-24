@@ -189,7 +189,7 @@ function renderLocalNodeInfo(peerData) {
 	const proxyDisp = renderProxyCidrBadges(localProxy);
 
 	const infoItems = [
-		{ label: _('EasyTier IPv4'), value: E('strong', { 'style': 'color: #007bff;' }, ipv4Val) },
+		{ label: _('Virtual IP'), value: E('strong', { 'style': 'color: #007bff;' }, ipv4Val) },
 		{ label: _('Hostname'), value: E('strong', {}, hostnameVal) },
 		{ label: _('Network Name'), value: netNameVal },
 		{ label: _('Proxy Networks'), value: proxyDisp },
@@ -226,7 +226,7 @@ function renderPeersTable(peerData) {
 	}
 
 	const headers = [
-		{ title: _('IPv4'), minWidth: '140px' },
+		{ title: _('Virtual IP'), minWidth: '140px' },
 		{ title: _('Hostname'), minWidth: '150px' },
 		{ title: _('Proxy Networks'), minWidth: '130px' },
 		{ title: _('Cost'), minWidth: '70px' },
@@ -1108,7 +1108,20 @@ return view.extend({
 		);
 		o.placeholder = 'udp://dashboard.example.com:22020/admin';
 		o.retain = true;
+		o.rmempty = false;
 		o.depends('etcmd', 'web');
+		o.validate = function(section_id, value) {
+			const etcmd = uci.get('easytier', 'settings', 'etcmd');
+			if (etcmd === 'web') {
+				if (!value || value.trim() === '') {
+					return _('Web Config Server URL cannot be empty.');
+				}
+				if (!/^(tcp|udp|ws|wss|wg|quic):\/\/.+/.test(value.trim())) {
+					return _('Invalid URL format, must start with tcp://, udp://, ws://, wss://, wg://, or quic://');
+				}
+			}
+			return true;
+		};
 		o.renderWidget = function() {
 			const node = form.Value.prototype.renderWidget.apply(this, arguments);
 			const input = node.querySelector ? (node.querySelector('input') || node) : node;
