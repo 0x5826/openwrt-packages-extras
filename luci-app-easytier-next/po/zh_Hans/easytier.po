@@ -304,8 +304,8 @@ msgstr "Topology Actions"
 msgid "Tunnel"
 msgstr "连接方式"
 
-msgid "Unique device identifier UUID in the cloud management console (Corresponding flag: --machine-id). Automatically generated on initial install and supports manual modification."
-msgstr "用于在云端控制台中标识当前设备的唯一 UUID 标识符 (对应参数：--machine-id)。初始化安装时自动生成，支持手动修改或换绑。"
+msgid "Unique device identifier UUID in the cloud management console (Corresponding flag: --machine-id). Automatically generated on initial install. Changing UUID will automatically clear local cloud cache."
+msgstr "用于在云端控制台中标识当前设备的唯一 UUID 标识符 (对应参数：--machine-id)。初始化安装时自动生成，修改更换 UUID 时将自动重置并清理云端缓存。"
 
 msgid "Use OpenWrt system firewall to manage NAT for EasyTier tunnel and subnet traffic. Disabling this option disables source address masquerading to preserve real source IPs of remote peers and subnets in the local network."
 msgstr "使用 OpenWrt 系统防火墙接管 EasyTier 虚拟网卡与子网转发流量的 NAT。关闭此选项将禁用源地址伪装，保留远程对等节点及子网在本地局域网中的真实源 IP。"

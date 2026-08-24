@@ -248,9 +248,6 @@ cleanup_dnsmasq() {
 	# 2. Clean fallback domains
 	uci -q del_list dhcp.@dnsmasq[0].rebind_domain="$tld_dns_zone"
 	uci -q del_list dhcp.@dnsmasq[0].rebind_domain="$tld_clean"
-	uci -q del_list dhcp.@dnsmasq[0].rebind_domain="et.net"
-	uci -q del_list dhcp.@dnsmasq[0].rebind_domain="et.net."
-	changed_dhcp=1
 
 	if [ "$changed_dhcp" -eq 1 ]; then
 		uci -q commit dhcp
@@ -258,11 +255,40 @@ cleanup_dnsmasq() {
 	fi
 }
 
+atomic_clean_cloud_dir() {
+	local target_dir="$1"
+	local new_mid="$2"
+
+	# Security boundary guard: only permit paths under /etc/easytier or /tmp/easytier
+	case "$target_dir" in
+		/etc/easytier*|/tmp/easytier*) ;;
+		*)
+			logger -t "$NAME" "Security warning: Refusing to clean unsafe path: $target_dir"
+			return 1
+			;;
+	esac
+
+	local pid="$$"
+	local new_tmp="${target_dir}.new.${pid}"
+	local trash_tmp="${target_dir}.trash.${pid}"
+
+	mkdir -p "$new_tmp"
+	[ -n "$new_mid" ] && echo "$new_mid" > "$new_tmp/.machine_id"
+
+	if [ -d "$target_dir" ]; then
+		mv "$target_dir" "$trash_tmp" 2>/dev/null
+	fi
+	mv "$new_tmp" "$target_dir" 2>/dev/null
+	rm -rf "${target_dir}.trash."* 2>/dev/null
+	return 0
+}
+
 start_core() {
 	local enabled etcmd network_name network_secret ip_dhcp ipaddr ip6addr
 	local external_node rpc_port encryption_algorithm dev_name proxy_cidrs
 	local custom_params custom_config_file web_config multi_thread
 	local magic_dns tld_dns_zone
+	local machine_id config_dir
 
 	config_get_bool enabled settings enabled 0
 	[ "$enabled" -eq 1 ] || return 0
@@ -285,8 +311,8 @@ start_core() {
 	config_get custom_config_file settings custom_config_file '/etc/easytier/config.toml'
 	config_get web_config settings web_config ''
 	config_get machine_id settings machine_id ''
-	config_get config_dir settings config_dir '/etc/easytier'
-	[ -z "$config_dir" ] && config_dir='/etc/easytier'
+	config_get config_dir settings config_dir '/etc/easytier/cloud'
+	[ -z "$config_dir" ] && config_dir='/etc/easytier/cloud'
 	config_get custom_params settings custom_params ''
 	config_get_bool multi_thread settings multi_thread 0
 	config_get_bool magic_dns settings magic_dns 0
@@ -331,8 +357,22 @@ start_core() {
 		fi
 		[ -n "$machine_id" ] && procd_append_param command --machine-id "$machine_id"
 
-		# Config directory
-		mkdir -p "$config_dir"
+		# Config directory (default to /etc/easytier/cloud for clean isolation)
+		[ -z "$config_dir" ] && config_dir='/etc/easytier/cloud'
+
+		# Atomic check & clean for Machine ID change
+		local last_mid_file="$config_dir/.machine_id"
+		local last_mid=""
+		[ -f "$last_mid_file" ] && last_mid=$(cat "$last_mid_file" 2>/dev/null)
+
+		if [ -d "$config_dir" ] && [ -n "$last_mid" ] && [ "$last_mid" != "$machine_id" ]; then
+			logger -t "$NAME" "Machine ID changed from $last_mid to $machine_id, atomically cleaning cloud config cache in $config_dir"
+			atomic_clean_cloud_dir "$config_dir" "$machine_id"
+		else
+			mkdir -p "$config_dir"
+			[ -n "$machine_id" ] && [ ! -f "$last_mid_file" ] && echo "$machine_id" > "$last_mid_file" 2>/dev/null
+		fi
+
 		procd_append_param command --config-dir "$config_dir"
 
 		# System proxy forward & device name
