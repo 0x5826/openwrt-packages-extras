@@ -284,6 +284,9 @@ start_core() {
 	config_get dev_name settings dev_name 'easytier0'
 	config_get custom_config_file settings custom_config_file '/etc/easytier/config.toml'
 	config_get web_config settings web_config ''
+	config_get machine_id settings machine_id ''
+	config_get config_dir settings config_dir '/etc/easytier'
+	[ -z "$config_dir" ] && config_dir='/etc/easytier'
 	config_get custom_params settings custom_params ''
 	config_get_bool multi_thread settings multi_thread 0
 	config_get_bool magic_dns settings magic_dns 0
@@ -312,6 +315,36 @@ start_core() {
 			return 1
 		}
 		procd_append_param command -w "$web_config"
+
+		# Machine ID (ensure unique UUID exists)
+		if [ -z "$machine_id" ]; then
+			if [ -f /proc/sys/kernel/random/uuid ]; then
+				machine_id=$(cat /proc/sys/kernel/random/uuid 2>/dev/null)
+			fi
+			if [ -z "$machine_id" ]; then
+				machine_id=$(tr -dc 'a-f0-9' < /dev/urandom 2>/dev/null | head -c 32 | sed -r 's/(.{8})(.{4})(.{4})(.{4})(.{12})/\1-\2-\3-\4-\5/')
+			fi
+			if [ -n "$machine_id" ]; then
+				uci -q set easytier.settings.machine_id="$machine_id"
+				uci -q commit easytier
+			fi
+		fi
+		[ -n "$machine_id" ] && procd_append_param command --machine-id "$machine_id"
+
+		# Config directory
+		mkdir -p "$config_dir"
+		procd_append_param command --config-dir "$config_dir"
+
+		# System proxy forward & device name
+		procd_append_param command --proxy-forward-by-system
+		[ -n "$dev_name" ] && procd_append_param command --dev-name "$dev_name"
+
+		# Additional custom arguments
+		if [ -n "$custom_params" ]; then
+			for arg in $custom_params; do
+				procd_append_param command "$arg"
+			done
+		fi
 	else
 		# Default command-line configuration
 		[ -n "$network_name" ] && procd_append_param command --network-name "$network_name"
