@@ -1146,12 +1146,6 @@ return view.extend({
 		};
 
 		// --- Advanced Options ---
-		o = s.taboption('advanced', form.Flag, 'allow_wan', _('Allow WAN Access'),
-			_('Automatically open and manage firewall traffic rules on WAN zone to allow incoming connections for external peers.')
-		);
-		o.default = '0';
-		o.rmempty = false;
-
 		o = s.taboption('advanced', form.Value, 'rpc_port', _('RPC Management Port'),
 			_('Port for local CLI and RPC management portal (Corresponding flag: --rpc-portal).')
 		);
@@ -1176,6 +1170,12 @@ return view.extend({
 			_('Enable multi-threaded packet processing for higher throughput (Corresponding flag: --multi-thread).')
 		);
 		o.default = '0';
+
+		o = s.taboption('advanced', form.Flag, 'allow_wan', _('Allow WAN Access'),
+			_('Automatically open and manage firewall traffic rules on WAN zone to allow incoming connections for external peers.')
+		);
+		o.default = '0';
+		o.rmempty = false;
 
 		o = s.taboption('advanced', form.Flag, 'tunnel_snat', _('Enable Tunnel Traffic SNAT'),
 			_('Use OpenWrt system firewall to manage NAT for EasyTier tunnel and subnet traffic. Disabling this option disables source address masquerading to preserve real source IPs of remote peers and subnets in the local network.')
