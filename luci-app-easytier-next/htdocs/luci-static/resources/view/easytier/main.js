@@ -1108,11 +1108,12 @@ return view.extend({
 		);
 		o.placeholder = 'udp://dashboard.example.com:22020/admin';
 		o.retain = true;
-		o.rmempty = false;
+		o.rmempty = true;
 		o.depends('etcmd', 'web');
 		o.validate = function(section_id, value) {
-			const etcmd = uci.get('easytier', 'settings', 'etcmd');
-			if (etcmd === 'web') {
+			const etcmdOpt = this.section.children.find(c => c.option === 'etcmd');
+			const currentEtcmd = etcmdOpt ? etcmdOpt.formvalue(section_id) : uci.get('easytier', 'settings', 'etcmd');
+			if (currentEtcmd === 'web') {
 				if (!value || value.trim() === '') {
 					return _('Web Config Server URL cannot be empty.');
 				}
@@ -1139,10 +1140,14 @@ return view.extend({
 		o.retain = true;
 		o.depends('etcmd', 'web');
 		o.validate = function(section_id, value) {
-			if (!value || value.length === 0)
-				return true;
-			if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value.trim()))
-				return _('Invalid UUID format (e.g. %s)').format('df33f4ba-c01b-4961-82f3-a424f39d5a9c');
+			const etcmdOpt = this.section.children.find(c => c.option === 'etcmd');
+			const currentEtcmd = etcmdOpt ? etcmdOpt.formvalue(section_id) : uci.get('easytier', 'settings', 'etcmd');
+			if (currentEtcmd === 'web') {
+				if (!value || value.length === 0)
+					return true;
+				if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value.trim()))
+					return _('Invalid UUID format (e.g. %s)').format('df33f4ba-c01b-4961-82f3-a424f39d5a9c');
+			}
 			return true;
 		};
 		o.renderWidget = function() {
