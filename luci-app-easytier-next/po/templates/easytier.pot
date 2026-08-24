@@ -37,9 +37,6 @@ msgstr ""
 msgid "Automatically open and manage firewall traffic rules on WAN zone to allow incoming connections for external peers."
 msgstr ""
 
-msgid "Cannot use root directory %s directly. Please specify a subfolder (e.g. %s)."
-msgstr ""
-
 msgid "Clear Logs"
 msgstr ""
 
@@ -56,9 +53,6 @@ msgid "Collecting logs..."
 msgstr ""
 
 msgid "Command-line"
-msgstr ""
-
-msgid "Config Directory"
 msgstr ""
 
 msgid "Configuration File"
@@ -80,9 +74,6 @@ msgid "Cost"
 msgstr ""
 
 msgid "Custom Command Parameters"
-msgstr ""
-
-msgid "Directory path to store downloaded cloud network configuration files (Corresponding flag: --config-dir)."
 msgstr ""
 
 msgid "Directory to store SQLite database for easytier-web."
