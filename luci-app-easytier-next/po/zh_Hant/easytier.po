@@ -145,6 +145,9 @@ msgstr "虛擬 IPv4 位址"
 msgid "Interface IPv6 Address"
 msgstr "虛擬 IPv6 位址"
 
+msgid "Invalid UUID format (e.g. %s)"
+msgstr "UUID 格式無效（示例：%s）"
+
 msgid "Latency"
 msgstr "延遲"
 

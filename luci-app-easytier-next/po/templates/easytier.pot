@@ -145,6 +145,9 @@ msgstr ""
 msgid "Interface IPv6 Address"
 msgstr ""
 
+msgid "Invalid UUID format (e.g. %s)"
+msgstr ""
+
 msgid "Latency"
 msgstr ""
 

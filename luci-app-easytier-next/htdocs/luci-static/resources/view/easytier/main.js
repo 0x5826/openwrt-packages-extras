@@ -1091,7 +1091,7 @@ return view.extend({
 			const node = form.Value.prototype.renderWidget.apply(this, arguments);
 			const input = node.querySelector ? (node.querySelector('input') || node) : node;
 			if (input && input.style) {
-				input.style.width = '320px';
+				input.style.width = '295px';
 				input.style.maxWidth = '100%';
 			}
 			return node;
@@ -1107,7 +1107,7 @@ return view.extend({
 			const node = form.Value.prototype.renderWidget.apply(this, arguments);
 			const input = node.querySelector ? (node.querySelector('input') || node) : node;
 			if (input && input.style) {
-				input.style.width = '320px';
+				input.style.width = '295px';
 				input.style.maxWidth = '100%';
 			}
 			return node;
@@ -1118,11 +1118,18 @@ return view.extend({
 		);
 		o.placeholder = 'df33f4ba-c01b-4961-82f3-a424f39d5a9c';
 		o.depends('etcmd', 'web');
+		o.validate = function(section_id, value) {
+			if (!value || value.length === 0)
+				return true;
+			if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value.trim()))
+				return _('Invalid UUID format (e.g. %s)').format('df33f4ba-c01b-4961-82f3-a424f39d5a9c');
+			return true;
+		};
 		o.renderWidget = function() {
 			const node = form.Value.prototype.renderWidget.apply(this, arguments);
 			const input = node.querySelector ? (node.querySelector('input') || node) : node;
 			if (input && input.style) {
-				input.style.width = '320px';
+				input.style.width = '295px';
 				input.style.maxWidth = '100%';
 				input.style.fontFamily = 'monospace';
 			}
@@ -1139,7 +1146,7 @@ return view.extend({
 			const node = form.Value.prototype.renderWidget.apply(this, arguments);
 			const input = node.querySelector ? (node.querySelector('input') || node) : node;
 			if (input && input.style) {
-				input.style.width = '320px';
+				input.style.width = '295px';
 				input.style.maxWidth = '100%';
 			}
 			return node;
