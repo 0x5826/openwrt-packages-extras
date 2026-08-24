@@ -1091,7 +1091,7 @@ return view.extend({
 			const node = form.Value.prototype.renderWidget.apply(this, arguments);
 			const input = node.querySelector ? (node.querySelector('input') || node) : node;
 			if (input && input.style) {
-				input.style.width = '380px';
+				input.style.width = '38ch';
 				input.style.maxWidth = '100%';
 			}
 			return node;
@@ -1107,7 +1107,7 @@ return view.extend({
 			const node = form.Value.prototype.renderWidget.apply(this, arguments);
 			const input = node.querySelector ? (node.querySelector('input') || node) : node;
 			if (input && input.style) {
-				input.style.width = '380px';
+				input.style.width = '38ch';
 				input.style.maxWidth = '100%';
 			}
 			return node;
@@ -1122,7 +1122,7 @@ return view.extend({
 			const node = form.Value.prototype.renderWidget.apply(this, arguments);
 			const input = node.querySelector ? (node.querySelector('input') || node) : node;
 			if (input && input.style) {
-				input.style.width = '380px';
+				input.style.width = '38ch';
 				input.style.maxWidth = '100%';
 				input.style.fontFamily = 'monospace';
 			}
@@ -1139,7 +1139,7 @@ return view.extend({
 			const node = form.Value.prototype.renderWidget.apply(this, arguments);
 			const input = node.querySelector ? (node.querySelector('input') || node) : node;
 			if (input && input.style) {
-				input.style.width = '380px';
+				input.style.width = '38ch';
 				input.style.maxWidth = '100%';
 			}
 			return node;
