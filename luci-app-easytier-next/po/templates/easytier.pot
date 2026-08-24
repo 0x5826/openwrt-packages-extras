@@ -37,6 +37,9 @@ msgstr ""
 msgid "Automatically open and manage firewall traffic rules on WAN zone to allow incoming connections for external peers."
 msgstr ""
 
+msgid "Cannot use root directory %s directly. Please specify a subfolder (e.g. %s)."
+msgstr ""
+
 msgid "Clear Logs"
 msgstr ""
 

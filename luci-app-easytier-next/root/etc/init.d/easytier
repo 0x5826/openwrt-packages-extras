@@ -259,9 +259,13 @@ atomic_clean_cloud_dir() {
 	local target_dir="$1"
 	local new_mid="$2"
 
-	# Security boundary guard: only permit paths under /etc/easytier or /tmp/easytier
+	# Security boundary guard: strictly disallow root /etc/easytier to protect config.toml and easytier.db
 	case "$target_dir" in
-		/etc/easytier*|/tmp/easytier*) ;;
+		/etc/easytier|/etc/easytier/|/etc|/etc/|/tmp|/tmp/)
+			logger -t "$NAME" "Security warning: Cannot clean root directory $target_dir"
+			return 1
+			;;
+		/etc/easytier/*|/tmp/easytier/*) ;;
 		*)
 			logger -t "$NAME" "Security warning: Refusing to clean unsafe path: $target_dir"
 			return 1
@@ -313,6 +317,11 @@ start_core() {
 	config_get machine_id settings machine_id ''
 	config_get config_dir settings config_dir '/etc/easytier/cloud'
 	[ -z "$config_dir" ] && config_dir='/etc/easytier/cloud'
+	case "$config_dir" in
+		/etc/easytier|/etc/easytier/|/etc|/etc/)
+			config_dir='/etc/easytier/cloud'
+			;;
+	esac
 	config_get custom_params settings custom_params ''
 	config_get_bool multi_thread settings multi_thread 0
 	config_get_bool magic_dns settings magic_dns 0
@@ -359,6 +368,11 @@ start_core() {
 
 		# Config directory (default to /etc/easytier/cloud for clean isolation)
 		[ -z "$config_dir" ] && config_dir='/etc/easytier/cloud'
+		case "$config_dir" in
+			/etc/easytier|/etc/easytier/|/etc|/etc/)
+				config_dir='/etc/easytier/cloud'
+				;;
+		esac
 
 		# Atomic check & clean for Machine ID change
 		local last_mid_file="$config_dir/.machine_id"
