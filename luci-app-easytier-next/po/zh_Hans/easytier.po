@@ -193,6 +193,9 @@ msgstr "暂无拓扑数据。"
 msgid "None"
 msgstr "无"
 
+msgid "Not Installed"
+msgstr "未安装"
+
 msgid "Open Console"
 msgstr "打开控制台"
 

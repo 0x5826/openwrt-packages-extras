@@ -193,6 +193,9 @@ msgstr ""
 msgid "None"
 msgstr ""
 
+msgid "Not Installed"
+msgstr ""
+
 msgid "Open Console"
 msgstr ""
 

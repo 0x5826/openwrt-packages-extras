@@ -100,7 +100,8 @@ methods.get_status = {
 		let web_st = get_service_state('/usr/bin/easytier-web', 'web');
 
 		let data = {
-			installed: access('/usr/bin/easytier-core'),
+			installed: access('/usr/bin/easytier-core') ? true : false,
+			web_installed: access('/usr/bin/easytier-web') ? true : false,
 			version: get_cached_version(),
 			core: core_st,
 			web: web_st,
