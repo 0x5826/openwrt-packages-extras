@@ -1087,6 +1087,15 @@ return view.extend({
 		o.default = '/etc/easytier/config.toml';
 		o.placeholder = '/etc/easytier/config.toml';
 		o.depends('etcmd', 'config');
+		o.renderWidget = function() {
+			const node = form.Value.prototype.renderWidget.apply(this, arguments);
+			const input = node.querySelector ? (node.querySelector('input') || node) : node;
+			if (input && input.style) {
+				input.style.width = '380px';
+				input.style.maxWidth = '100%';
+			}
+			return node;
+		};
 
 		// Web Server Options under 'web' mode
 		o = s.taboption('general', form.Value, 'web_config', _('Web Config Server URL'),
@@ -1094,12 +1103,31 @@ return view.extend({
 		);
 		o.placeholder = 'udp://dashboard.example.com:22020/admin';
 		o.depends('etcmd', 'web');
+		o.renderWidget = function() {
+			const node = form.Value.prototype.renderWidget.apply(this, arguments);
+			const input = node.querySelector ? (node.querySelector('input') || node) : node;
+			if (input && input.style) {
+				input.style.width = '380px';
+				input.style.maxWidth = '100%';
+			}
+			return node;
+		};
 
 		o = s.taboption('general', form.Value, 'machine_id', _('Machine ID (UUID)'),
 			_('Unique device identifier UUID in the cloud management console (Corresponding flag: --machine-id). Automatically generated on initial install and supports manual modification.')
 		);
 		o.placeholder = 'df33f4ba-c01b-4961-82f3-a424f39d5a9c';
 		o.depends('etcmd', 'web');
+		o.renderWidget = function() {
+			const node = form.Value.prototype.renderWidget.apply(this, arguments);
+			const input = node.querySelector ? (node.querySelector('input') || node) : node;
+			if (input && input.style) {
+				input.style.width = '380px';
+				input.style.maxWidth = '100%';
+				input.style.fontFamily = 'monospace';
+			}
+			return node;
+		};
 
 		o = s.taboption('general', form.Value, 'config_dir', _('Config Directory'),
 			_('Directory path to store downloaded cloud network configuration files (Corresponding flag: --config-dir).')
@@ -1107,6 +1135,15 @@ return view.extend({
 		o.default = '/etc/easytier';
 		o.placeholder = '/etc/easytier';
 		o.depends('etcmd', 'web');
+		o.renderWidget = function() {
+			const node = form.Value.prototype.renderWidget.apply(this, arguments);
+			const input = node.querySelector ? (node.querySelector('input') || node) : node;
+			if (input && input.style) {
+				input.style.width = '380px';
+				input.style.maxWidth = '100%';
+			}
+			return node;
+		};
 
 		// --- Advanced Options ---
 		o = s.taboption('advanced', form.Value, 'rpc_port', _('RPC Management Port'),
