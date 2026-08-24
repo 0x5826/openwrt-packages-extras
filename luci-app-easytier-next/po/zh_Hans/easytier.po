@@ -82,9 +82,6 @@ msgstr "用于存放 easytier-web SQLite 数据库文件的目录。"
 msgid "EasyTier"
 msgstr "EasyTier"
 
-msgid "EasyTier IPv4"
-msgstr "虚拟 IPv4"
-
 msgid "EasyTier is a simple, secure, decentralized mesh VPN for intranet penetration, implemented in Rust."
 msgstr "EasyTier 是一款基于 Rust 实现的简单、安全、去中心化的网状异地组网工具。"
 
@@ -127,9 +124,6 @@ msgstr "easytier-web 内置 Web 控制台的 HTTP 监听端口。"
 msgid "Hostname"
 msgstr "主机名"
 
-msgid "IPv4"
-msgstr "IPv4"
-
 msgid "Initial connection peer node URLs (Corresponding flag: -p, --peers)."
 msgstr "初始连接的对等节点地址 (对应参数：-p, --peers)。"
 
@@ -138,6 +132,9 @@ msgstr "虚拟 IPv4 地址"
 
 msgid "Interface IPv6 Address"
 msgstr "虚拟 IPv6 地址"
+
+msgid "Invalid URL format, must start with tcp://, udp://, ws://, wss://, wg://, or quic://"
+msgstr "URL 格式无效，必须以 tcp://、udp://、ws://、wss://、wg:// 或 quic:// 开头"
 
 msgid "Invalid UUID format (e.g. %s)"
 msgstr "UUID 格式无效（示例：%s）"
@@ -304,6 +301,9 @@ msgstr "使用 OpenWrt 系统防火墙接管 EasyTier 虚拟网卡与子网转�
 msgid "Version"
 msgstr "版本"
 
+msgid "Virtual IP"
+msgstr "虚拟 IP"
+
 msgid "Virtual Interface"
 msgstr "虚拟网卡"
 
@@ -312,6 +312,9 @@ msgstr "创建的虚拟 TUN 网卡接口名称 (对应参数：--dev-name)。"
 
 msgid "Web Config Server URL"
 msgstr "云端配置服务器地址"
+
+msgid "Web Config Server URL cannot be empty."
+msgstr "云端配置服务器地址不能为空。"
 
 msgid "Web Console"
 msgstr "Web 控制台"
