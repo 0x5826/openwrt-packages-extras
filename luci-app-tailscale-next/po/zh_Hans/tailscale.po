@@ -23,7 +23,7 @@ msgid "Allow connecting to this device through the native SSH function of Tailsc
 msgstr "允许通过 Tailscale 原生 SSH 功能连接到此设备 (--ssh)。"
 
 msgid "Allow user access to tailscale"
-msgstr "允许用户访问 Tailscale"
+msgstr "允许访问 Tailscale"
 
 msgid "Announce subnet routes behind this device (--advertise-routes). Select from the detected subnets below or enter custom routes (comma-separated)."
 msgstr "向 Tailnet 通告本设备后方的子网路由 (--advertise-routes)。从下方检测到的子网中选择或手动输入自定义路由（逗号分隔）。"
