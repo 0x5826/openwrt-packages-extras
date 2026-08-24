@@ -1142,7 +1142,8 @@ return view.extend({
 		o = s.taboption('general', form.Value, 'web_config', _('Web Config Server URL'),
 			_('Remote web configuration server address (Corresponding flag: -w, --web-config).')
 		);
-		o.placeholder = 'udp://dashboard.example.com:22020/admin';
+		o.default = 'udp://127.0.0.1:22020/admin';
+		o.placeholder = 'udp://127.0.0.1:22020/admin';
 		o.retain = true;
 		o.rmempty = true;
 		o.depends('etcmd', 'web');
