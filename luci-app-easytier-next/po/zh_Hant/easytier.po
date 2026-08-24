@@ -139,6 +139,9 @@ msgstr "URL 格式無效，必須以 tcp://、udp://、ws://、wss://、wg:// �
 msgid "Invalid UUID format (e.g. %s)"
 msgstr "UUID 格式無效（示例：%s）"
 
+msgid "Invalid username format, only letters, digits, and _ - . @ are allowed."
+msgstr "使用者名稱格式無效，僅支援字母、數字及 _ - . @"
+
 msgid "Latency"
 msgstr "延遲"
 
@@ -232,8 +235,8 @@ msgstr "重新整理日誌"
 msgid "Refresh Topology"
 msgstr "重新整理拓撲"
 
-msgid "Remote web configuration server address (Corresponding flag: -w, --web-config)."
-msgstr "遠程 Web 配置伺服器位址 (對應參數：-w, --web-config)。"
+msgid "Remote web configuration server address or username (Corresponding flag: -w, --web-config). Supports complete URL (e.g. udp://127.0.0.1:22020/admin) or username only (e.g. admin, connecting to official cloud server)."
+msgstr "遠程 Web 配置伺服器位址或使用者名稱 (對應參數：-w, --web-config)。支援完整 URL（如 udp://127.0.0.1:22020/admin）或僅填使用者名稱/網路名稱（如 admin，自動連線官方雲端伺服器）。"
 
 msgid "Reset View"
 msgstr "重置視圖"
