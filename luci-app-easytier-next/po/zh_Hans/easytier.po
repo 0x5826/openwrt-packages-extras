@@ -205,9 +205,6 @@ msgstr "对等节点"
 msgid "Port for local CLI and RPC management portal (Corresponding flag: --rpc-portal)."
 msgstr "本地 CLI 与 RPC 交互端口 (对应参数：--rpc-portal)。"
 
-msgid "Proxy CIDRs"
-msgstr "代理网段"
-
 msgid "Proxy Network"
 msgstr "子网代理"
 

@@ -228,7 +228,7 @@ function renderPeersTable(peerData) {
 	const headers = [
 		{ title: _('IPv4'), minWidth: '140px' },
 		{ title: _('Hostname'), minWidth: '150px' },
-		{ title: _('Proxy CIDRs'), minWidth: '130px' },
+		{ title: _('Proxy Networks'), minWidth: '130px' },
 		{ title: _('Cost'), minWidth: '70px' },
 		{ title: _('Latency'), minWidth: '85px' },
 		{ title: _('Loss Rate'), minWidth: '80px' },
@@ -1001,12 +1001,14 @@ return view.extend({
 			_('The VPN network name to identify this virtual network (Corresponding flag: --network-name).')
 		);
 		o.placeholder = 'easytier';
+		o.retain = true;
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Value, 'network_secret', _('Network Secret'),
 			_('The secret phrase used to authorize and encrypt traffic (Corresponding flag: --network-secret).')
 		);
 		o.password = true;
+		o.retain = true;
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Flag, 'ip_dhcp', _('Enable DHCP IP Allocation'),
@@ -1014,6 +1016,7 @@ return view.extend({
 		);
 		o.default = '1';
 		o.rmempty = false;
+		o.retain = true;
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Value, 'ipaddr', _('Interface IPv4 Address'),
@@ -1021,6 +1024,7 @@ return view.extend({
 		);
 		o.datatype = 'or(ip4addr, cidr4)';
 		o.placeholder = '10.144.144.1/24';
+		o.retain = true;
 		o.depends({ 'etcmd': 'etcmd', 'ip_dhcp': '0' });
 
 		o = s.taboption('general', form.Value, 'ip6addr', _('Interface IPv6 Address'),
@@ -1028,17 +1032,20 @@ return view.extend({
 		);
 		o.datatype = 'or(ip6addr, cidr6)';
 		o.placeholder = 'fd00:144::1/64';
+		o.retain = true;
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.DynamicList, 'peeradd', _('Peer Nodes'),
 			_('Initial connection peer node URLs (Corresponding flag: -p, --peers).')
 		);
+		o.retain = true;
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Value, 'external_node', _('Public Discovery Node'),
 			_('Public discovery node URL (Corresponding flag: -e, --external-node).')
 		);
 		o.placeholder = 'tcp://public.easytier.top:11010';
+		o.retain = true;
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.DynamicList, 'proxy_networks', _('Proxy Networks'),
@@ -1050,6 +1057,7 @@ return view.extend({
 			});
 		}
 		o.rmempty = true;
+		o.retain = true;
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Flag, 'enable_exit_node', _('Enable Exit Node'),
@@ -1057,6 +1065,7 @@ return view.extend({
 		);
 		o.default = '0';
 		o.rmempty = false;
+		o.retain = true;
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Flag, 'magic_dns', _('Enable Magic DNS'),
@@ -1064,6 +1073,7 @@ return view.extend({
 		);
 		o.default = '0';
 		o.rmempty = false;
+		o.retain = true;
 		o.depends('etcmd', 'etcmd');
 
 		o = s.taboption('general', form.Value, 'tld_dns_zone', _('Magic DNS Domain Zone'),
@@ -1071,6 +1081,7 @@ return view.extend({
 		);
 		o.placeholder = 'et.net.';
 		o.default = 'et.net.';
+		o.retain = true;
 		o.depends('magic_dns', '1');
 
 		// Config File Path under 'config' mode
@@ -1079,6 +1090,7 @@ return view.extend({
 		);
 		o.default = '/etc/easytier/config.toml';
 		o.placeholder = '/etc/easytier/config.toml';
+		o.retain = true;
 		o.depends('etcmd', 'config');
 		o.renderWidget = function() {
 			const node = form.Value.prototype.renderWidget.apply(this, arguments);
@@ -1095,6 +1107,7 @@ return view.extend({
 			_('Remote web configuration server address (Corresponding flag: -w, --web-config).')
 		);
 		o.placeholder = 'udp://dashboard.example.com:22020/admin';
+		o.retain = true;
 		o.depends('etcmd', 'web');
 		o.renderWidget = function() {
 			const node = form.Value.prototype.renderWidget.apply(this, arguments);
@@ -1110,6 +1123,7 @@ return view.extend({
 			_('Unique device identifier UUID in the cloud management console (Corresponding flag: --machine-id). Automatically generated on initial install. Changing UUID will automatically clear local cloud cache.')
 		);
 		o.placeholder = 'df33f4ba-c01b-4961-82f3-a424f39d5a9c';
+		o.retain = true;
 		o.depends('etcmd', 'web');
 		o.validate = function(section_id, value) {
 			if (!value || value.length === 0)
@@ -1169,6 +1183,7 @@ return view.extend({
 		o = s.taboption('advanced', form.Value, 'custom_params', _('Custom Command Parameters'),
 			_('Additional command-line parameters appended to easytier-core.')
 		);
+		o.retain = true;
 		o.depends('etcmd', 'etcmd');
 
 		// --- Web Console ---
