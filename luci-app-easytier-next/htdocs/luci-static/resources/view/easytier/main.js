@@ -996,6 +996,22 @@ return view.extend({
 		o.value('config', _('Configuration File'));
 		o.value('web', _('Cloud Web Config'));
 		o.default = 'etcmd';
+		o.onchange = function(ev, section_id, value) {
+			window.requestAnimationFrame(function() {
+				const formNode = document.querySelector('.cbi-map') || document.body;
+				if (formNode) {
+					const invalidInputs = formNode.querySelectorAll('.cbi-input-invalid');
+					invalidInputs.forEach(function(el) {
+						if (el.offsetParent === null) {
+							el.classList.remove('cbi-input-invalid');
+							el.removeAttribute('aria-invalid');
+							const parent = el.closest('.cbi-value');
+							if (parent) parent.classList.remove('cbi-value-error');
+						}
+					});
+				}
+			});
+		};
 
 		o = s.taboption('general', form.Value, 'network_name', _('Network Name'),
 			_('The VPN network name to identify this virtual network (Corresponding flag: --network-name).')
