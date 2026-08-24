@@ -1135,6 +1135,15 @@ return view.extend({
 		o.default = '/etc/easytier/cloud';
 		o.placeholder = '/etc/easytier/cloud';
 		o.depends('etcmd', 'web');
+		o.validate = function(section_id, value) {
+			if (!value || value.length === 0)
+				return true;
+			const cleanPath = value.trim().replace(/\/+$/, '');
+			if (cleanPath === '/etc/easytier' || cleanPath === '/etc' || cleanPath === '') {
+				return _('Cannot use root directory %s directly. Please specify a subfolder (e.g. %s).').format(value, '/etc/easytier/cloud');
+			}
+			return true;
+		};
 		o.renderWidget = function() {
 			const node = form.Value.prototype.renderWidget.apply(this, arguments);
 			const input = node.querySelector ? (node.querySelector('input') || node) : node;

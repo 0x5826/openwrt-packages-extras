@@ -37,6 +37,9 @@ msgstr "自动协商并分配虚拟网卡 IP 地址 (对应参数：-d, --dhcp)�
 msgid "Automatically open and manage firewall traffic rules on WAN zone to allow incoming connections for external peers."
 msgstr "自动在 WAN 防火墙区域创建并管理通信规则，放行外部节点连接本节点的入站流量。"
 
+msgid "Cannot use root directory %s directly. Please specify a subfolder (e.g. %s)."
+msgstr "禁止直接使用根配置目录 %s 以防止文件冲突。请指定子目录（例如：%s）。"
+
 msgid "Clear Logs"
 msgstr "清空日志"
 
