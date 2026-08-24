@@ -135,7 +135,8 @@ local methods = {
 			local web_st = get_service_state('/usr/bin/easytier-web', 'web')
 
 			local data = {
-				installed = fs.access('/usr/bin/easytier-core'),
+				installed = fs.access('/usr/bin/easytier-core') and true or false,
+				web_installed = fs.access('/usr/bin/easytier-web') and true or false,
 				version = get_cached_version(),
 				core = core_st,
 				web = web_st,

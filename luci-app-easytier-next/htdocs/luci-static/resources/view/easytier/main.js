@@ -93,7 +93,16 @@ function renderCoreStatus(stateObj) {
 	]);
 }
 
-function renderWebStatus(stateObj) {
+function renderWebStatus(stateObj, webInstalled) {
+	if (webInstalled === false) {
+		return E('div', { 'class': 'cbi-value' }, [
+			E('label', { 'class': 'cbi-value-title' }, _('Web Console Status')),
+			E('div', { 'class': 'cbi-value-field' }, [
+				E('span', { 'style': 'font-weight: bold; color: #6c757d;' }, _('Not Installed'))
+			])
+		]);
+	}
+
 	const state = stateObj ? stateObj.state : 'stopped';
 	const pid = stateObj ? stateObj.pid : null;
 	const isRunning = (state === 'managed' || state === 'unmanaged');
@@ -915,7 +924,7 @@ return view.extend({
 					if (statusContainer) {
 						statusContainer.replaceChildren(
 							renderCoreStatus(curStatus.core),
-							renderWebStatus(curStatus.web)
+							renderWebStatus(curStatus.web, curStatus.web_installed)
 						);
 					}
 
@@ -942,7 +951,7 @@ return view.extend({
 					E('h3', {}, _('Service Status')),
 					E('div', { 'id': 'easytier_service_status_display' }, [
 						renderCoreStatus(status.core),
-						renderWebStatus(status.web)
+						renderWebStatus(status.web, status.web_installed)
 					])
 				]),
 				E('div', { 'class': 'cbi-section' }, [
@@ -982,7 +991,9 @@ return view.extend({
 		const s = map.section(form.NamedSection, 'settings', 'easytier', _('Settings'));
 		s.tab('general', _('Core Settings'));
 		s.tab('advanced', _('Advanced Options'));
-		s.tab('web', _('Web Console'));
+		if (status.web_installed !== false) {
+			s.tab('web', _('Web Console'));
+		}
 		s.tab('topology', _('Network Topology'));
 		s.tab('logs', _('Logs'));
 
@@ -1230,23 +1241,25 @@ return view.extend({
 		o.depends('etcmd', 'etcmd');
 
 		// --- Web Console ---
-		o = s.taboption('web', form.Flag, 'web_enabled', _('Enable Web Console Service'),
-			_('The web console may consume significant memory, please enable as needed.')
-		);
-		o.rmempty = false;
+		if (status.web_installed !== false) {
+			o = s.taboption('web', form.Flag, 'web_enabled', _('Enable Web Console Service'),
+				_('The web console may consume significant memory, please enable as needed.')
+			);
+			o.rmempty = false;
 
-		o = s.taboption('web', form.Value, 'web_html_port', _('Web Console Port'),
-			_('HTTP listen port for easytier-web embedded web dashboard.')
-		);
-		o.datatype = 'port';
-		o.default = '22020';
-		o.placeholder = '22020';
+			o = s.taboption('web', form.Value, 'web_html_port', _('Web Console Port'),
+				_('HTTP listen port for easytier-web embedded web dashboard.')
+			);
+			o.datatype = 'port';
+			o.default = '22020';
+			o.placeholder = '22020';
 
-		o = s.taboption('web', form.Value, 'web_dir', _('Web Data Directory'),
-			_('Directory to store SQLite database for easytier-web.')
-		);
-		o.default = '/etc/easytier';
-		o.placeholder = '/etc/easytier';
+			o = s.taboption('web', form.Value, 'web_dir', _('Web Data Directory'),
+				_('Directory to store SQLite database for easytier-web.')
+			);
+			o.default = '/etc/easytier';
+			o.placeholder = '/etc/easytier';
+		}
 
 		// --- Network Topology ---
 		const topologyActions = s.taboption('topology', form.DummyValue, '_topology_actions');
