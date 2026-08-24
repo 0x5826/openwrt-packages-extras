@@ -205,9 +205,6 @@ msgstr ""
 msgid "Port for local CLI and RPC management portal (Corresponding flag: --rpc-portal)."
 msgstr ""
 
-msgid "Proxy CIDRs"
-msgstr ""
-
 msgid "Proxy Network"
 msgstr ""
 
