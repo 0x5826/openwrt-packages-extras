@@ -37,9 +37,6 @@ msgstr "自動協商並分配虛擬網卡 IP 位址 (對應參數：-d, --dhcp)�
 msgid "Automatically open and manage firewall traffic rules on WAN zone to allow incoming connections for external peers."
 msgstr "自動在 WAN 防火牆區域創建並管理通信規則，放行外部節點連接本節點的入站流量。"
 
-msgid "Cannot use root directory %s directly. Please specify a subfolder (e.g. %s)."
-msgstr "禁止直接使用根配置目錄 %s 以防止檔案衝突。請指定子目錄（例如：%s）。"
-
 msgid "Clear Logs"
 msgstr "清空日誌"
 
@@ -57,9 +54,6 @@ msgstr "Collecting logs..."
 
 msgid "Command-line"
 msgstr "命令行參數"
-
-msgid "Config Directory"
-msgstr "配置快取目錄"
 
 msgid "Configuration File"
 msgstr "配置檔案"
@@ -81,9 +75,6 @@ msgstr "開銷"
 
 msgid "Custom Command Parameters"
 msgstr "自定義啟動參數"
-
-msgid "Directory path to store downloaded cloud network configuration files (Corresponding flag: --config-dir)."
-msgstr "用於存儲雲端拉取的網路配置檔案的本地目錄路徑 (對應參數：--config-dir)。"
 
 msgid "Directory to store SQLite database for easytier-web."
 msgstr "Directory to store SQLite database for easytier-web."

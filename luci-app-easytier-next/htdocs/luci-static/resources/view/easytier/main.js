@@ -1129,31 +1129,6 @@ return view.extend({
 			return node;
 		};
 
-		o = s.taboption('general', form.Value, 'config_dir', _('Config Directory'),
-			_('Directory path to store downloaded cloud network configuration files (Corresponding flag: --config-dir).')
-		);
-		o.default = '/etc/easytier/cloud';
-		o.placeholder = '/etc/easytier/cloud';
-		o.depends('etcmd', 'web');
-		o.validate = function(section_id, value) {
-			if (!value || value.length === 0)
-				return true;
-			const cleanPath = value.trim().replace(/\/+$/, '');
-			if (cleanPath === '/etc/easytier' || cleanPath === '/etc' || cleanPath === '') {
-				return _('Cannot use root directory %s directly. Please specify a subfolder (e.g. %s).').format(value, '/etc/easytier/cloud');
-			}
-			return true;
-		};
-		o.renderWidget = function() {
-			const node = form.Value.prototype.renderWidget.apply(this, arguments);
-			const input = node.querySelector ? (node.querySelector('input') || node) : node;
-			if (input && input.style) {
-				input.style.width = '295px';
-				input.style.maxWidth = '100%';
-			}
-			return node;
-		};
-
 		// --- Advanced Options ---
 		o = s.taboption('advanced', form.Value, 'rpc_port', _('RPC Management Port'),
 			_('Port for local CLI and RPC management portal (Corresponding flag: --rpc-portal).')

@@ -315,13 +315,6 @@ start_core() {
 	config_get custom_config_file settings custom_config_file '/etc/easytier/config.toml'
 	config_get web_config settings web_config ''
 	config_get machine_id settings machine_id ''
-	config_get config_dir settings config_dir '/etc/easytier/cloud'
-	[ -z "$config_dir" ] && config_dir='/etc/easytier/cloud'
-	case "$config_dir" in
-		/etc/easytier|/etc/easytier/|/etc|/etc/)
-			config_dir='/etc/easytier/cloud'
-			;;
-	esac
 	config_get custom_params settings custom_params ''
 	config_get_bool multi_thread settings multi_thread 0
 	config_get_bool magic_dns settings magic_dns 0
@@ -366,13 +359,8 @@ start_core() {
 		fi
 		[ -n "$machine_id" ] && procd_append_param command --machine-id "$machine_id"
 
-		# Config directory (default to /etc/easytier/cloud for clean isolation)
-		[ -z "$config_dir" ] && config_dir='/etc/easytier/cloud'
-		case "$config_dir" in
-			/etc/easytier|/etc/easytier/|/etc|/etc/)
-				config_dir='/etc/easytier/cloud'
-				;;
-		esac
+		# Internal cloud config directory (isolated storage)
+		local config_dir='/etc/easytier/cloud'
 
 		# Atomic check & clean for Machine ID change
 		local last_mid_file="$config_dir/.machine_id"
