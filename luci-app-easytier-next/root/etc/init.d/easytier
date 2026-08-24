@@ -17,23 +17,21 @@ setup_firewall_and_network() {
 	local changed_net=0
 	local changed_fw=0
 
-	# 1. Ensure network interface exists in UCI for broad OpenWrt compatibility
-	local dev ifname
-	dev=$(uci -q get network.easytier.device)
-	ifname=$(uci -q get network.easytier.ifname)
+	# 1. Ensure network interface exists and is exactly synchronized with dev_name
+	local cur_dev cur_ifname
+	cur_dev=$(uci -q get network.easytier.device)
+	cur_ifname=$(uci -q get network.easytier.ifname)
 
-	if [ -z "$dev" ] && [ -z "$ifname" ]; then
+	if ! uci -q get network.easytier >/dev/null; then
 		uci -q set network.easytier=interface
 		uci -q set network.easytier.proto='none'
 		uci -q set network.easytier.device="$dev_name"
 		uci -q set network.easytier.ifname="$dev_name"
 		changed_net=1
 	else
-		if [ -z "$dev" ]; then
+		if [ "$cur_dev" != "$dev_name" ] || [ "$cur_ifname" != "$dev_name" ]; then
+			uci -q set network.easytier.proto='none'
 			uci -q set network.easytier.device="$dev_name"
-			changed_net=1
-		fi
-		if [ -z "$ifname" ]; then
 			uci -q set network.easytier.ifname="$dev_name"
 			changed_net=1
 		fi
@@ -79,11 +77,13 @@ setup_firewall_and_network() {
 			changed_fw=1
 		fi
 
-		local has_dev=0
-		for d in $(uci -q get firewall.easytier.device); do
-			[ "$d" = "$dev_name" ] && has_dev=1
-		done
-		if [ "$has_dev" = "0" ]; then
+		# Cleanly synchronize device list (remove stale devices, enforce single current dev_name)
+		local cur_devices
+		cur_devices=$(uci -q get firewall.easytier.device)
+		if [ "$cur_devices" != "$dev_name" ]; then
+			for d in $cur_devices; do
+				uci -q del_list firewall.easytier.device="$d"
+			done
 			uci -q add_list firewall.easytier.device="$dev_name"
 			changed_fw=1
 		fi
