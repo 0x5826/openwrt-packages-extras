@@ -991,26 +991,35 @@ return view.extend({
 		o = s.taboption('general', form.Flag, 'enabled', _('Enable Core Service'));
 		o.rmempty = false;
 
+		function cleanHiddenErrors(rootNode) {
+			const node = rootNode || document.querySelector('.cbi-map') || document.body;
+			if (!node || (rootNode && !rootNode.isConnected)) return;
+			let changed = false;
+			node.querySelectorAll('.cbi-input-invalid').forEach(function(el) {
+				if (el.offsetParent === null || window.getComputedStyle(el).display === 'none' || el.closest('[style*="display: none"]')) {
+					el.classList.remove('cbi-input-invalid');
+					el.removeAttribute('aria-invalid');
+					const parent = el.closest('.cbi-value');
+					if (parent) parent.classList.remove('cbi-value-error');
+					changed = true;
+				}
+			});
+			if (changed && window.ui && typeof ui.updateTabs === 'function') {
+				ui.updateTabs(null, node);
+			}
+		}
+
 		o = s.taboption('general', form.ListValue, 'etcmd', _('Startup Method'));
 		o.value('etcmd', _('Command-line'));
 		o.value('config', _('Configuration File'));
 		o.value('web', _('Cloud Web Config'));
 		o.default = 'etcmd';
 		o.onchange = function(ev, section_id, value) {
-			window.requestAnimationFrame(function() {
-				const formNode = document.querySelector('.cbi-map') || document.body;
-				if (formNode) {
-					const invalidInputs = formNode.querySelectorAll('.cbi-input-invalid');
-					invalidInputs.forEach(function(el) {
-						if (el.offsetParent === null) {
-							el.classList.remove('cbi-input-invalid');
-							el.removeAttribute('aria-invalid');
-							const parent = el.closest('.cbi-value');
-							if (parent) parent.classList.remove('cbi-value-error');
-						}
-					});
-				}
-			});
+			const mapNode = this.map.node || document.querySelector('.cbi-map') || document.body;
+			cleanHiddenErrors(mapNode);
+			window.requestAnimationFrame(function() { cleanHiddenErrors(mapNode); });
+			window.setTimeout(function() { cleanHiddenErrors(mapNode); }, 50);
+			window.setTimeout(function() { cleanHiddenErrors(mapNode); }, 150);
 		};
 
 		o = s.taboption('general', form.Value, 'network_name', _('Network Name'),
@@ -1351,7 +1360,12 @@ return view.extend({
 			);
 		};
 
-		return map.render();
+		return map.render().then(function(node) {
+			const cleanFn = function() { cleanHiddenErrors(node); };
+			document.addEventListener('dependency-update', cleanFn);
+			document.addEventListener('cbi-tab-active', cleanFn);
+			return node;
+		});
 	},
 
 	handleSaveApply: function(ev, mode) {
