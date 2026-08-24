@@ -14,7 +14,7 @@ msgid "Absolute path to the TOML configuration file (Corresponding flag: -c, --c
 msgstr "TOML 格式配置檔案的絕對路徑 (對應參數：-c, --config-file)。請確保該檔案已存在並包含有效的 EasyTier 配置。"
 
 msgid "Action"
-msgstr "Action"
+msgstr "操作"
 
 msgid "Additional command-line parameters appended to easytier-core."
 msgstr "附加到 easytier-core 進程末尾的自定義參數。"
@@ -50,7 +50,7 @@ msgid "Collecting data ..."
 msgstr "正在收集數據..."
 
 msgid "Collecting logs..."
-msgstr "Collecting logs..."
+msgstr "正在收集日誌..."
 
 msgid "Command-line"
 msgstr "命令行參數"
@@ -62,10 +62,10 @@ msgid "Configuration File Path"
 msgstr "配置檔案路徑"
 
 msgid "Connected Peer Nodes"
-msgstr "Connected Peer Nodes"
+msgstr "已連線對等節點"
 
 msgid "Core Service Status"
-msgstr "Core Service Status"
+msgstr "核心服務狀態"
 
 msgid "Core Settings"
 msgstr "基本設定"
@@ -77,7 +77,7 @@ msgid "Custom Command Parameters"
 msgstr "自定義啟動參數"
 
 msgid "Directory to store SQLite database for easytier-web."
-msgstr "Directory to store SQLite database for easytier-web."
+msgstr "用於存放 easytier-web SQLite 資料庫檔案的目錄。"
 
 msgid "EasyTier"
 msgstr "EasyTier"
@@ -104,7 +104,7 @@ msgid "Enable Tunnel Traffic SNAT"
 msgstr "開啟隧道流量 SNAT"
 
 msgid "Enable Web Console Service"
-msgstr "Enable Web Console Service"
+msgstr "啟用 Web 控制台服務"
 
 msgid "Enable multi-threaded packet processing for higher throughput (Corresponding flag: --multi-thread)."
 msgstr "啟用多線程數據包處理以提升高吞吐性能 (對應參數：--multi-thread)。"
@@ -119,10 +119,10 @@ msgid "Failed to load peers: %s"
 msgstr "載入對等節點失敗：%s"
 
 msgid "Failed to load topology: %s"
-msgstr "Failed to load topology: %s"
+msgstr "載入拓撲失敗：%s"
 
 msgid "HTTP listen port for easytier-web embedded web dashboard."
-msgstr "HTTP listen port for easytier-web embedded web dashboard."
+msgstr "easytier-web 內建 Web 控制台的 HTTP 監聽連接埠。"
 
 msgid "Hostname"
 msgstr "主機名稱"
@@ -146,10 +146,10 @@ msgid "Latency"
 msgstr "延遲"
 
 msgid "Local Node Information"
-msgstr "Local Node Information"
+msgstr "本地節點資訊"
 
 msgid "Local service is not running."
-msgstr "Local service is not running."
+msgstr "本地服務未運行。"
 
 msgid "Log Actions"
 msgstr "日誌操作"
@@ -158,10 +158,10 @@ msgid "Logs"
 msgstr "運行日誌"
 
 msgid "Logs cleared."
-msgstr "Logs cleared."
+msgstr "日誌已清空。"
 
 msgid "Loss Rate"
-msgstr "Loss Rate"
+msgstr "丟包率"
 
 msgid "Machine ID (UUID)"
 msgstr "設備唯一標識 (UUID)"
@@ -185,13 +185,13 @@ msgid "Network Topology"
 msgstr "網路拓撲"
 
 msgid "No connected remote peers found."
-msgstr "No connected remote peers found."
+msgstr "未找到已連線的遠端對等節點。"
 
 msgid "No logs available."
-msgstr "No logs available."
+msgstr "暫無可用的日誌記錄。"
 
 msgid "No topology data available."
-msgstr "No topology data available."
+msgstr "暫無拓撲數據。"
 
 msgid "None"
 msgstr "無"
@@ -206,7 +206,7 @@ msgid "Port for local CLI and RPC management portal (Corresponding flag: --rpc-p
 msgstr "本地 CLI 與 RPC 互動連接埠 (對應參數：--rpc-portal)。"
 
 msgid "Proxy CIDRs"
-msgstr "Proxy CIDRs"
+msgstr "代理網段"
 
 msgid "Proxy Network"
 msgstr "子網代理"
@@ -233,7 +233,7 @@ msgid "Refresh Logs"
 msgstr "重新整理日誌"
 
 msgid "Refresh Topology"
-msgstr "Refresh Topology"
+msgstr "重新整理拓撲"
 
 msgid "Remote web configuration server address (Corresponding flag: -w, --web-config)."
 msgstr "遠程 Web 配置伺服器位址 (對應參數：-w, --web-config)。"
@@ -242,16 +242,16 @@ msgid "Reset View"
 msgstr "重置視圖"
 
 msgid "Restart"
-msgstr "Restart"
+msgstr "重啟"
 
 msgid "Restarting service..."
-msgstr "Restarting service..."
+msgstr "正在重啟服務..."
 
 msgid "Running (Managed)"
-msgstr "Running (Managed)"
+msgstr "運行中 (Procd 託管)"
 
 msgid "Running (Unmanaged)"
-msgstr "Running (Unmanaged)"
+msgstr "運行中 (非託管進程)"
 
 msgid "Service Status"
 msgstr "服務運行狀態"
@@ -266,7 +266,7 @@ msgid "Startup Method"
 msgstr "啟動方式"
 
 msgid "Stopped"
-msgstr "Stopped"
+msgstr "已停止"
 
 msgid "Subnet CIDRs to proxy and announce through this node (Corresponding flag: -n, --proxy-networks). Select from the detected local subnets below or enter custom CIDRs."
 msgstr "透過此節點代理並通告的子網網段 (對應參數：-n, --proxy-networks)。可直接下拉選擇探測到的本地網段或手動輸入。"
@@ -290,10 +290,10 @@ msgid "The static IPv6 address of this node (Corresponding flag: --ipv6)."
 msgstr "本節點的靜態 IPv6 位址 (對應參數：--ipv6)。"
 
 msgid "The web console may consume significant memory, please enable as needed."
-msgstr "The web console may consume significant memory, please enable as needed."
+msgstr "Web 控制台可能會消耗較多記憶體，請按需啟用。"
 
 msgid "Topology Actions"
-msgstr "Topology Actions"
+msgstr "拓撲操作"
 
 msgid "Tunnel"
 msgstr "連線方式"
@@ -323,10 +323,10 @@ msgid "Web Console Port"
 msgstr "控制台監聽連接埠"
 
 msgid "Web Console Status"
-msgstr "Web Console Status"
+msgstr "控制台服務狀態"
 
 msgid "Web Data Directory"
-msgstr "Web Data Directory"
+msgstr "控制台數據目錄"
 
 msgid "Zoom In"
 msgstr "放大"
