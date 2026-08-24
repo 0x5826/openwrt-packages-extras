@@ -1140,7 +1140,7 @@ return view.extend({
 
 		// Web Server Options under 'web' mode
 		o = s.taboption('general', form.Value, 'web_config', _('Web Config Server URL'),
-			_('Remote web configuration server address (Corresponding flag: -w, --web-config).')
+			_('Remote web configuration server address or username (Corresponding flag: -w, --web-config). Supports complete URL (e.g. udp://127.0.0.1:22020/admin) or username only (e.g. admin, connecting to official cloud server).')
 		);
 		o.default = 'udp://127.0.0.1:22020/admin';
 		o.placeholder = 'udp://127.0.0.1:22020/admin';
@@ -1154,8 +1154,17 @@ return view.extend({
 				if (!value || value.trim() === '') {
 					return _('Web Config Server URL cannot be empty.');
 				}
-				if (!/^(tcp|udp|ws|wss|wg|quic):\/\/.+/.test(value.trim())) {
-					return _('Invalid URL format, must start with tcp://, udp://, ws://, wss://, wg://, or quic://');
+				const val = value.trim();
+				// If URL schema is provided, must start with supported protocols
+				if (val.indexOf('://') !== -1) {
+					if (!/^(tcp|udp|ws|wss|wg|quic):\/\/.+/.test(val)) {
+						return _('Invalid URL format, must start with tcp://, udp://, ws://, wss://, wg://, or quic://');
+					}
+				} else {
+					// Single username/network name token
+					if (!/^[a-zA-Z0-9_\-\.\@]+$/.test(val)) {
+						return _('Invalid username format, only letters, digits, and _ - . @ are allowed.');
+					}
 				}
 			}
 			return true;

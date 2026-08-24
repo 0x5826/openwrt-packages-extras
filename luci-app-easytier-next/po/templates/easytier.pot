@@ -139,6 +139,9 @@ msgstr ""
 msgid "Invalid UUID format (e.g. %s)"
 msgstr ""
 
+msgid "Invalid username format, only letters, digits, and _ - . @ are allowed."
+msgstr ""
+
 msgid "Latency"
 msgstr ""
 
@@ -232,7 +235,7 @@ msgstr ""
 msgid "Refresh Topology"
 msgstr ""
 
-msgid "Remote web configuration server address (Corresponding flag: -w, --web-config)."
+msgid "Remote web configuration server address or username (Corresponding flag: -w, --web-config). Supports complete URL (e.g. udp://127.0.0.1:22020/admin) or username only (e.g. admin, connecting to official cloud server)."
 msgstr ""
 
 msgid "Reset View"
