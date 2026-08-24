@@ -1052,13 +1052,6 @@ return view.extend({
 		o.rmempty = true;
 		o.depends('etcmd', 'etcmd');
 
-		o = s.taboption('general', form.Flag, 'allow_wan', _('Allow WAN Access'),
-			_('Automatically open and manage firewall traffic rules on WAN zone to allow incoming connections for external peers.')
-		);
-		o.default = '0';
-		o.rmempty = false;
-		o.depends('etcmd', 'etcmd');
-
 		o = s.taboption('general', form.Flag, 'enable_exit_node', _('Enable Exit Node'),
 			_('Allow other peers in the network to route their Internet traffic through this node (Corresponding flag: --enable-exit-node).')
 		);
@@ -1153,6 +1146,12 @@ return view.extend({
 		};
 
 		// --- Advanced Options ---
+		o = s.taboption('advanced', form.Flag, 'allow_wan', _('Allow WAN Access'),
+			_('Automatically open and manage firewall traffic rules on WAN zone to allow incoming connections for external peers.')
+		);
+		o.default = '0';
+		o.rmempty = false;
+
 		o = s.taboption('advanced', form.Value, 'rpc_port', _('RPC Management Port'),
 			_('Port for local CLI and RPC management portal (Corresponding flag: --rpc-portal).')
 		);
