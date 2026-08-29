@@ -34,6 +34,11 @@ GO_PKG_TAGS:=ts_include_cli,ts_omit_aws,ts_omit_bird,ts_omit_completion,ts_omit_
 include $(INCLUDE_DIR)/package.mk
 include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
 
+define Build/Prepare
+	$(call Build/Prepare/Default)
+	$(SED) 's/^go 1\.26\..*/go 1.26.5/' $(PKG_BUILD_DIR)/go.mod
+endef
+
 define Package/tailscale-next
   SECTION:=net
   CATEGORY:=Network
