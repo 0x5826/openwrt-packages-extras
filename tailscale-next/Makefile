@@ -12,7 +12,8 @@ PKG_VERSION:=1.102.3
 PKG_RELEASE:=1
 
 PKG_SOURCE:=tailscale-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://codeload.github.com/tailscale/tailscale/tar.gz/v$(PKG_VERSION)?
+PKG_SOURCE_URL:=https://proxy.seckv.com/https://codeload.github.com/tailscale/tailscale/tar.gz/v$(PKG_VERSION)? \
+		https://codeload.github.com/tailscale/tailscale/tar.gz/v$(PKG_VERSION)?
 PKG_HASH:=136f718e107aca898bbdcdba1179cbaaabe237ef6bc0533555ca1707dbe694a5
 
 PKG_MAINTAINER:=Zephyr Lykos <self@mochaa.ws>, \
