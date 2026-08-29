@@ -602,6 +602,17 @@ static void restore_all_metrics(void) {
 		link_t *link = &links[i];
 		if (link->enabled && link->is_up && link->device[0] != '\0') {
 			char cmd[512];
+			// Delete floated metric if it was in fault state
+			if (link->current_metric != link->metric) {
+				if (link->gateway[0] != '\0') {
+					snprintf(cmd, sizeof(cmd), "ip route del default via %s dev %s metric %d 2>/dev/null", 
+					         link->gateway, link->device, link->current_metric);
+				} else {
+					snprintf(cmd, sizeof(cmd), "ip route del default dev %s metric %d 2>/dev/null", 
+					         link->device, link->current_metric);
+				}
+				system(cmd);
+			}
 			if (link->gateway[0] != '\0') {
 				snprintf(cmd, sizeof(cmd), "ip route replace default via %s dev %s metric %d 2>/dev/null", 
 				         link->gateway, link->device, link->metric);
