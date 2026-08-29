@@ -7,54 +7,12 @@ _get_global_enabled() {
 	config_get_bool _GLOBAL_ENABLED "$1" "enabled" 0
 }
 
-_NEED_COMMIT=0
-
-setup_network_metrics() {
-	local cfg="$1"
-	local name
-	local metric
-	local priority
-	config_get name "$cfg" "name"
-	config_get priority "$cfg" "priority"
-	case "$priority" in
-		""|*[!0-9]*) priority=1 ;;
-	esac
-	# 去除前导零，防止 Busybox ash 将其误判为八进制导致算术运算报错（如 08、09）
-	while [ "${priority#0}" != "$priority" ]; do
-		priority="${priority#0}"
-	done
-	[ -z "$priority" ] && priority=1
-	[ "$priority" -eq 0 ] && priority=1
-	metric=$((priority * 10))
-	
-	if [ -n "$name" ] && [ -n "$metric" ]; then
-		# Check if network interface exists in uci
-		if uci get network."$name" >/dev/null 2>&1; then
-			local current_net_metric
-			current_net_metric=$(uci -q get network."$name".metric)
-			if [ "$current_net_metric" != "$metric" ]; then
-				logger -t linkback "Aligning network.$name.metric to $metric (was $current_net_metric)"
-				uci set network."$name".metric="$metric"
-				_NEED_COMMIT=1
-			fi
-		fi
-	fi
-}
-
 start_service() {
 	config_load "linkback"
 	
 	local _GLOBAL_ENABLED=0
 	config_foreach _get_global_enabled "global"
 	[ "$_GLOBAL_ENABLED" -eq 1 ] || return 0
-
-	_NEED_COMMIT=0
-	config_foreach setup_network_metrics "link"
-	if [ "$_NEED_COMMIT" -eq 1 ]; then
-		uci commit network
-		# Trigger netifd config reload dynamically without breaking active connections
-		/etc/init.d/network reload
-	fi
 
 	procd_open_instance "main"
 	procd_set_param command /usr/sbin/linkbackd
