@@ -33,12 +33,11 @@ msgstr "概览"
 msgid "Unknown"
 msgstr "未知"
 
-msgid "Running (Managed)"
-msgstr "运行中 (受控)"
-
+msgid "Running"
+msgstr "运行中"
 
 msgid "Running (Unmanaged)"
-msgstr "运行中 (不受控)"
+msgstr "运行中 (非托管)"
 
 msgid "Stopped"
 msgstr "已停止"

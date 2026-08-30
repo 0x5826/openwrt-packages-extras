@@ -247,11 +247,11 @@ msgstr "重啟"
 msgid "Restarting service..."
 msgstr "正在重啟服務..."
 
-msgid "Running (Managed)"
-msgstr "運行中 (Procd 託管)"
+msgid "Running"
+msgstr "運行中"
 
 msgid "Running (Unmanaged)"
-msgstr "運行中 (非託管進程)"
+msgstr "運行中 (非託管)"
 
 msgid "Service Status"
 msgstr "服務運行狀態"
