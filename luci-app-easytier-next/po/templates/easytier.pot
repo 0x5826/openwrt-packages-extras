@@ -247,7 +247,7 @@ msgstr ""
 msgid "Restarting service..."
 msgstr ""
 
-msgid "Running (Managed)"
+msgid "Running"
 msgstr ""
 
 msgid "Running (Unmanaged)"

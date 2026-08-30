@@ -65,7 +65,7 @@ return view.extend({
 			var isUnmanaged = (state === 'unmanaged');
 
 			if (isManaged) {
-				statusText = _('Running (Managed)');
+				statusText = _('Running');
 				statusColor = 'green';
 			} else if (isUnmanaged) {
 				statusText = _('Running (Unmanaged)');

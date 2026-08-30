@@ -64,7 +64,7 @@ function renderCoreStatus(stateObj) {
 	let text = _('Stopped');
 	let color = 'red';
 	if (state === 'managed') {
-		text = _('Running (Managed)');
+		text = _('Running');
 		color = 'green';
 	} else if (state === 'unmanaged') {
 		text = _('Running (Unmanaged)');
@@ -110,7 +110,7 @@ function renderWebStatus(stateObj, webInstalled) {
 	let text = _('Stopped');
 	let color = 'red';
 	if (state === 'managed') {
-		text = _('Running (Managed)');
+		text = _('Running');
 		color = 'green';
 	} else if (state === 'unmanaged') {
 		text = _('Running (Unmanaged)');

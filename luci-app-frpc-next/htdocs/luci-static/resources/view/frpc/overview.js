@@ -30,7 +30,7 @@ function renderState(status) {
 	let color = '#999';
 
 	if (status.state === 'managed') {
-		text = _('Running (Managed)');
+		text = _('Running');
 		color = 'green';
 	} else if (status.state === 'unmanaged') {
 		text = _('Running (Unmanaged)');
