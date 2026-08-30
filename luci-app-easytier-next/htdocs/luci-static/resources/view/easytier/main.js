@@ -479,20 +479,24 @@ function renderTopologySvg(topoData, peerData) {
 		link.latency = resolvedLat;
 	}
 
-	// 优雅星型/环形舒展排版算法：本端节点居中，对等节点宽阔环绕
-	const otherNodes = nodes.filter(function(n) {
-		return String(n.node_id) !== String(localNode.node_id);
-	});
-	const otherCount = otherNodes.length;
-
-	// 宽阔舒适的安全间距（确保任何规模下节点之间与连线徽标均有充足舒展空间）
-	let R = 260;
-	if (otherCount <= 2) {
-		R = 260;
-	} else if (otherCount <= 4) {
-		R = 280;
+	// 优雅全对称正多边形环形排版算法：本端置于 12 点钟正上方，对端顺时针开阔均匀环绕（3 节点为等边三角形）
+	let R = 240;
+	if (nodeCount <= 2) {
+		R = 160;
+	} else if (nodeCount === 3) {
+		R = 240;
+	} else if (nodeCount === 4) {
+		R = 250;
+	} else if (nodeCount === 5) {
+		R = 270;
+	} else if (nodeCount === 6) {
+		R = 290;
+	} else if (nodeCount === 7) {
+		R = 320;
+	} else if (nodeCount === 8) {
+		R = 350;
 	} else {
-		R = Math.max(280, Math.round((otherCount * 260) / (2 * Math.PI)));
+		R = Math.max(350, Math.round((nodeCount * 260) / (2 * Math.PI)));
 	}
 
 	const padding = 150;
@@ -503,17 +507,17 @@ function renderTopologySvg(topoData, peerData) {
 	const cy = Math.round(size / 2);
 
 	const posMap = {};
-	posMap[localNode.node_id] = { x: cx, y: cy };
 
-	if (otherCount === 1) {
-		posMap[otherNodes[0].node_id] = { x: cx + R, y: cy };
-	} else if (otherCount === 2) {
-		posMap[otherNodes[0].node_id] = { x: cx - R, y: cy };
-		posMap[otherNodes[1].node_id] = { x: cx + R, y: cy };
-	} else if (otherCount > 2) {
-		for (let i = 0; i < otherCount; i++) {
-			const angle = -Math.PI / 2 + (2 * Math.PI * i) / otherCount;
-			posMap[otherNodes[i].node_id] = {
+	if (nodeCount === 1) {
+		posMap[nodes[0].node_id] = { x: cx, y: cy };
+	} else if (nodeCount === 2) {
+		posMap[nodes[0].node_id] = { x: cx - R, y: cy };
+		posMap[nodes[1].node_id] = { x: cx + R, y: cy };
+	} else {
+		// 3 节点及以上：正多边形圆周分布，节点 0 (本端) 位于 12 点钟正上方，呈现等边三角形/正方形/正多边形
+		for (let i = 0; i < nodeCount; i++) {
+			const angle = -Math.PI / 2 + (2 * Math.PI * i) / nodeCount;
+			posMap[nodes[i].node_id] = {
 				x: Math.round(cx + R * Math.cos(angle)),
 				y: Math.round(cy + R * Math.sin(angle))
 			};
