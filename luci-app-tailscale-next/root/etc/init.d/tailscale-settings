@@ -429,10 +429,11 @@ handle_service_state() {
 	config_get service_enabled settings service_enabled '0'
 	
 	if [ "$service_enabled" = "0" ]; then
-		logger -t "$NAME" "Service is disabled, stopping tailscale"
+		logger -t "$NAME" "Service is disabled, stopping tailscale and cleaning up"
 		/etc/init.d/tailscale stop 2>/dev/null
 		/etc/init.d/tailscale disable 2>/dev/null
-		killall tailscaled 2>/dev/null
+		clean_firewall_rules
+		killall -9 tailscaled 2>/dev/null || true
 	else
 		logger -t "$NAME" "Service is enabled, ensuring tailscale is running"
 		/etc/init.d/tailscale enable 2>/dev/null

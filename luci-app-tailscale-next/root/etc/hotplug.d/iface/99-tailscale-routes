@@ -17,6 +17,10 @@
 [ "$DEVICE" = "tailscale0" ] || exit 0
 [ "$ACTION"  = "ifup"      ] || exit 0
 
+# Check if Tailscale service is enabled
+service_enabled=$(uci -q get tailscale.settings.service_enabled 2>/dev/null || echo 0)
+[ "$service_enabled" = "1" ] || exit 0
+
 LOCK=/tmp/tailscale_hotplug.lock
 
 # Timestamp-based lock: bail out if another restart fired within 30 s.
