@@ -358,6 +358,20 @@ msgstr "顯示所有對端連接線"
 msgid "Show Local Links Only"
 msgstr "僅聚焦本端連接線"
 
+msgid "Next Hop: %s (%s)"
+msgstr "下一跳中繼: %s (%s)"
+
+msgid "Next Hop: %s"
+msgstr "下一跳中繼: %s"
+
+msgid "Latency / Loss"
+msgstr "延遲 / 丟包"
+
+msgid "RX / TX"
+msgstr "接收 / 發送"
+
+
+
 
 
 

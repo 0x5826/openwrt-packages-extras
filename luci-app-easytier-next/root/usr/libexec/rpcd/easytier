@@ -99,32 +99,42 @@ local function get_cached_version()
 	return 'Unknown'
 end
 
-local function get_route_proxy_map()
-	local proxy_map = {}
-	if not fs.access('/usr/bin/easytier-cli') then return proxy_map end
-
+local function get_route_info_map()
+	local route_map = {}
+	if not fs.access('/usr/bin/easytier-cli') then return route_map end
 	local r_res = exec_cmd('/usr/bin/easytier-cli -o json route 2>/dev/null')
 	if r_res.code == 0 and r_res.raw and #r_res.raw > 0 then
 		local r_data = json.parse(r_res.raw)
-		if r_data and type(r_data) == 'table' then
+		if r_data and type(r_data) == 'table' and #r_data > 0 then
 			for _, item in ipairs(r_data) do
 				local cidrs = trim(item.proxy_cidrs or '')
 				local ip = trim(item.ipv4 or '')
 				local host = trim(item.hostname or '')
-				if cidrs ~= '' then
-					if ip ~= '' then
-						proxy_map[ip] = cidrs
-						local ip_clean = ip:match("^([^/]+)")
-						if ip_clean then proxy_map[ip_clean] = cidrs end
-					end
-					if host ~= '' then
-						proxy_map[host] = cidrs
-					end
+				local next_hop_host = trim(item.next_hop_hostname_lat_first or item.next_hop_hostname or '')
+				local next_hop_ip = trim(item.next_hop_ipv4_lat_first or item.next_hop_ipv4 or '')
+				local path_len = item.path_len_lat_first ~= nil and item.path_len_lat_first or item.path_len
+				local path_lat = item.path_latency_lat_first ~= nil and item.path_latency_lat_first or item.path_latency
+
+				local entry = {
+					proxy_cidrs = cidrs,
+					next_hop_hostname = next_hop_host,
+					next_hop_ipv4 = next_hop_ip,
+					path_len = path_len,
+					path_latency = path_lat
+				}
+
+				if ip ~= '' then
+					route_map[ip] = entry
+					local ip_clean = ip:match("^([^/]+)") or ip
+					route_map[ip_clean] = entry
+				end
+				if host ~= '' then
+					route_map[host] = entry
 				end
 			end
 		end
 	end
-	return proxy_map
+	return route_map
 end
 
 local methods = {
@@ -161,7 +171,7 @@ local methods = {
 				return { peers = {}, raw = '' }
 			end
 
-			local proxy_map = get_route_proxy_map()
+			local route_map = get_route_info_map()
 
 			local json_res = exec_cmd('/usr/bin/easytier-cli -o json peer 2>/dev/null')
 			if json_res.code == 0 and json_res.raw and #json_res.raw > 0 then
@@ -172,12 +182,19 @@ local methods = {
 						local p_ip = trim(item.cidr or item.ipv4 or '')
 						local p_host = trim(item.hostname or '')
 						local p_ip_clean = p_ip:match("^([^/]+)") or p_ip
-						local proxy_cidrs = proxy_map[p_ip] or proxy_map[p_ip_clean] or proxy_map[p_host] or ''
+						local r_entry = route_map[p_ip] or route_map[p_ip_clean] or route_map[p_host] or {}
+						local proxy_cidrs = r_entry.proxy_cidrs or ''
+						local next_hop_hostname = r_entry.next_hop_hostname or ''
+						local next_hop_ipv4 = r_entry.next_hop_ipv4 or ''
+						local path_latency = r_entry.path_latency ~= nil and r_entry.path_latency or ''
 
 						table.insert(peers, {
 							ipv4 = p_ip,
 							hostname = p_host,
 							proxy_cidrs = proxy_cidrs,
+							next_hop_hostname = next_hop_hostname,
+							next_hop_ipv4 = next_hop_ipv4,
+							path_latency = path_latency,
 							cost = trim(item.cost or ''),
 							latency = (item.lat_ms ~= nil and item.lat_ms ~= '-') and tostring(item.lat_ms) or '-',
 							loss_rate = trim(item.loss_rate or '-'),
@@ -208,12 +225,19 @@ local methods = {
 							local peer_ip = trim(cols[1] or '')
 							local peer_host = trim(cols[2] or '')
 							local peer_ip_clean = peer_ip:match("^([^/]+)") or peer_ip
-							local proxy_cidrs = proxy_map[peer_ip] or proxy_map[peer_ip_clean] or proxy_map[peer_host] or ''
+							local r_entry = route_map[peer_ip] or route_map[peer_ip_clean] or route_map[peer_host] or {}
+							local proxy_cidrs = r_entry.proxy_cidrs or ''
+							local next_hop_hostname = r_entry.next_hop_hostname or ''
+							local next_hop_ipv4 = r_entry.next_hop_ipv4 or ''
+							local path_latency = r_entry.path_latency ~= nil and r_entry.path_latency or ''
 
 							table.insert(peers, {
 								ipv4 = peer_ip,
 								hostname = peer_host,
 								proxy_cidrs = proxy_cidrs,
+								next_hop_hostname = next_hop_hostname,
+								next_hop_ipv4 = next_hop_ipv4,
+								path_latency = path_latency,
 								cost = cols[3] or '-',
 								latency = cols[4] or '-',
 								loss_rate = cols[5] or '-',
@@ -239,7 +263,7 @@ local methods = {
 				return { nodes = {} }
 			end
 
-			local proxy_map = get_route_proxy_map()
+			local route_map = get_route_info_map()
 			local res = exec_cmd('/usr/bin/easytier-cli -o json peer-center 2>/dev/null')
 			if res.code == 0 and res.raw and #res.raw > 0 then
 				local data = json.parse(res.raw)
@@ -250,7 +274,8 @@ local methods = {
 						local n_host = trim(n.hostname or '')
 						if n_host ~= '' and not n_host:lower():match("^unknown$") and n_ip ~= '' and n_ip ~= '-' then
 							local n_ip_clean = n_ip:match("^([^/]+)") or n_ip
-							n.proxy_cidrs = proxy_map[n_ip] or proxy_map[n_ip_clean] or proxy_map[n_host] or ''
+							local r_entry = route_map[n_ip] or route_map[n_ip_clean] or route_map[n_host] or {}
+							n.proxy_cidrs = r_entry.proxy_cidrs or ''
 							table.insert(valid_nodes, n)
 						end
 					end
