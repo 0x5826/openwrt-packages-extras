@@ -217,7 +217,19 @@ function renderLocalNodeInfo(peerData) {
 	]);
 }
 
+function injectTooltipStyle() {
+	if (document.getElementById('et_custom_tooltip_style')) return;
+	const css = [
+		'.et-tooltip-wrap { position: relative; display: inline-block; cursor: pointer; }',
+		'.et-tooltip-wrap .et-tooltip-bubble { visibility: hidden; opacity: 0; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%) translateY(4px); background: #0f172a; color: #f8fafc; font-size: 11px; font-weight: 500; font-family: monospace, sans-serif; white-space: nowrap; padding: 5px 9px; border-radius: 4px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); z-index: 9999; pointer-events: none; transition: opacity 0.15s ease, transform 0.15s ease; border: 1px solid #334155; }',
+		'.et-tooltip-wrap .et-tooltip-bubble::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #0f172a transparent transparent transparent; }',
+		'.et-tooltip-wrap:hover .et-tooltip-bubble { visibility: visible; opacity: 1; transform: translateX(-50%) translateY(0); }'
+	].join('\n');
+	document.head.appendChild(E('style', { id: 'et_custom_tooltip_style' }, css));
+}
+
 function renderPeersTable(peerData) {
+	injectTooltipStyle();
 	let peers = [];
 	if (Array.isArray(peerData)) {
 		peers = peerData;
@@ -235,21 +247,19 @@ function renderPeersTable(peerData) {
 	}
 
 	const headers = [
-		{ title: _('Virtual IP'), minWidth: '140px' },
-		{ title: _('Hostname'), minWidth: '150px' },
-		{ title: _('Proxy Networks'), minWidth: '130px' },
+		{ title: _('Virtual IP'), minWidth: '120px' },
+		{ title: _('Hostname'), minWidth: '110px' },
+		{ title: _('Proxy Networks'), minWidth: '110px' },
 		{ title: _('Cost'), minWidth: '70px' },
-		{ title: _('Latency'), minWidth: '85px' },
-		{ title: _('Loss Rate'), minWidth: '80px' },
-		{ title: _('RX'), minWidth: '85px' },
-		{ title: _('TX'), minWidth: '85px' },
-		{ title: _('Tunnel'), minWidth: '75px' },
-		{ title: _('NAT Type'), minWidth: '120px' },
-		{ title: _('Version'), minWidth: '120px' }
+		{ title: _('Latency / Loss'), minWidth: '100px' },
+		{ title: _('RX / TX'), minWidth: '120px' },
+		{ title: _('Tunnel'), minWidth: '65px' },
+		{ title: _('NAT Type'), minWidth: '100px' },
+		{ title: _('Version'), minWidth: '100px' }
 	];
 
-	const thStyle = 'padding: 10px 14px; text-align: left; white-space: nowrap; font-weight: bold; vertical-align: middle;';
-	const tdStyle = 'padding: 8px 14px; text-align: left; white-space: nowrap; vertical-align: middle;';
+	const thStyle = 'padding: 8px 10px; text-align: left; white-space: nowrap; font-weight: bold; vertical-align: middle;';
+	const tdStyle = 'padding: 6px 10px; text-align: left; white-space: nowrap; vertical-align: middle;';
 
 	const rows = [
 		E('tr', { 'class': 'cbi-table-header' }, headers.map(function(h) {
@@ -260,19 +270,76 @@ function renderPeersTable(peerData) {
 	for (let i = 0; i < remotePeers.length; i++) {
 		const p = remotePeers[i];
 		const costStr = p.cost ? String(p.cost).trim() : '-';
+		let costNode = costStr;
+
+		const isRelay = /relay/i.test(costStr);
+		const nextHopHost = p.next_hop_hostname ? String(p.next_hop_hostname).trim() : '';
+		const nextHopIp = p.next_hop_ipv4 ? String(p.next_hop_ipv4).trim().split('/')[0] : '';
+		const hasNextHop = nextHopHost && nextHopHost !== '-' && nextHopHost.toLowerCase() !== 'direct' && nextHopHost.toLowerCase() !== 'local';
+
+		if (isRelay) {
+			if (hasNextHop) {
+				const tipText = (nextHopIp && nextHopIp !== '-') ?
+					('下一跳: ' + nextHopHost + ' (' + nextHopIp + ')') :
+					('下一跳: ' + nextHopHost);
+
+				costNode = E('div', { 'class': 'et-tooltip-wrap' }, [
+					E('span', {
+						'style': 'display: inline-block; padding: 1px 6px; font-size: 11px; font-weight: 600; color: #b45309; background: #fef3c7; border: 1px solid #fde68a; border-radius: 3px;'
+					}, costStr),
+					E('div', { 'class': 'et-tooltip-bubble' }, tipText)
+				]);
+			} else {
+				costNode = E('span', {
+					'style': 'display: inline-block; padding: 1px 6px; font-size: 11px; font-weight: 600; color: #b45309; background: #fef3c7; border: 1px solid #fde68a; border-radius: 3px;'
+				}, costStr);
+			}
+		} else if (costStr.toLowerCase() === 'p2p' || costStr.toLowerCase() === 'direct') {
+			costNode = E('span', {
+				'style': 'display: inline-block; padding: 1px 6px; font-size: 11px; font-weight: 600; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 3px;'
+			}, costStr);
+		}
+
 		const latencyVal = p.latency ? String(p.latency).trim() : '-';
-		const latencyColor = (latencyVal !== '-' && !isNaN(parseFloat(latencyVal))) ? '#28a745' : '#6c757d';
+		let latencyColor = '#6c757d';
+		const latNum = (latencyVal !== '-') ? parseFloat(latencyVal) : NaN;
+		if (!isNaN(latNum)) {
+			if (latNum > 150) {
+				latencyColor = '#d97706';
+			} else if (latNum >= 50) {
+				latencyColor = '#2563eb';
+			} else {
+				latencyColor = '#059669';
+			}
+		}
+		const lossVal = p.loss_rate ? String(p.loss_rate).trim() : '-';
+		const hasLoss = lossVal !== '-' && lossVal !== '0.0%' && lossVal !== '0%';
+
+		let latLossNode = '-';
+		if (latencyVal !== '-') {
+			latLossNode = E('div', { 'style': 'display: inline-flex; align-items: baseline; gap: 4px;' }, [
+				E('span', { 'style': 'color: ' + latencyColor + '; font-weight: bold;' }, latencyVal + ' ms'),
+				hasLoss ? E('span', { 'style': 'color: #dc2626; font-size: 10.5px; font-weight: 600;' }, '(' + lossVal + ')') : null
+			].filter(Boolean));
+		}
+
+		const rxVal = p.rx ? String(p.rx).trim() : '-';
+		const txVal = p.tx ? String(p.tx).trim() : '-';
+		const trafficNode = (rxVal === '-' && txVal === '-') ? '-' : E('span', {}, [
+			E('span', { 'style': 'color: #047857; font-weight: 500;' }, '↓ ' + rxVal),
+			E('span', { 'style': 'color: #94a3b8; margin: 0 4px;' }, '/'),
+			E('span', { 'style': 'color: #2563eb; font-weight: 500;' }, '↑ ' + txVal)
+		]);
+
 		const proxyNode = renderProxyCidrBadges(p.proxy_cidrs);
 
 		rows.push(E('tr', { 'class': 'cbi-row' }, [
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, E('strong', {}, p.ipv4 ? String(p.ipv4).trim() : '-')),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.hostname ? String(p.hostname).trim() : '-'),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, proxyNode),
-			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, costStr),
-			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, (latencyVal !== '-') ? E('span', { 'style': 'color: ' + latencyColor + '; font-weight: bold;' }, latencyVal + ' ms') : '-'),
-			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.loss_rate ? String(p.loss_rate).trim() : '-'),
-			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.rx ? String(p.rx).trim() : '-'),
-			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.tx ? String(p.tx).trim() : '-'),
+			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, costNode),
+			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, latLossNode),
+			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, trafficNode),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.tunnel ? String(p.tunnel).trim() : '-'),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.nat ? String(p.nat).trim() : '-'),
 			E('td', { 'class': 'cbi-value-field', 'style': tdStyle }, p.version ? String(p.version).trim() : '-')
@@ -430,11 +497,31 @@ function renderTopologySvg(topoData, peerData) {
 		}
 	}
 
+	const peerRouteInfoMap = {};
+	for (let i = 0; i < peers.length; i++) {
+		const p = peers[i];
+		const pIp = p.ipv4 ? String(p.ipv4).trim().split('/')[0] : '';
+		const pHost = p.hostname ? String(p.hostname).trim() : '';
+		const nextHopHost = p.next_hop_hostname ? String(p.next_hop_hostname).trim() : '';
+		const nextHopIp = p.next_hop_ipv4 ? String(p.next_hop_ipv4).trim().split('/')[0] : '';
+		const isRelay = /relay/i.test(p.cost || '');
+		const entry = {
+			isRelay: isRelay,
+			cost: p.cost || '-',
+			nextHopHost: nextHopHost,
+			nextHopIp: nextHopIp,
+			pathLatency: p.path_latency,
+			latency: p.latency
+		};
+		if (pIp) peerRouteInfoMap[pIp] = entry;
+		if (pHost) peerRouteInfoMap[pHost] = entry;
+	}
+
 	const nodeCount = nodes.length;
 	const linkMap = {};
 	const showAllLinks = !!topologyViewState.showAllLinks;
 
-	// 生成链路：支持仅聚焦本端或显示全部对端旁路连线
+	// 生成链路：保留全部对端拓扑连线以支持仅本端模式下的点击路径追踪
 	for (let i = 0; i < nodeCount; i++) {
 		const src = nodes[i];
 		const dPeers = src.direct_peers || [];
@@ -446,7 +533,6 @@ function renderTopologySvg(topoData, peerData) {
 			if (dstHost === 'unknown') continue;
 
 			const isLocalLink = localNode && (String(src.node_id) === String(localNode.node_id) || String(dst.node_id) === String(localNode.node_id));
-			if (!showAllLinks && !isLocalLink) continue;
 
 			const pairKey = [src.node_id, dst.node_id].sort().join('---');
 			if (!linkMap[pairKey]) {
@@ -496,6 +582,30 @@ function renderTopologySvg(topoData, peerData) {
 			}
 		}
 		link.latency = resolvedLat;
+	}
+
+	// 标记中继节点与中间跳的连线为树状生成连通链路（isRelayTreeLink）
+	for (let i = 0; i < nodeCount; i++) {
+		const n = nodes[i];
+		const nIp = n.ipv4 ? String(n.ipv4).trim().split('/')[0] : '';
+		const nHost = n.hostname ? String(n.hostname).trim() : '';
+		const rInfo = peerRouteInfoMap[nIp] || peerRouteInfoMap[nHost];
+
+		if (rInfo && rInfo.isRelay && rInfo.nextHopHost) {
+			const midNode = nodes.find(function(m) {
+				const mH = m.hostname ? String(m.hostname).trim() : '';
+				const mIp = m.ipv4 ? String(m.ipv4).trim().split('/')[0] : '';
+				return (mH && mH.toLowerCase() === rInfo.nextHopHost.toLowerCase()) ||
+					(rInfo.nextHopIp && mIp === rInfo.nextHopIp.split('/')[0]);
+			});
+
+			if (midNode) {
+				const relayPairKey = [midNode.node_id, n.node_id].sort().join('---');
+				if (linkMap[relayPairKey]) {
+					linkMap[relayPairKey].isRelayTreeLink = true;
+				}
+			}
+		}
 	}
 
 	// 动态正方形雷达画布尺寸（720 × 720，聚焦舒展）
@@ -652,21 +762,8 @@ function renderTopologySvg(topoData, peerData) {
 	const nodeElementsMap = {};
 
 	// SVG Defs：矩阵点阵背景网格与高质感阴影
+	// SVG Defs：高质感阴影
 	const defsNode = createSvg('defs', {}, [
-		createSvg('pattern', {
-			'id': 'et-matrix-grid',
-			'width': '24',
-			'height': '24',
-			'patternUnits': 'userSpaceOnUse'
-		}, [
-			createSvg('circle', {
-				'cx': '12',
-				'cy': '12',
-				'r': '1.2',
-				'fill': '#cbd5e1',
-				'opacity': '0.7'
-			})
-		]),
 		createSvg('filter', {
 			'id': 'node-shadow',
 			'x': '-30%',
@@ -699,22 +796,111 @@ function renderTopologySvg(topoData, peerData) {
 		])
 	]);
 
-	// 背景矩阵层
-	const bgRect = createSvg('rect', {
-		'width': width,
-		'height': height,
-		'fill': 'url(#et-matrix-grid)',
-		'style': 'pointer-events: none;'
-	});
-
 	const linesLayer = [];
 	const nodesLayer = [];
 	const badgesLayer = [];
 
 	let hoveredLinkId = null;
 	let hoveredNodeId = null;
+	let selectedNodeId = null;
+
+	const pathBanner = E('div', {
+		'style': 'position: absolute; top: 12px; left: 12px; display: none; align-items: center; gap: 8px; padding: 6px 12px; background: rgba(15, 23, 42, 0.88); color: #f8fafc; font-size: 11.5px; font-weight: 600; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); z-index: 10; backdrop-filter: blur(4px);'
+	});
 
 	function refreshLinkVisuals() {
+		// 1. 如果有选中的节点，进行多跳路径分析
+		let activePathLinks = {};
+		let pathInfoText = '';
+
+		if (selectedNodeId) {
+			const selNode = nodes.find(function(n) { return String(n.node_id) === String(selectedNodeId); });
+			if (selNode) {
+				const isSelSelf = localNode && (String(selNode.node_id) === String(localNode.node_id));
+				const selIp = selNode.ipv4 ? String(selNode.ipv4).trim().split('/')[0] : '';
+				const selHost = selNode.hostname ? String(selNode.hostname).trim() : '';
+				const rInfo = peerRouteInfoMap[selIp] || peerRouteInfoMap[selHost] || {};
+
+				if (isSelSelf) {
+					pathInfoText = _('Local Node: %s').format(selHost || selIp);
+				} else {
+					// 递归向上回溯任意多级中继跳路径
+					const traceNodes = [selNode];
+					let curr = selNode;
+					const visited = {};
+					visited[String(curr.node_id)] = true;
+
+					while (curr && localNode && String(curr.node_id) !== String(localNode.node_id)) {
+						const cIp = curr.ipv4 ? String(curr.ipv4).trim().split('/')[0] : '';
+						const cHost = curr.hostname ? String(curr.hostname).trim() : '';
+						const cInfo = peerRouteInfoMap[cIp] || peerRouteInfoMap[cHost];
+
+						let nextNode = null;
+						if (cInfo && cInfo.isRelay && cInfo.nextHopHost) {
+							nextNode = nodes.find(function(m) {
+								const mH = m.hostname ? String(m.hostname).trim() : '';
+								const mIp = m.ipv4 ? String(m.ipv4).trim().split('/')[0] : '';
+								return (mH && mH.toLowerCase() === cInfo.nextHopHost.toLowerCase()) ||
+									(cInfo.nextHopIp && mIp === cInfo.nextHopIp.split('/')[0]);
+							});
+						} else {
+							nextNode = localNode;
+						}
+
+						if (!nextNode || visited[String(nextNode.node_id)]) {
+							if (curr !== localNode && localNode) {
+								const fallbackKey = [localNode.node_id, curr.node_id].sort().join('---');
+								activePathLinks[fallbackKey] = { isRelayHop: 1 };
+								if (!visited[String(localNode.node_id)]) traceNodes.unshift(localNode);
+							}
+							break;
+						}
+
+						visited[String(nextNode.node_id)] = true;
+						const pKey = [curr.node_id, nextNode.node_id].sort().join('---');
+						activePathLinks[pKey] = {
+							isRelayHop: (String(nextNode.node_id) !== String(localNode.node_id)) ? 2 : 1
+						};
+
+						traceNodes.unshift(nextNode);
+						curr = nextNode;
+					}
+
+					const nodeNames = traceNodes.map(function(n) {
+						return (localNode && String(n.node_id) === String(localNode.node_id)) ?
+							(n.hostname ? String(n.hostname).trim() : 'Local') :
+							(n.hostname ? String(n.hostname).trim() : 'Node');
+					});
+
+					const latStr = rInfo.pathLatency || rInfo.latency || '-';
+					const hopCount = traceNodes.length - 1;
+					const hopLabel = (hopCount > 1) ? (' (' + hopCount + ' hops · ' + latStr + ' ms)') : (latStr !== '-' ? (' (' + latStr + ' ms)') : '');
+					pathInfoText = nodeNames.join(' ➔ ') + hopLabel;
+				}
+			}
+		}
+
+		// 更新路径横幅
+		if (pathInfoText && selectedNodeId) {
+			pathBanner.style.display = 'flex';
+			pathBanner.replaceChildren(
+				E('span', { 'style': 'color: #94a3b8; margin-right: 2px;' }, _('Path') + ':'),
+				E('span', { 'style': 'color: #f8fafc;' }, pathInfoText),
+				E('button', {
+					'type': 'button',
+					'style': 'margin-left: 6px; padding: 0 4px; background: transparent; border: none; color: #94a3b8; font-size: 13px; cursor: pointer;',
+					'click': function(ev) {
+						ev.stopPropagation();
+						selectedNodeId = null;
+						refreshLinkVisuals();
+					}
+				}, '×')
+			);
+		} else {
+			pathBanner.style.display = 'none';
+		}
+
+		// 更新所有链路显示
 		for (let k = 0; k < linkKeys.length; k++) {
 			const lk = linkKeys[k];
 			const link = linkMap[lk];
@@ -722,36 +908,97 @@ function renderTopologySvg(topoData, peerData) {
 			const badgeEl = badgeElementsMap[lk];
 			if (!lineEl) continue;
 
-			const isFocused = (hoveredLinkId === lk) ||
+			const isTreeLink = link.isLocalLink || link.isRelayTreeLink;
+			const isHoverFocused = (hoveredLinkId === lk) ||
 				(hoveredNodeId && (String(link.srcId) === String(hoveredNodeId) || String(link.dstId) === String(hoveredNodeId)));
-			const hasAnyFocus = (hoveredLinkId !== null) || (hoveredNodeId !== null);
-
+			const isPathLink = selectedNodeId && !!activePathLinks[lk];
+			const isRelayTree = link.isRelayTreeLink;
 			const colorCfg = getLatencyColor(link.latency);
 
-			if (isFocused) {
-				lineEl.setAttribute('stroke', colorCfg.line);
-				lineEl.setAttribute('stroke-width', '2.8');
-				lineEl.setAttribute('stroke-dasharray', 'none');
-				lineEl.setAttribute('opacity', '1.0');
-				if (badgeEl) {
-					badgeEl.style.opacity = '1.0';
-				}
-			} else if (hasAnyFocus) {
-				lineEl.setAttribute('stroke', colorCfg.line);
-				lineEl.setAttribute('stroke-width', '1.2');
-				lineEl.setAttribute('stroke-dasharray', colorCfg.dash);
-				lineEl.setAttribute('opacity', '0.12');
-				if (badgeEl) {
-					badgeEl.style.opacity = '0.12';
+			if (selectedNodeId) {
+				if (isPathLink) {
+					lineEl.style.display = '';
+					lineEl.setAttribute('stroke', '#f59e0b');
+					lineEl.setAttribute('stroke-width', '3.2');
+					lineEl.setAttribute('stroke-dasharray', activePathLinks[lk].isRelayHop === 2 ? '6,4' : 'none');
+					lineEl.setAttribute('opacity', '1.0');
+					if (badgeEl) {
+						badgeEl.style.display = '';
+						badgeEl.style.opacity = '1.0';
+					}
+				} else {
+					if (!showAllLinks && !isTreeLink) {
+						lineEl.style.display = 'none';
+						if (badgeEl) badgeEl.style.display = 'none';
+					} else {
+						lineEl.style.display = '';
+						lineEl.setAttribute('stroke', colorCfg.line);
+						lineEl.setAttribute('stroke-width', '1.0');
+						lineEl.setAttribute('stroke-dasharray', colorCfg.dash);
+						lineEl.setAttribute('opacity', '0.08');
+						if (badgeEl) {
+							badgeEl.style.display = '';
+							badgeEl.style.opacity = '0.08';
+						}
+					}
 				}
 			} else {
-				lineEl.setAttribute('stroke', colorCfg.line);
-				lineEl.setAttribute('stroke-width', colorCfg.width);
-				lineEl.setAttribute('stroke-dasharray', colorCfg.dash);
-				lineEl.setAttribute('opacity', colorCfg.opacity);
-				if (badgeEl) {
-					badgeEl.style.opacity = '0.9';
+				// 未选中节点：标准仅本端/全部链路视图（中继生成树链路默认清晰连通）
+				if (!showAllLinks && !isTreeLink) {
+					lineEl.style.display = 'none';
+					if (badgeEl) badgeEl.style.display = 'none';
+				} else {
+					lineEl.style.display = '';
+					if (badgeEl) badgeEl.style.display = '';
+
+					if (isHoverFocused) {
+						lineEl.setAttribute('stroke', isRelayTree ? '#f59e0b' : colorCfg.line);
+						lineEl.setAttribute('stroke-width', '2.8');
+						lineEl.setAttribute('stroke-dasharray', isRelayTree ? '6,4' : 'none');
+						lineEl.setAttribute('opacity', '1.0');
+						if (badgeEl) badgeEl.style.opacity = '1.0';
+					} else if (hoveredLinkId !== null || hoveredNodeId !== null) {
+						lineEl.setAttribute('stroke', isRelayTree ? '#f59e0b' : colorCfg.line);
+						lineEl.setAttribute('stroke-width', '1.2');
+						lineEl.setAttribute('stroke-dasharray', colorCfg.dash);
+						lineEl.setAttribute('opacity', '0.12');
+						if (badgeEl) badgeEl.style.opacity = '0.12';
+					} else {
+						lineEl.setAttribute('stroke', isRelayTree ? '#f59e0b' : colorCfg.line);
+						lineEl.setAttribute('stroke-width', isRelayTree ? '1.8' : colorCfg.width);
+						lineEl.setAttribute('stroke-dasharray', isRelayTree ? '5,4' : colorCfg.dash);
+						lineEl.setAttribute('opacity', isRelayTree ? '0.9' : colorCfg.opacity);
+						if (badgeEl) badgeEl.style.opacity = '0.9';
+					}
 				}
+			}
+		}
+
+		// 更新节点透明度
+		for (let i = 0; i < nodeCount; i++) {
+			const n = nodes[i];
+			const cardG = nodeElementsMap[String(n.node_id)];
+			if (!cardG) continue;
+
+			if (selectedNodeId) {
+				const isSelected = (String(n.node_id) === String(selectedNodeId));
+				const isPathNode = isSelected ||
+					(localNode && String(n.node_id) === String(localNode.node_id)) ||
+					(Object.keys(activePathLinks).some(function(pk) {
+						const pl = linkMap[pk];
+						return pl && (String(pl.srcId) === String(n.node_id) || String(pl.dstId) === String(n.node_id));
+					}));
+
+				if (isPathNode) {
+					cardG.style.opacity = '1.0';
+					cardG.firstElementChild.setAttribute('filter', isSelected ? 'url(#node-shadow-active)' : 'url(#node-shadow)');
+				} else {
+					cardG.style.opacity = '0.35';
+					cardG.firstElementChild.setAttribute('filter', 'url(#node-shadow)');
+				}
+			} else {
+				cardG.style.opacity = '1.0';
+				cardG.firstElementChild.setAttribute('filter', 'url(#node-shadow)');
 			}
 		}
 	}
@@ -769,16 +1016,19 @@ function renderTopologySvg(topoData, peerData) {
 		const startPt = getCircleEdgePoint(p1.x, p1.y, p2.x, p2.y, sn1.radius);
 		const endPt = getCircleEdgePoint(p2.x, p2.y, p1.x, p1.y, sn2.radius);
 		const colorCfg = getLatencyColor(link.latency);
+		const isTreeLink = link.isLocalLink || link.isRelayTreeLink;
+		const isRelayTree = link.isRelayTreeLink;
+		const initDisplay = (!showAllLinks && !isTreeLink) ? 'none' : '';
 
 		const lineSvg = createSvg('line', {
 			'x1': startPt.x, 'y1': startPt.y,
 			'x2': endPt.x, 'y2': endPt.y,
-			'stroke': colorCfg.line,
-			'stroke-width': colorCfg.width,
-			'stroke-dasharray': colorCfg.dash,
+			'stroke': isRelayTree ? '#f59e0b' : colorCfg.line,
+			'stroke-width': isRelayTree ? '1.8' : colorCfg.width,
+			'stroke-dasharray': isRelayTree ? '5,4' : colorCfg.dash,
 			'stroke-linecap': 'round',
-			'opacity': colorCfg.opacity,
-			'style': 'transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer;'
+			'opacity': isRelayTree ? '0.9' : colorCfg.opacity,
+			'style': 'transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; display: ' + initDisplay + ';'
 		});
 
 		(function(lk) {
@@ -941,6 +1191,7 @@ function renderTopologySvg(topoData, peerData) {
 
 		// 节点鼠标交互
 		(function(nodeId, gEl) {
+			let isDragMoved = false;
 			gEl.addEventListener('mouseenter', function() {
 				if (!activeDraggingNodeId) {
 					hoveredNodeId = nodeId;
@@ -957,10 +1208,21 @@ function renderTopologySvg(topoData, peerData) {
 				if (ev.button !== 0) return;
 				ev.stopPropagation();
 				activeDraggingNodeId = nodeId;
+				isDragMoved = false;
 				mouseStartX = ev.clientX;
 				mouseStartY = ev.clientY;
 				gEl.style.cursor = 'grabbing';
 				gEl.firstElementChild.setAttribute('filter', 'url(#node-shadow-active)');
+			});
+			gEl.addEventListener('click', function(ev) {
+				ev.stopPropagation();
+				if (isDragMoved) return;
+				if (selectedNodeId === nodeId) {
+					selectedNodeId = null;
+				} else {
+					selectedNodeId = nodeId;
+				}
+				refreshLinkVisuals();
 			});
 		})(n.node_id, cardG);
 
@@ -998,11 +1260,14 @@ function renderTopologySvg(topoData, peerData) {
 				'fill': colorCfg.text
 			}, labelStr);
 
+			const isTreeLink = link.isLocalLink || link.isRelayTreeLink;
+			const initDisplay = (!showAllLinks && !isTreeLink) ? 'none' : '';
 			const badgeW = 56;
 			const badgeH = 18;
+
 			const badgeG = createSvg('g', {
 				'transform': 'translate(' + mx + ',' + my + ')',
-				'style': 'cursor: pointer; opacity: 0.9; transition: opacity 0.2s;'
+				'style': 'cursor: pointer; opacity: 0.9; transition: opacity 0.2s; display: ' + initDisplay + ';'
 			}, [
 				createSvg('rect', {
 					'x': -badgeW / 2,
@@ -1065,11 +1330,11 @@ function renderTopologySvg(topoData, peerData) {
 		}
 	}
 
-	const allElements = [defsNode, bgRect].concat(linesLayer, badgesLayer, nodesLayer);
+	const allElements = [defsNode].concat(linesLayer, badgesLayer, nodesLayer);
 
 	const svgNode = createSvg('svg', {
 		'viewBox': '0 0 ' + width + ' ' + height,
-		'style': 'width: 100%; height: 100%; display: block; margin: 0 auto; user-select: none; background: #f8fafc; cursor: grab;'
+		'style': 'width: 100%; height: 100%; display: block; margin: 0 auto; user-select: none; background: transparent; cursor: grab;'
 	}, allElements);
 
 	let currentScale = topologyViewState.scale || 1.0;
@@ -1091,6 +1356,7 @@ function renderTopologySvg(topoData, peerData) {
 	}
 
 	applyViewBox();
+	refreshLinkVisuals();
 
 	svgNode.addEventListener('wheel', function(ev) {
 		ev.preventDefault();
@@ -1238,9 +1504,16 @@ function renderTopologySvg(topoData, peerData) {
 		'style': 'position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; z-index: 10;'
 	}, [toggleLinksBtn, zoomInBtn, zoomOutBtn, resetBtn, resetLayoutBtn]);
 
+	svgNode.addEventListener('click', function(ev) {
+		if (selectedNodeId) {
+			selectedNodeId = null;
+			refreshLinkVisuals();
+		}
+	});
+
 	const graphContainer = E('div', {
-		'style': 'position: relative; width: 100%; aspect-ratio: 1 / 1; min-height: 540px; max-height: 680px; overflow: hidden; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;'
-	}, [toolbar, svgNode]);
+		'style': 'position: relative; width: 100%; aspect-ratio: 1 / 1; min-height: 540px; max-height: 680px; overflow: hidden; background-color: #f8fafc; background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px); background-size: 24px 24px; border: 1px solid #e2e8f0; border-radius: 6px;'
+	}, [pathBanner, toolbar, svgNode]);
 
 	const legend = E('div', {
 		'style': 'text-align: center; margin-top: 10px; font-size: 12px; line-height: 1.6;'

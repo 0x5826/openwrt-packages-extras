@@ -358,6 +358,20 @@ msgstr ""
 msgid "Show Local Links Only"
 msgstr ""
 
+msgid "Next Hop: %s (%s)"
+msgstr ""
+
+msgid "Next Hop: %s"
+msgstr ""
+
+msgid "Latency / Loss"
+msgstr ""
+
+msgid "RX / TX"
+msgstr ""
+
+
+
 
 
 

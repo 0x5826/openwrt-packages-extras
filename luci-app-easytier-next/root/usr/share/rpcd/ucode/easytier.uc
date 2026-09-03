@@ -119,9 +119,9 @@ methods.get_status = {
 	}
 };
 
-function get_route_proxy_map() {
-	let proxy_map = {};
-	if (!access('/usr/bin/easytier-cli')) return proxy_map;
+function get_route_info_map() {
+	let route_map = {};
+	if (!access('/usr/bin/easytier-cli')) return route_map;
 	let r_res = exec('/usr/bin/easytier-cli -o json route 2>/dev/null');
 	if (r_res.code == 0 && length(r_res.stdout) > 0) {
 		let r_data = json(join('\n', r_res.stdout));
@@ -131,20 +131,31 @@ function get_route_proxy_map() {
 				let cidrs = trim(item.proxy_cidrs || '');
 				let ip = trim(item.ipv4 || '');
 				let host = trim(item.hostname || '');
-				if (cidrs != '') {
-					if (ip != '') {
-						proxy_map[ip] = cidrs;
-						let ip_clean = split(ip, '/')[0];
-						proxy_map[ip_clean] = cidrs;
-					}
-					if (host != '') {
-						proxy_map[host] = cidrs;
-					}
+				let next_hop_host = trim(item.next_hop_hostname_lat_first || item.next_hop_hostname || '');
+				let next_hop_ip = trim(item.next_hop_ipv4_lat_first || item.next_hop_ipv4 || '');
+				let path_len = item.path_len_lat_first != null ? item.path_len_lat_first : item.path_len;
+				let path_lat = item.path_latency_lat_first != null ? item.path_latency_lat_first : item.path_latency;
+
+				let entry = {
+					proxy_cidrs: cidrs,
+					next_hop_hostname: next_hop_host,
+					next_hop_ipv4: next_hop_ip,
+					path_len: path_len,
+					path_latency: path_lat
+				};
+
+				if (ip != '') {
+					route_map[ip] = entry;
+					let ip_clean = split(ip, '/')[0];
+					route_map[ip_clean] = entry;
+				}
+				if (host != '') {
+					route_map[host] = entry;
 				}
 			}
 		}
 	}
-	return proxy_map;
+	return route_map;
 }
 
 methods.get_peers = {
@@ -153,7 +164,7 @@ methods.get_peers = {
 			return { peers: [], raw: '' };
 		}
 
-		let proxy_map = get_route_proxy_map();
+		let route_map = get_route_info_map();
 		let json_res = exec('/usr/bin/easytier-cli -o json peer 2>/dev/null');
 		if (json_res.code == 0 && length(json_res.stdout) > 0) {
 			let j_data = json(join('\n', json_res.stdout));
@@ -164,12 +175,19 @@ methods.get_peers = {
 					let p_ip = trim(item.cidr || item.ipv4 || '');
 					let p_host = trim(item.hostname || '');
 					let p_ip_clean = split(p_ip, '/')[0];
-					let proxy_cidrs = proxy_map[p_ip] || proxy_map[p_ip_clean] || proxy_map[p_host] || '';
+					let r_entry = route_map[p_ip] || route_map[p_ip_clean] || route_map[p_host] || {};
+					let proxy_cidrs = r_entry.proxy_cidrs || '';
+					let next_hop_hostname = r_entry.next_hop_hostname || '';
+					let next_hop_ipv4 = r_entry.next_hop_ipv4 || '';
+					let path_latency = r_entry.path_latency != null ? r_entry.path_latency : '';
 
 					push(peers, {
 						ipv4: p_ip,
 						hostname: p_host,
 						proxy_cidrs: proxy_cidrs,
+						next_hop_hostname: next_hop_hostname,
+						next_hop_ipv4: next_hop_ipv4,
+						path_latency: path_latency,
 						cost: trim(item.cost || ''),
 						latency: (item.lat_ms != null && item.lat_ms != '-') ? ('' + item.lat_ms) : '-',
 						loss_rate: trim(item.loss_rate || '-'),
@@ -205,12 +223,19 @@ methods.get_peers = {
 					let peer_ip = trim(cols[0] || '');
 					let peer_host = trim(cols[1] || '');
 					let peer_ip_clean = split(peer_ip, '/')[0];
-					let proxy_cidrs = proxy_map[peer_ip] || proxy_map[peer_ip_clean] || proxy_map[peer_host] || '';
+					let r_entry = route_map[peer_ip] || route_map[peer_ip_clean] || route_map[peer_host] || {};
+					let proxy_cidrs = r_entry.proxy_cidrs || '';
+					let next_hop_hostname = r_entry.next_hop_hostname || '';
+					let next_hop_ipv4 = r_entry.next_hop_ipv4 || '';
+					let path_latency = r_entry.path_latency != null ? r_entry.path_latency : '';
 
 					push(peers, {
 						ipv4: peer_ip,
 						hostname: peer_host,
 						proxy_cidrs: proxy_cidrs,
+						next_hop_hostname: next_hop_hostname,
+						next_hop_ipv4: next_hop_ipv4,
+						path_latency: path_latency,
 						cost: trim(cols[2] || ''),
 						latency: trim(cols[3] || ''),
 						loss_rate: trim(cols[4] || ''),
@@ -247,7 +272,7 @@ methods.get_topology = {
 		if (!access('/usr/bin/easytier-cli')) {
 			return { nodes: [] };
 		}
-		let proxy_map = get_route_proxy_map();
+		let route_map = get_route_info_map();
 		let res = exec('/usr/bin/easytier-cli -o json peer-center 2>/dev/null');
 		if (res.code == 0 && length(res.stdout) > 0) {
 			let full_str = join('\n', res.stdout);
@@ -261,7 +286,8 @@ methods.get_topology = {
 					if (n_ip == '' || n_ip == '-') continue;
 
 					let n_ip_clean = split(n_ip, '/')[0];
-					data[i].proxy_cidrs = proxy_map[n_ip] || proxy_map[n_ip_clean] || proxy_map[n_host] || '';
+					let r_entry = route_map[n_ip] || route_map[n_ip_clean] || route_map[n_host] || {};
+					data[i].proxy_cidrs = r_entry.proxy_cidrs || '';
 					push(valid_nodes, data[i]);
 				}
 				return { nodes: valid_nodes };
