@@ -340,3 +340,24 @@ msgstr "放大"
 msgid "Zoom Out"
 msgstr "縮小"
 
+msgid "Reset Layout"
+msgstr "重設佈局"
+
+msgid "(Hover to highlight link, drag nodes/canvas to adjust)"
+msgstr "(懸停高亮鏈路，拖曳節點/畫布以調整)"
+
+msgid "All Links"
+msgstr "全部鏈路"
+
+msgid "Local Only"
+msgstr "僅本端"
+
+msgid "Show All Peer Links"
+msgstr "顯示所有對端連接線"
+
+msgid "Show Local Links Only"
+msgstr "僅聚焦本端連接線"
+
+
+
+
