@@ -99,7 +99,7 @@ local methods = {
 			end
 
 			if target_mode == 'ap' then
-				-- --- Switch to AP Mode ---
+				-- --- Switch to AP Mode (Full Lossless Snapshot) ---
 				
 				-- 1. Identify WAN device
 				local wan_device = cursor:get('network', 'wan', 'device')
@@ -107,10 +107,25 @@ local methods = {
 					wan_device = cursor:get('network', 'wan', 'ifname')
 				end
 
-				-- 2. Backup current settings
-				local original_lan_ip = cursor:get('network', 'lan', 'ipaddr')
-				cursor:set(UCI_CONFIG, 'settings', 'wan_device', wan_device or '')
-				cursor:set(UCI_CONFIG, 'settings', 'lan_ip', original_lan_ip or '')
+				-- 2. Full Snapshot Backup of Router Mode state
+				local lan_proto = cursor:get('network', 'lan', 'proto') or 'static'
+				local lan_ipaddr = cursor:get('network', 'lan', 'ipaddr') or ''
+				local lan_netmask = cursor:get('network', 'lan', 'netmask') or ''
+				local lan_gateway = cursor:get('network', 'lan', 'gateway') or ''
+				local lan_dns = cursor:get('network', 'lan', 'dns') or {}
+				local dhcp_ignore = cursor:get('dhcp', 'lan', 'ignore') or '0'
+				local wan_disabled = cursor:get('network', 'wan', 'disabled') or '0'
+				local wan6_disabled = cursor:get('network', 'wan6', 'disabled') or '0'
+
+				cursor:set(UCI_CONFIG, 'router_state', 'lan_proto', lan_proto)
+				cursor:set(UCI_CONFIG, 'router_state', 'lan_ipaddr', lan_ipaddr)
+				cursor:set(UCI_CONFIG, 'router_state', 'lan_netmask', lan_netmask)
+				cursor:set(UCI_CONFIG, 'router_state', 'lan_gateway', lan_gateway)
+				cursor:set(UCI_CONFIG, 'router_state', 'lan_dns', lan_dns)
+				cursor:set(UCI_CONFIG, 'router_state', 'dhcp_ignore', dhcp_ignore)
+				cursor:set(UCI_CONFIG, 'router_state', 'wan_device', wan_device or '')
+				cursor:set(UCI_CONFIG, 'router_state', 'wan_disabled', wan_disabled)
+				cursor:set(UCI_CONFIG, 'router_state', 'wan6_disabled', wan6_disabled)
 				cursor:set(UCI_CONFIG, 'settings', 'mode', 'ap')
 
 				-- 3. Bridge WAN device to LAN
@@ -136,7 +151,7 @@ local methods = {
 					end)
 				end
 
-				-- 4. Set LAN to DHCP
+				-- 4. Set LAN to DHCP client
 				cursor:set('network', 'lan', 'proto', 'dhcp')
 				cursor:delete('network', 'lan', 'ipaddr')
 				cursor:delete('network', 'lan', 'netmask')
@@ -151,11 +166,18 @@ local methods = {
 				cursor:set('dhcp', 'lan', 'ignore', '1')
 
 			else
-				-- --- Switch to Router Mode ---
+				-- --- Switch to Router Mode (Lossless State Restoration) ---
 
-				-- 1. Restore settings
-				local wan_device = cursor:get(UCI_CONFIG, 'settings', 'wan_device')
-				local lan_ip = cursor:get(UCI_CONFIG, 'settings', 'lan_ip') or '192.168.1.1'
+				-- 1. Read Snapshot
+				local wan_device = cursor:get(UCI_CONFIG, 'router_state', 'wan_device')
+				local lan_proto = cursor:get(UCI_CONFIG, 'router_state', 'lan_proto') or 'static'
+				local lan_ipaddr = cursor:get(UCI_CONFIG, 'router_state', 'lan_ipaddr') or '192.168.1.1'
+				local lan_netmask = cursor:get(UCI_CONFIG, 'router_state', 'lan_netmask') or ''
+				local lan_gateway = cursor:get(UCI_CONFIG, 'router_state', 'lan_gateway') or ''
+				local lan_dns = cursor:get(UCI_CONFIG, 'router_state', 'lan_dns') or {}
+				local dhcp_ignore = cursor:get(UCI_CONFIG, 'router_state', 'dhcp_ignore') or '0'
+				local wan_disabled = cursor:get(UCI_CONFIG, 'router_state', 'wan_disabled') or '0'
+				local wan6_disabled = cursor:get(UCI_CONFIG, 'router_state', 'wan6_disabled') or '0'
 
 				cursor:set(UCI_CONFIG, 'settings', 'mode', 'router')
 
@@ -178,17 +200,35 @@ local methods = {
 					end)
 				end
 
-				-- 3. Restore LAN to Static
-				cursor:set('network', 'lan', 'proto', 'static')
-				cursor:set('network', 'lan', 'ipaddr', lan_ip)
-				cursor:set('network', 'lan', 'netmask', '255.255.255.0')
+				-- 3. Restore LAN settings accurately without hardcoding
+				cursor:set('network', 'lan', 'proto', lan_proto)
+				if lan_ipaddr and lan_ipaddr ~= '' then cursor:set('network', 'lan', 'ipaddr', lan_ipaddr) end
+				if lan_netmask and lan_netmask ~= '' then cursor:set('network', 'lan', 'netmask', lan_netmask) end
+				if lan_gateway and lan_gateway ~= '' then cursor:set('network', 'lan', 'gateway', lan_gateway) end
+				if type(lan_dns) == 'table' and #lan_dns > 0 then
+					cursor:set('network', 'lan', 'dns', lan_dns)
+				elseif type(lan_dns) == 'string' and lan_dns ~= '' then
+					cursor:set('network', 'lan', 'dns', lan_dns)
+				end
 
-				-- 4. Enable WAN interface
-				cursor:delete('network', 'wan', 'disabled')
-				cursor:delete('network', 'wan6', 'disabled')
+				-- 4. Restore WAN / WAN6 states
+				if wan_disabled == '1' then
+					cursor:set('network', 'wan', 'disabled', '1')
+				else
+					cursor:delete('network', 'wan', 'disabled')
+				end
+				if wan6_disabled == '1' then
+					cursor:set('network', 'wan6', 'disabled', '1')
+				else
+					cursor:delete('network', 'wan6', 'disabled')
+				end
 
-				-- 5. Enable DHCP Server
-				cursor:delete('dhcp', 'lan', 'ignore')
+				-- 5. Restore DHCP Server state
+				if dhcp_ignore == '1' then
+					cursor:set('dhcp', 'lan', 'ignore', '1')
+				else
+					cursor:delete('dhcp', 'lan', 'ignore')
+				end
 			end
 
 			cursor:commit('ap-switch')
@@ -199,7 +239,7 @@ local methods = {
 			os.execute('/etc/init.d/network restart &')
 			os.execute('/etc/init.d/dnsmasq restart &')
 
-			return { success = true }
+			return { success = true, result = 'success' }
 		end
 	}
 }
