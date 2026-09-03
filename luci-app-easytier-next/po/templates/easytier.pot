@@ -340,3 +340,24 @@ msgstr ""
 msgid "Zoom Out"
 msgstr ""
 
+msgid "Reset Layout"
+msgstr ""
+
+msgid "(Hover to highlight link, drag nodes/canvas to adjust)"
+msgstr ""
+
+msgid "All Links"
+msgstr ""
+
+msgid "Local Only"
+msgstr ""
+
+msgid "Show All Peer Links"
+msgstr ""
+
+msgid "Show Local Links Only"
+msgstr ""
+
+
+
+

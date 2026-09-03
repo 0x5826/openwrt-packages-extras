@@ -340,12 +340,27 @@ function createSvg(tag, attrs, children) {
 	return el;
 }
 
-// 持久化拓扑图视口平移与缩放状态（即使数据定时刷新也能完全保持当前缩放与视野位置）
+// 持久化拓扑图视口平移、缩放及自定义节点拖拽位置（跨定时刷新无缝保持）
 const topologyViewState = {
 	scale: 1.0,
 	panX: 0,
-	panY: 0
+	panY: 0,
+	nodePositions: {},
+	showAllLinks: false
 };
+
+// 计算从圆心 (cx, cy) 射向目标点 (targetX, targetY) 在圆周 (半径 radius) 上的精确交点
+function getCircleEdgePoint(cx, cy, targetX, targetY, radius) {
+	const dx = targetX - cx;
+	const dy = targetY - cy;
+	const dist = Math.sqrt(dx * dx + dy * dy);
+	if (dist === 0) return { x: cx, y: cy };
+	const r = radius + 2;
+	return {
+		x: Math.round(cx + (dx / dist) * r),
+		y: Math.round(cy + (dy / dist) * r)
+	};
+}
 
 function renderTopologySvg(topoData, peerData) {
 	let rawNodes = [];
@@ -355,7 +370,7 @@ function renderTopologySvg(topoData, peerData) {
 		rawNodes = topoData.nodes;
 	}
 
-	// 过滤重启产生的残留/未刷新的 Unknown 幽灵节点及无效 IP 节点
+	// 过滤幽灵节点与无效 IP
 	rawNodes = (rawNodes || []).filter(function(n) {
 		if (!n) return false;
 		const host = n.hostname ? String(n.hostname).trim().toLowerCase() : '';
@@ -417,6 +432,9 @@ function renderTopologySvg(topoData, peerData) {
 
 	const nodeCount = nodes.length;
 	const linkMap = {};
+	const showAllLinks = !!topologyViewState.showAllLinks;
+
+	// 生成链路：支持仅聚焦本端或显示全部对端旁路连线
 	for (let i = 0; i < nodeCount; i++) {
 		const src = nodes[i];
 		const dPeers = src.direct_peers || [];
@@ -427,11 +445,15 @@ function renderTopologySvg(topoData, peerData) {
 			const dstHost = dst.hostname ? String(dst.hostname).trim().toLowerCase() : '';
 			if (dstHost === 'unknown') continue;
 
+			const isLocalLink = localNode && (String(src.node_id) === String(localNode.node_id) || String(dst.node_id) === String(localNode.node_id));
+			if (!showAllLinks && !isLocalLink) continue;
+
 			const pairKey = [src.node_id, dst.node_id].sort().join('---');
 			if (!linkMap[pairKey]) {
 				linkMap[pairKey] = {
 					srcId: src.node_id,
 					dstId: dst.node_id,
+					isLocalLink: isLocalLink,
 					latencies: []
 				};
 			}
@@ -441,18 +463,16 @@ function renderTopologySvg(topoData, peerData) {
 		}
 	}
 
-	// 智能仲裁链路真实延迟：优先本地实测 RTT，剔除 peer-center 初始 1ms 占位脏数据
+	// 智能仲裁链路真实延迟：优先本地实测 RTT
 	const linkKeys = Object.keys(linkMap);
 	for (let k = 0; k < linkKeys.length; k++) {
 		const link = linkMap[linkKeys[k]];
-		const isLocalLink = (localNode && (link.srcId === localNode.node_id || link.dstId === localNode.node_id));
-		const otherNodeId = (localNode && link.srcId === localNode.node_id) ? link.dstId : link.srcId;
-		const otherNode = nodes.find(function(n) { return n.node_id === otherNodeId; });
+		const isLocal = (localNode && (String(link.srcId) === String(localNode.node_id) || String(link.dstId) === String(localNode.node_id)));
+		const otherNodeId = (localNode && String(link.srcId) === String(localNode.node_id)) ? link.dstId : link.srcId;
+		const otherNode = nodes.find(function(n) { return String(n.node_id) === String(otherNodeId); });
 
 		let resolvedLat = null;
-
-		// 1. 若包含本端节点，优先采用本地实测 RTT (peerData)
-		if (isLocalLink && otherNode) {
+		if (isLocal && otherNode) {
 			const otherIp = otherNode.ipv4 ? String(otherNode.ipv4).trim().split('/')[0] : '';
 			const otherHost = otherNode.hostname ? String(otherNode.hostname).trim() : '';
 			if (otherIp && localPeerLatencyMap[otherIp] !== undefined) {
@@ -475,53 +495,118 @@ function renderTopologySvg(topoData, peerData) {
 				}
 			}
 		}
-
 		link.latency = resolvedLat;
 	}
 
-	// 优雅全对称正多边形环形排版算法：本端置于 12 点钟正上方，对端顺时针开阔均匀环绕（3 节点为等边三角形）
-	let R = 240;
-	if (nodeCount <= 2) {
-		R = 160;
-	} else if (nodeCount === 3) {
-		R = 240;
-	} else if (nodeCount === 4) {
-		R = 250;
-	} else if (nodeCount === 5) {
-		R = 270;
-	} else if (nodeCount === 6) {
-		R = 290;
-	} else if (nodeCount === 7) {
-		R = 320;
-	} else if (nodeCount === 8) {
-		R = 350;
-	} else {
-		R = Math.max(350, Math.round((nodeCount * 260) / (2 * Math.PI)));
+	// 动态正方形雷达画布尺寸（720 × 720，聚焦舒展）
+	const width = 720;
+	const height = 720;
+	const cx = Math.round(width / 2);
+	const cy = Math.round(height / 2);
+
+	// 360° 逆时针延迟比例散射引擎（Counter-Clockwise Latency Proportional Radial Engine）
+	const nodeMap = {};
+	const simNodes = [];
+	let peerNodes = [];
+	let localSimNode = null;
+
+	for (let i = 0; i < nodeCount; i++) {
+		const n = nodes[i];
+		const isLocal = (localNode && String(n.node_id) === String(localNode.node_id));
+
+		let directLat = 999;
+		if (!isLocal && localNode) {
+			const pairKey = [n.node_id, localNode.node_id].sort().join('---');
+			if (linkMap[pairKey] && linkMap[pairKey].latency !== null && linkMap[pairKey].latency !== undefined) {
+				directLat = Number(linkMap[pairKey].latency);
+			}
+		}
+
+		let posX = null;
+		let posY = null;
+		if (topologyViewState.nodePositions && topologyViewState.nodePositions[n.node_id]) {
+			posX = topologyViewState.nodePositions[n.node_id].x;
+			posY = topologyViewState.nodePositions[n.node_id].y;
+		}
+
+		const sn = {
+			id: String(n.node_id),
+			node: n,
+			x: posX !== null ? posX : cx,
+			y: posY !== null ? posY : cy,
+			radius: isLocal ? 28 : 24,
+			isLocal: isLocal,
+			directLat: directLat
+		};
+
+		nodeMap[sn.id] = sn;
+		simNodes.push(sn);
+
+		if (isLocal) {
+			localSimNode = sn;
+		} else {
+			peerNodes.push(sn);
+		}
 	}
 
-	const padding = 150;
-	const size = Math.max(900, Math.round(2 * R + 2 * padding));
-	const width = size;
-	const height = size;
-	const cx = Math.round(size / 2);
-	const cy = Math.round(size / 2);
+	// 自动排布：以本节点为中心，按延迟从小到大逆时针 360° 依次等比例散射展开
+	const needLayout = simNodes.some(function(sn) {
+		return !topologyViewState.nodePositions || !topologyViewState.nodePositions[sn.id];
+	});
+
+	if (needLayout) {
+		if (localSimNode) {
+			localSimNode.x = cx;
+			localSimNode.y = cy;
+		}
+
+		// 按延迟从小到大排序
+		peerNodes.sort(function(a, b) {
+			return a.directLat - b.directLat;
+		});
+
+		const pCount = peerNodes.length;
+		if (pCount > 0) {
+			const startAngle = -Math.PI / 2; // 起点：12点钟正上方（最低延迟）
+			const stepAngle = (2 * Math.PI) / pCount;
+
+			for (let i = 0; i < pCount; i++) {
+				const sn = peerNodes[i];
+				const angle = startAngle - i * stepAngle; // 逆时针展开
+
+				// 饱满舒展的星轨微梯度：基准 255px，按延迟轻微起伏（235px ~ 285px）
+				let distR = 285;
+				if (sn.directLat < 900) {
+					if (sn.directLat <= 10) {
+						distR = 235;
+					} else if (sn.directLat <= 60) {
+						distR = 250;
+					} else if (sn.directLat <= 150) {
+						distR = 268;
+					} else {
+						distR = 285;
+					}
+				}
+
+				sn.x = Math.round(cx + distR * Math.cos(angle));
+				sn.y = Math.round(cy + distR * Math.sin(angle));
+			}
+		}
+
+		if (!topologyViewState.nodePositions) topologyViewState.nodePositions = {};
+		for (let i = 0; i < nodeCount; i++) {
+			const sn = simNodes[i];
+			topologyViewState.nodePositions[sn.id] = { x: Math.round(sn.x), y: Math.round(sn.y) };
+		}
+	}
 
 	const posMap = {};
-
-	if (nodeCount === 1) {
-		posMap[nodes[0].node_id] = { x: cx, y: cy };
-	} else if (nodeCount === 2) {
-		posMap[nodes[0].node_id] = { x: cx - R, y: cy };
-		posMap[nodes[1].node_id] = { x: cx + R, y: cy };
-	} else {
-		// 3 节点及以上：正多边形圆周分布，节点 0 (本端) 位于 12 点钟正上方，呈现等边三角形/正方形/正多边形
-		for (let i = 0; i < nodeCount; i++) {
-			const angle = -Math.PI / 2 + (2 * Math.PI * i) / nodeCount;
-			posMap[nodes[i].node_id] = {
-				x: Math.round(cx + R * Math.cos(angle)),
-				y: Math.round(cy + R * Math.sin(angle))
-			};
-		}
+	for (let i = 0; i < nodeCount; i++) {
+		const sn = simNodes[i];
+		posMap[sn.id] = {
+			x: Math.round(topologyViewState.nodePositions && topologyViewState.nodePositions[sn.id] ? topologyViewState.nodePositions[sn.id].x : sn.x),
+			y: Math.round(topologyViewState.nodePositions && topologyViewState.nodePositions[sn.id] ? topologyViewState.nodePositions[sn.id].y : sn.y)
+		};
 	}
 
 	function getLatencyColor(lat) {
@@ -530,7 +615,7 @@ function renderTopologySvg(topoData, peerData) {
 				line: '#94a3b8',
 				text: '#64748b',
 				dash: '5,5',
-				width: '2',
+				width: '1.5',
 				opacity: '0.6'
 			};
 		}
@@ -539,133 +624,309 @@ function renderTopologySvg(topoData, peerData) {
 			return {
 				line: '#f59e0b',
 				text: '#d97706',
-				dash: '6,4',
-				width: '2.5',
+				dash: '5,5',
+				width: '1.5',
 				opacity: '0.85'
 			};
 		} else if (val >= 50) {
 			return {
 				line: '#3b82f6',
 				text: '#2563eb',
-				dash: '6,4',
-				width: '2.5',
+				dash: '5,5',
+				width: '1.5',
 				opacity: '0.85'
 			};
 		} else {
 			return {
-				line: '#22c55e',
-				text: '#16a34a',
-				dash: '6,4',
-				width: '2.5',
+				line: '#10b981',
+				text: '#059669',
+				dash: '5,5',
+				width: '1.5',
 				opacity: '0.9'
 			};
 		}
 	}
 
+	const lineElementsMap = {};
+	const badgeElementsMap = {};
+	const nodeElementsMap = {};
+
+	// SVG Defs：矩阵点阵背景网格与高质感阴影
+	const defsNode = createSvg('defs', {}, [
+		createSvg('pattern', {
+			'id': 'et-matrix-grid',
+			'width': '24',
+			'height': '24',
+			'patternUnits': 'userSpaceOnUse'
+		}, [
+			createSvg('circle', {
+				'cx': '12',
+				'cy': '12',
+				'r': '1.2',
+				'fill': '#cbd5e1',
+				'opacity': '0.7'
+			})
+		]),
+		createSvg('filter', {
+			'id': 'node-shadow',
+			'x': '-30%',
+			'y': '-30%',
+			'width': '160%',
+			'height': '160%'
+		}, [
+			createSvg('feDropShadow', {
+				'dx': '0',
+				'dy': '3',
+				'stdDeviation': '4',
+				'flood-color': '#0f172a',
+				'flood-opacity': '0.12'
+			})
+		]),
+		createSvg('filter', {
+			'id': 'node-shadow-active',
+			'x': '-50%',
+			'y': '-50%',
+			'width': '200%',
+			'height': '200%'
+		}, [
+			createSvg('feDropShadow', {
+				'dx': '0',
+				'dy': '5',
+				'stdDeviation': '8',
+				'flood-color': '#2563eb',
+				'flood-opacity': '0.35'
+			})
+		])
+	]);
+
+	// 背景矩阵层
+	const bgRect = createSvg('rect', {
+		'width': width,
+		'height': height,
+		'fill': 'url(#et-matrix-grid)',
+		'style': 'pointer-events: none;'
+	});
+
 	const linesLayer = [];
 	const nodesLayer = [];
 	const badgesLayer = [];
 
-	// 1. 底层：绘制链路连线（色彩与延迟区间语义完全联动）
-	for (let k = 0; k < linkKeys.length; k++) {
-		const link = linkMap[linkKeys[k]];
-		const p1 = posMap[link.srcId];
-		const p2 = posMap[link.dstId];
-		if (!p1 || !p2) continue;
+	let hoveredLinkId = null;
+	let hoveredNodeId = null;
 
+	function refreshLinkVisuals() {
+		for (let k = 0; k < linkKeys.length; k++) {
+			const lk = linkKeys[k];
+			const link = linkMap[lk];
+			const lineEl = lineElementsMap[lk];
+			const badgeEl = badgeElementsMap[lk];
+			if (!lineEl) continue;
+
+			const isFocused = (hoveredLinkId === lk) ||
+				(hoveredNodeId && (String(link.srcId) === String(hoveredNodeId) || String(link.dstId) === String(hoveredNodeId)));
+			const hasAnyFocus = (hoveredLinkId !== null) || (hoveredNodeId !== null);
+
+			const colorCfg = getLatencyColor(link.latency);
+
+			if (isFocused) {
+				lineEl.setAttribute('stroke', colorCfg.line);
+				lineEl.setAttribute('stroke-width', '2.8');
+				lineEl.setAttribute('stroke-dasharray', 'none');
+				lineEl.setAttribute('opacity', '1.0');
+				if (badgeEl) {
+					badgeEl.style.opacity = '1.0';
+				}
+			} else if (hasAnyFocus) {
+				lineEl.setAttribute('stroke', colorCfg.line);
+				lineEl.setAttribute('stroke-width', '1.2');
+				lineEl.setAttribute('stroke-dasharray', colorCfg.dash);
+				lineEl.setAttribute('opacity', '0.12');
+				if (badgeEl) {
+					badgeEl.style.opacity = '0.12';
+				}
+			} else {
+				lineEl.setAttribute('stroke', colorCfg.line);
+				lineEl.setAttribute('stroke-width', colorCfg.width);
+				lineEl.setAttribute('stroke-dasharray', colorCfg.dash);
+				lineEl.setAttribute('opacity', colorCfg.opacity);
+				if (badgeEl) {
+					badgeEl.style.opacity = '0.9';
+				}
+			}
+		}
+	}
+
+	// 1. 绘制链路连线（纯净细腻虚线，交互悬停高亮）
+	for (let k = 0; k < linkKeys.length; k++) {
+		const linkKey = linkKeys[k];
+		const link = linkMap[linkKey];
+		const p1 = posMap[String(link.srcId)];
+		const p2 = posMap[String(link.dstId)];
+		const sn1 = nodeMap[String(link.srcId)];
+		const sn2 = nodeMap[String(link.dstId)];
+		if (!p1 || !p2 || !sn1 || !sn2) continue;
+
+		const startPt = getCircleEdgePoint(p1.x, p1.y, p2.x, p2.y, sn1.radius);
+		const endPt = getCircleEdgePoint(p2.x, p2.y, p1.x, p1.y, sn2.radius);
 		const colorCfg = getLatencyColor(link.latency);
 
-		linesLayer.push(createSvg('line', {
-			'x1': p1.x, 'y1': p1.y,
-			'x2': p2.x, 'y2': p2.y,
+		const lineSvg = createSvg('line', {
+			'x1': startPt.x, 'y1': startPt.y,
+			'x2': endPt.x, 'y2': endPt.y,
 			'stroke': colorCfg.line,
 			'stroke-width': colorCfg.width,
 			'stroke-dasharray': colorCfg.dash,
-			'opacity': colorCfg.opacity
-		}));
+			'stroke-linecap': 'round',
+			'opacity': colorCfg.opacity,
+			'style': 'transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer;'
+		});
+
+		(function(lk) {
+			lineSvg.addEventListener('mouseenter', function() {
+				hoveredLinkId = lk;
+				refreshLinkVisuals();
+			});
+			lineSvg.addEventListener('mouseleave', function() {
+				if (hoveredLinkId === lk) {
+					hoveredLinkId = null;
+					refreshLinkVisuals();
+				}
+			});
+		})(linkKey);
+
+		lineElementsMap[linkKey] = lineSvg;
+		linesLayer.push(lineSvg);
 	}
 
-	// 2. 中层：绘制节点卡片（紧凑尺寸，支持多子网逐行排版）
+	// 2. 绘制圆形科技节点（支持自由拖拽与双翼规整）
+	let activeDraggingNodeId = null;
+	let mouseStartX = 0;
+	let mouseStartY = 0;
+
 	for (let i = 0; i < nodeCount; i++) {
 		const n = nodes[i];
-		const pos = posMap[n.node_id];
-		if (!pos) continue;
+		const sn = nodeMap[String(n.node_id)];
+		const pos = posMap[String(n.node_id)];
+		if (!pos || !sn) continue;
 
 		const proxyList = (n.proxy_cidrs && String(n.proxy_cidrs).trim() !== '') ?
 			String(n.proxy_cidrs).split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; }) : [];
 		const proxyCount = proxyList.length;
 
-		const cardW = 146;
-		const baseHeaderH = 46;
-		const itemH = 18;
-		const cardH = (proxyCount > 0) ? (baseHeaderH + proxyCount * itemH + 2) : baseHeaderH;
-		const isSelf = (i === 0 && localNode);
+		const isSelf = sn.isLocal;
 		const hostname = n.hostname ? String(n.hostname).trim() : 'Unknown';
 		const ipv4 = n.ipv4 ? String(n.ipv4).trim() : '-';
 		const titleStr = isSelf ? (hostname + ' (Local)') : hostname;
 
-		const cardBg = isSelf ? '#eff6ff' : '#f8fafc';
-		const cardBorder = isSelf ? '#2563eb' : '#cbd5e1';
-		const borderWidth = isSelf ? '2' : '1';
-		const titleColor = isSelf ? '#1e3a8a' : '#334155';
+		const nodeR = sn.radius;
+		const circleColor = isSelf ? '#2563eb' : '#ffffff';
+		const circleBorder = isSelf ? '#1d4ed8' : '#94a3b8';
+		const borderWidth = isSelf ? '2.5' : '2';
+
+		const gChildren = [];
+
+		// 本端脉冲外光环
+		if (isSelf) {
+			gChildren.push(createSvg('circle', {
+				'r': '34',
+				'fill': 'none',
+				'stroke': '#3b82f6',
+				'stroke-width': '1.5',
+				'stroke-dasharray': '4,3',
+				'opacity': '0.75'
+			}));
+		}
+
+		// 核心圆形徽标
+		gChildren.push(createSvg('circle', {
+			'r': nodeR,
+			'fill': circleColor,
+			'stroke': circleBorder,
+			'stroke-width': borderWidth,
+			'filter': 'url(#node-shadow)'
+		}));
+
+		// 精致矢量图标
+		if (isSelf) {
+			gChildren.push(
+				createSvg('path', {
+					'd': 'M -9 -2 L 9 -2 L 7 7 L -7 7 Z',
+					'fill': 'none',
+					'stroke': '#ffffff',
+					'stroke-width': '1.8',
+					'stroke-linejoin': 'round'
+				}),
+				createSvg('circle', { 'cx': '-4', 'cy': '2.5', 'r': '1', 'fill': '#ffffff' }),
+				createSvg('circle', { 'cx': '0', 'cy': '2.5', 'r': '1', 'fill': '#ffffff' }),
+				createSvg('circle', { 'cx': '4', 'cy': '2.5', 'r': '1', 'fill': '#ffffff' }),
+				createSvg('line', { 'x1': '-5', 'y1': '-2', 'x2': '-8', 'y2': '-8', 'stroke': '#ffffff', 'stroke-width': '1.8', 'stroke-linecap': 'round' }),
+				createSvg('line', { 'x1': '5', 'y1': '-2', 'x2': '8', 'y2': '-8', 'stroke': '#ffffff', 'stroke-width': '1.8', 'stroke-linecap': 'round' })
+			);
+		} else {
+			gChildren.push(
+				createSvg('rect', { 'x': '-9', 'y': '-8', 'width': '18', 'height': '6.5', 'rx': '1.5', 'fill': '#f8fafc', 'stroke': '#475569', 'stroke-width': '1.5' }),
+				createSvg('rect', { 'x': '-9', 'y': '1.5', 'width': '18', 'height': '6.5', 'rx': '1.5', 'fill': '#f8fafc', 'stroke': '#475569', 'stroke-width': '1.5' }),
+				createSvg('circle', { 'cx': '5', 'cy': '-4.7', 'r': '1', 'fill': '#10b981' }),
+				createSvg('circle', { 'cx': '5', 'cy': '4.8', 'r': '1', 'fill': '#10b981' })
+			);
+			gChildren.push(createSvg('circle', {
+				'cx': '16',
+				'cy': '-16',
+				'r': '4',
+				'fill': '#10b981',
+				'stroke': '#ffffff',
+				'stroke-width': '1.5'
+			}));
+		}
+
+		// 下方文字标签（主机名 + 虚拟 IP）
+		const titleColor = isSelf ? '#1e3a8a' : '#0f172a';
 		const ipColor = isSelf ? '#2563eb' : '#64748b';
 
-		const topY = pos.y - cardH / 2;
-
-		const gChildren = [
-			createSvg('rect', {
-				'x': pos.x - cardW / 2,
-				'y': topY,
-				'width': cardW,
-				'height': cardH,
-				'rx': '6',
-				'fill': cardBg,
-				'stroke': cardBorder,
-				'stroke-width': borderWidth
-			}),
+		gChildren.push(
 			createSvg('text', {
-				'x': pos.x,
-				'y': topY + 18,
+				'x': 0,
+				'y': nodeR + 15,
 				'text-anchor': 'middle',
 				'font-family': 'sans-serif',
-				'font-size': '12',
+				'font-size': '11.5',
 				'font-weight': isSelf ? 'bold' : '600',
 				'fill': titleColor
 			}, titleStr),
 			createSvg('text', {
-				'x': pos.x,
-				'y': topY + 34,
+				'x': 0,
+				'y': nodeR + 29,
 				'text-anchor': 'middle',
 				'font-family': 'monospace, sans-serif',
-				'font-size': '10.5',
+				'font-size': '10',
 				'font-weight': isSelf ? 'bold' : 'normal',
 				'fill': ipColor
 			}, ipv4)
-		];
+		);
 
+		// 代理子网标签
 		if (proxyCount > 0) {
-			const badgeW = 132;
-			const badgeH = 15;
 			for (let pIdx = 0; pIdx < proxyCount; pIdx++) {
-				const badgeY = topY + baseHeaderH + pIdx * itemH;
+				const badgeY = nodeR + 35 + pIdx * 16;
 				const labelText = proxyList[pIdx];
+				const bw = Math.max(90, labelText.length * 6.5 + 12);
 				gChildren.push(
 					createSvg('rect', {
-						'x': pos.x - badgeW / 2,
+						'x': -bw / 2,
 						'y': badgeY,
-						'width': badgeW,
-						'height': badgeH,
+						'width': bw,
+						'height': '14',
 						'rx': '3',
 						'fill': '#ecfdf5',
 						'stroke': '#a7f3d0',
 						'stroke-width': '1'
 					}),
 					createSvg('text', {
-						'x': pos.x,
-						'y': badgeY + 11,
+						'x': 0,
+						'y': badgeY + 10,
 						'text-anchor': 'middle',
 						'font-family': 'monospace, sans-serif',
-						'font-size': '9.5',
+						'font-size': '9',
 						'font-weight': '600',
 						'fill': '#047857'
 					}, labelText)
@@ -673,110 +934,150 @@ function renderTopologySvg(topoData, peerData) {
 			}
 		}
 
-		nodesLayer.push(createSvg('g', {}, gChildren));
+		const cardG = createSvg('g', {
+			'transform': 'translate(' + pos.x + ',' + pos.y + ')',
+			'style': 'cursor: grab; user-select: none; transition: filter 0.15s;'
+		}, gChildren);
+
+		// 节点鼠标交互
+		(function(nodeId, gEl) {
+			gEl.addEventListener('mouseenter', function() {
+				if (!activeDraggingNodeId) {
+					hoveredNodeId = nodeId;
+					refreshLinkVisuals();
+				}
+			});
+			gEl.addEventListener('mouseleave', function() {
+				if (!activeDraggingNodeId && hoveredNodeId === nodeId) {
+					hoveredNodeId = null;
+					refreshLinkVisuals();
+				}
+			});
+			gEl.addEventListener('mousedown', function(ev) {
+				if (ev.button !== 0) return;
+				ev.stopPropagation();
+				activeDraggingNodeId = nodeId;
+				mouseStartX = ev.clientX;
+				mouseStartY = ev.clientY;
+				gEl.style.cursor = 'grabbing';
+				gEl.firstElementChild.setAttribute('filter', 'url(#node-shadow-active)');
+			});
+		})(n.node_id, cardG);
+
+		nodeElementsMap[String(n.node_id)] = cardG;
+		nodesLayer.push(cardG);
 	}
 
-	// 3. 顶层：绘制延迟数据（与连线色彩同频）
+	// 3. 绘制延迟标签（微胶囊，鼠标悬停时弹出高亮）
 	for (let k = 0; k < linkKeys.length; k++) {
-		const link = linkMap[linkKeys[k]];
-		const p1 = posMap[link.srcId];
-		const p2 = posMap[link.dstId];
-		if (!p1 || !p2) continue;
+		const linkKey = linkKeys[k];
+		const link = linkMap[linkKey];
+		const p1 = posMap[String(link.srcId)];
+		const p2 = posMap[String(link.dstId)];
+		const sn1 = nodeMap[String(link.srcId)];
+		const sn2 = nodeMap[String(link.dstId)];
+		if (!p1 || !p2 || !sn1 || !sn2) continue;
 
 		const lat = link.latency;
 		if (lat !== undefined && lat !== null) {
-			const isSrcLocal = (String(link.srcId) === String(localNode.node_id));
-			const isDstLocal = (String(link.dstId) === String(localNode.node_id));
-
-			let mx, my;
-
-			if (isSrcLocal && !isDstLocal) {
-				// p1 为中心本端，p2 为外围节点：紧密锚定在 p2 前方，根据连线角度精准避让卡片外沿 (+24px 安全缓冲)
-				const dx = p2.x - p1.x;
-				const dy = p2.y - p1.y;
-				const lineLen = Math.sqrt(dx * dx + dy * dy);
-				const angle = Math.atan2(dy, dx);
-				const cardBorderDist = Math.sqrt(Math.pow(74 * Math.cos(angle), 2) + Math.pow(42 * Math.sin(angle), 2));
-				const safeBackDist = Math.max(90, Math.round(cardBorderDist + 24));
-				const targetDist = Math.max(60, lineLen - safeBackDist);
-				const ratio = (lineLen > 0) ? (targetDist / lineLen) : 0.70;
-				mx = Math.round(p1.x + ratio * dx);
-				my = Math.round(p1.y + ratio * dy);
-			} else if (isDstLocal && !isSrcLocal) {
-				// p2 为中心本端，p1 为外围节点：紧密锚定在 p1 前方
-				const dx = p1.x - p2.x;
-				const dy = p1.y - p2.y;
-				const lineLen = Math.sqrt(dx * dx + dy * dy);
-				const angle = Math.atan2(dy, dx);
-				const cardBorderDist = Math.sqrt(Math.pow(74 * Math.cos(angle), 2) + Math.pow(42 * Math.sin(angle), 2));
-				const safeBackDist = Math.max(90, Math.round(cardBorderDist + 24));
-				const targetDist = Math.max(60, lineLen - safeBackDist);
-				const ratio = (lineLen > 0) ? (targetDist / lineLen) : 0.70;
-				mx = Math.round(p2.x + ratio * dx);
-				my = Math.round(p2.y + ratio * dy);
-			} else {
-				// 外围对等节点之间的互联边（Mesh 底边/外围边）：取中点并沿中心向外法线微推 20px，绝不内缩到中心
-				const midX = (p1.x + p2.x) / 2;
-				const midY = (p1.y + p2.y) / 2;
-				const outVecX = midX - cx;
-				const outVecY = midY - cy;
-				const outLen = Math.sqrt(outVecX * outVecX + outVecY * outVecY);
-				const pushDist = 20;
-				if (outLen > 0) {
-					mx = Math.round(midX + (outVecX / outLen) * pushDist);
-					my = Math.round(midY + (outVecY / outLen) * pushDist);
-				} else {
-					mx = Math.round(midX);
-					my = Math.round(midY);
-				}
-			}
-
-			// 全局卡片碰撞二次兜底校验：确保与网络中任意节点卡片保持安全间距
-			for (let ni = 0; ni < nodeCount; ni++) {
-				const npos = posMap[nodes[ni].node_id];
-				if (!npos) continue;
-				if (Math.abs(mx - npos.x) < 78 && Math.abs(my - npos.y) < 42) {
-					// 若触碰卡片包围盒，沿中心向外法线方向微调避让
-					const pushDirX = mx >= npos.x ? 1 : -1;
-					const pushDirY = my >= npos.y ? 1 : -1;
-					mx += pushDirX * 16;
-					my += pushDirY * 12;
-				}
-			}
+			const startPt = getCircleEdgePoint(p1.x, p1.y, p2.x, p2.y, sn1.radius);
+			const endPt = getCircleEdgePoint(p2.x, p2.y, p1.x, p1.y, sn2.radius);
+			const mx = Math.round((startPt.x + endPt.x) / 2);
+			const my = Math.round((startPt.y + endPt.y) / 2);
 
 			const colorCfg = getLatencyColor(lat);
 			const labelStr = lat + ' ms';
 
-			// 极简纯净排版：直接在线上渲染同色文字，通过背景白色描边实现自然的连线阻断
-			badgesLayer.push(createSvg('text', {
-				'x': mx,
-				'y': my + 4,
+			const textSvg = createSvg('text', {
+				'x': 0,
+				'y': 4,
 				'text-anchor': 'middle',
 				'font-family': 'monospace, sans-serif',
-				'font-size': '11.5',
+				'font-size': '11',
 				'font-weight': '700',
-				'fill': colorCfg.text,
-				'stroke': '#fafafa',
-				'stroke-width': '4.5',
-				'paint-order': 'stroke fill',
-				'stroke-linejoin': 'round'
-			}, labelStr));
+				'fill': colorCfg.text
+			}, labelStr);
+
+			const badgeW = 56;
+			const badgeH = 18;
+			const badgeG = createSvg('g', {
+				'transform': 'translate(' + mx + ',' + my + ')',
+				'style': 'cursor: pointer; opacity: 0.9; transition: opacity 0.2s;'
+			}, [
+				createSvg('rect', {
+					'x': -badgeW / 2,
+					'y': -badgeH / 2,
+					'width': badgeW,
+					'height': badgeH,
+					'rx': '9',
+					'fill': '#ffffff',
+					'stroke': colorCfg.line,
+					'stroke-width': '1.2',
+					'filter': 'url(#node-shadow)'
+				}),
+				textSvg
+			]);
+
+			(function(lk) {
+				badgeG.addEventListener('mouseenter', function() {
+					hoveredLinkId = lk;
+					refreshLinkVisuals();
+				});
+				badgeG.addEventListener('mouseleave', function() {
+					if (hoveredLinkId === lk) {
+						hoveredLinkId = null;
+						refreshLinkVisuals();
+					}
+				});
+			})(linkKey);
+
+			badgeElementsMap[linkKey] = badgeG;
+			badgesLayer.push(badgeG);
 		}
 	}
 
-	const allElements = linesLayer.concat(nodesLayer, badgesLayer);
+	// 动态更新任意边几何位置
+	function updateEdgeGeometry(linkKey) {
+		const link = linkMap[linkKey];
+		if (!link) return;
+		const p1 = posMap[String(link.srcId)];
+		const p2 = posMap[String(link.dstId)];
+		const sn1 = nodeMap[String(link.srcId)];
+		const sn2 = nodeMap[String(link.dstId)];
+		if (!p1 || !p2 || !sn1 || !sn2) return;
+
+		const startPt = getCircleEdgePoint(p1.x, p1.y, p2.x, p2.y, sn1.radius);
+		const endPt = getCircleEdgePoint(p2.x, p2.y, p1.x, p1.y, sn2.radius);
+
+		const lineEl = lineElementsMap[linkKey];
+		if (lineEl) {
+			lineEl.setAttribute('x1', startPt.x);
+			lineEl.setAttribute('y1', startPt.y);
+			lineEl.setAttribute('x2', endPt.x);
+			lineEl.setAttribute('y2', endPt.y);
+		}
+
+		const badgeEl = badgeElementsMap[linkKey];
+		if (badgeEl) {
+			const mx = Math.round((startPt.x + endPt.x) / 2);
+			const my = Math.round((startPt.y + endPt.y) / 2);
+			badgeEl.setAttribute('transform', 'translate(' + mx + ',' + my + ')');
+		}
+	}
+
+	const allElements = [defsNode, bgRect].concat(linesLayer, badgesLayer, nodesLayer);
 
 	const svgNode = createSvg('svg', {
 		'viewBox': '0 0 ' + width + ' ' + height,
-		'style': 'width: 100%; height: 100%; display: block; margin: 0 auto; user-select: none; background: transparent; cursor: grab;'
+		'style': 'width: 100%; height: 100%; display: block; margin: 0 auto; user-select: none; background: #f8fafc; cursor: grab;'
 	}, allElements);
 
 	let currentScale = topologyViewState.scale || 1.0;
 	let panX = topologyViewState.panX || 0;
 	let panY = topologyViewState.panY || 0;
-	let isDragging = false;
-	let dragStartX = 0;
-	let dragStartY = 0;
+	let isCanvasDragging = false;
+	let canvasDragStartX = 0;
+	let canvasDragStartY = 0;
 
 	function applyViewBox() {
 		topologyViewState.scale = currentScale;
@@ -800,27 +1101,67 @@ function renderTopologySvg(topoData, peerData) {
 
 	svgNode.addEventListener('mousedown', function(ev) {
 		if (ev.button !== 0) return;
-		isDragging = true;
-		dragStartX = ev.clientX - panX;
-		dragStartY = ev.clientY - panY;
+		if (activeDraggingNodeId) return;
+		isCanvasDragging = true;
+		canvasDragStartX = ev.clientX - panX;
+		canvasDragStartY = ev.clientY - panY;
 		svgNode.style.cursor = 'grabbing';
 	});
 
 	window.addEventListener('mousemove', function(ev) {
-		if (!isDragging) return;
-		panX = ev.clientX - dragStartX;
-		panY = ev.clientY - dragStartY;
-		applyViewBox();
+		// 1. 处理节点自由拖拽
+		if (activeDraggingNodeId) {
+			const dx = (ev.clientX - mouseStartX) / currentScale;
+			const dy = (ev.clientY - mouseStartY) / currentScale;
+			mouseStartX = ev.clientX;
+			mouseStartY = ev.clientY;
+
+			const pos = posMap[activeDraggingNodeId];
+			if (pos) {
+				pos.x = Math.round(pos.x + dx);
+				pos.y = Math.round(pos.y + dy);
+				if (!topologyViewState.nodePositions) topologyViewState.nodePositions = {};
+				topologyViewState.nodePositions[activeDraggingNodeId] = { x: pos.x, y: pos.y };
+
+				const cardEl = nodeElementsMap[activeDraggingNodeId];
+				if (cardEl) {
+					cardEl.setAttribute('transform', 'translate(' + pos.x + ',' + pos.y + ')');
+				}
+
+				for (let k = 0; k < linkKeys.length; k++) {
+					const lk = linkMap[linkKeys[k]];
+					if (String(lk.srcId) === String(activeDraggingNodeId) || String(lk.dstId) === String(activeDraggingNodeId)) {
+						updateEdgeGeometry(linkKeys[k]);
+					}
+				}
+			}
+			return;
+		}
+
+		// 2. 处理画布平移
+		if (isCanvasDragging) {
+			panX = ev.clientX - canvasDragStartX;
+			panY = ev.clientY - canvasDragStartY;
+			applyViewBox();
+		}
 	});
 
 	window.addEventListener('mouseup', function() {
-		if (isDragging) {
-			isDragging = false;
+		if (activeDraggingNodeId) {
+			const cardEl = nodeElementsMap[activeDraggingNodeId];
+			if (cardEl) {
+				cardEl.style.cursor = 'grab';
+				cardEl.firstElementChild.setAttribute('filter', 'url(#node-shadow)');
+			}
+			activeDraggingNodeId = null;
+		}
+		if (isCanvasDragging) {
+			isCanvasDragging = false;
 			svgNode.style.cursor = 'grab';
 		}
 	});
 
-	const btnStyle = 'display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; font-size: 14px; font-weight: bold; color: #475569; background: rgba(255, 255, 255, 0.9); border: 1px solid #cbd5e1; border-radius: 4px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); cursor: pointer; user-select: none; transition: all 0.15s;';
+	const btnStyle = 'display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; font-size: 14px; font-weight: bold; color: #475569; background: rgba(255, 255, 255, 0.95); border: 1px solid #cbd5e1; border-radius: 4px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); cursor: pointer; user-select: none; transition: all 0.15s;';
 	
 	const zoomInBtn = E('button', {
 		'type': 'button',
@@ -860,18 +1201,51 @@ function renderTopologySvg(topoData, peerData) {
 		}
 	}, '1:1');
 
+	const resetLayoutBtn = E('button', {
+		'type': 'button',
+		'class': 'btn cbi-button',
+		'style': btnStyle + ' width: auto; padding: 0 8px; font-size: 13px;',
+		'title': _('Reset Layout'),
+		'click': function(ev) {
+			ev.preventDefault();
+			topologyViewState.nodePositions = {};
+			topologyViewState.scale = 1.0;
+			topologyViewState.panX = 0;
+			topologyViewState.panY = 0;
+			const display = document.getElementById('easytier_topology_display');
+			if (display) {
+				display.replaceChildren(renderTopologySvg(topoData, peerData));
+			}
+		}
+	}, '⟲');
+
+	const toggleLinksBtn = E('button', {
+		'type': 'button',
+		'class': 'btn cbi-button' + (showAllLinks ? ' cbi-button-action' : ''),
+		'style': btnStyle + ' width: auto; padding: 0 10px; font-size: 12px;' + (showAllLinks ? ' background: #2563eb; color: #ffffff; border-color: #1d4ed8;' : ''),
+		'title': showAllLinks ? _('Show Local Links Only') : _('Show All Peer Links'),
+		'click': function(ev) {
+			ev.preventDefault();
+			topologyViewState.showAllLinks = !topologyViewState.showAllLinks;
+			const display = document.getElementById('easytier_topology_display');
+			if (display) {
+				display.replaceChildren(renderTopologySvg(topoData, peerData));
+			}
+		}
+	}, showAllLinks ? _('All Links') : _('Local Only'));
+
 	const toolbar = E('div', {
 		'style': 'position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; z-index: 10;'
-	}, [zoomInBtn, zoomOutBtn, resetBtn]);
+	}, [toggleLinksBtn, zoomInBtn, zoomOutBtn, resetBtn, resetLayoutBtn]);
 
 	const graphContainer = E('div', {
-		'style': 'position: relative; width: 100%; aspect-ratio: 1 / 1; max-height: 560px; overflow: hidden; background: #fafafa; border-radius: 4px;'
+		'style': 'position: relative; width: 100%; aspect-ratio: 1 / 1; min-height: 540px; max-height: 680px; overflow: hidden; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;'
 	}, [toolbar, svgNode]);
 
 	const legend = E('div', {
 		'style': 'text-align: center; margin-top: 10px; font-size: 12px; line-height: 1.6;'
 	}, [
-		E('span', { 'style': 'display: inline-block; width: 16px; height: 3px; background: #22c55e; border-radius: 2px; margin-right: 5px; vertical-align: middle;' }),
+		E('span', { 'style': 'display: inline-block; width: 16px; height: 3px; background: #10b981; border-radius: 2px; margin-right: 5px; vertical-align: middle;' }),
 		_('< 50ms (Optimal)'),
 		'   ',
 		E('span', { 'style': 'display: inline-block; width: 16px; height: 3px; background: #3b82f6; border-radius: 2px; margin-left: 14px; margin-right: 5px; vertical-align: middle;' }),
@@ -882,7 +1256,7 @@ function renderTopologySvg(topoData, peerData) {
 		'   ',
 		E('span', { 'style': 'display: inline-block; padding: 1px 6px; font-size: 11px; font-family: monospace; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 3px; margin-left: 14px; vertical-align: middle;' }, 'CIDR'),
 		E('span', { 'style': 'margin-left: 4px; vertical-align: middle;' }, _('Proxy Network')),
-		E('span', { 'style': 'margin-left: 16px; color: #94a3b8; font-size: 11px; vertical-align: middle;' }, _('(Drag to pan, scroll to zoom)'))
+		E('span', { 'style': 'margin-left: 16px; color: #94a3b8; font-size: 11px; vertical-align: middle;' }, _('(Hover to highlight link, drag nodes/canvas to adjust)'))
 	]);
 
 	return E('div', {
