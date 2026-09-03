@@ -91,33 +91,37 @@ const methods = {
 			}
 
 			if (target_mode === 'ap') {
-				// --- Switch to AP Mode ---
+				// --- Switch to AP Mode (Full Lossless Snapshot) ---
 				
 				// 1. Identify WAN device
 				let wan_device = uci_cursor.get('network', 'wan', 'device');
 				if (!wan_device) {
-					// Fallback to ifname if device not set (older configs)
 					wan_device = uci_cursor.get('network', 'wan', 'ifname');
 				}
 
-				// 2. Backup current settings
-				let original_lan_ip = uci_cursor.get('network', 'lan', 'ipaddr');
-				uci_cursor.set(UCI_CONFIG, 'settings', 'wan_device', wan_device || '');
-				uci_cursor.set(UCI_CONFIG, 'settings', 'lan_ip', original_lan_ip || '');
+				// 2. Full Snapshot Backup of Router Mode state
+				let lan_proto = uci_cursor.get('network', 'lan', 'proto') || 'static';
+				let lan_ipaddr = uci_cursor.get('network', 'lan', 'ipaddr') || '';
+				let lan_netmask = uci_cursor.get('network', 'lan', 'netmask') || '';
+				let lan_gateway = uci_cursor.get('network', 'lan', 'gateway') || '';
+				let lan_dns = uci_cursor.get('network', 'lan', 'dns') || [];
+				let dhcp_ignore = uci_cursor.get('dhcp', 'lan', 'ignore') || '0';
+				let wan_disabled = uci_cursor.get('network', 'wan', 'disabled') || '0';
+				let wan6_disabled = uci_cursor.get('network', 'wan6', 'disabled') || '0';
+
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'lan_proto', lan_proto);
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'lan_ipaddr', lan_ipaddr);
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'lan_netmask', lan_netmask);
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'lan_gateway', lan_gateway);
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'lan_dns', lan_dns);
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'dhcp_ignore', dhcp_ignore);
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'wan_device', wan_device || '');
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'wan_disabled', wan_disabled);
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'wan6_disabled', wan6_disabled);
 				uci_cursor.set(UCI_CONFIG, 'settings', 'mode', 'ap');
 
-				// 3. Bridge WAN device to LAN
+				// 3. Bridge WAN device to LAN bridge
 				if (wan_device) {
-					let lan_devices = uci_cursor.get('network', 'lan', 'device');
-					if (type(lan_devices) === 'string') {
-						// Single device, convert to list or add to bridge
-						// For br-lan, usually it's a bridge device in network.lan.device
-						// We might need to check network.device section if it's modern DSA
-						// For simplicity in this script, we assume 'br-lan' exists or we add to it
-					}
-					
-					// Most modern OpenWrt use a bridge named 'br-lan'
-					// We add the wan_device to the ports of br-lan
 					uci_cursor.foreach('network', 'device', (s) => {
 						if (s.name === 'br-lan') {
 							let ports = s.ports || [];
@@ -132,7 +136,7 @@ const methods = {
 					});
 				}
 
-				// 4. Set LAN to DHCP
+				// 4. Set LAN to DHCP client
 				uci_cursor.set('network', 'lan', 'proto', 'dhcp');
 				uci_cursor.delete('network', 'lan', 'ipaddr');
 				uci_cursor.delete('network', 'lan', 'netmask');
@@ -147,11 +151,18 @@ const methods = {
 				uci_cursor.set('dhcp', 'lan', 'ignore', '1');
 
 			} else {
-				// --- Switch to Router Mode ---
+				// --- Switch to Router Mode (Lossless State Restoration) ---
 
-				// 1. Restore settings
-				let wan_device = uci_cursor.get(UCI_CONFIG, 'settings', 'wan_device');
-				let lan_ip = uci_cursor.get(UCI_CONFIG, 'settings', 'lan_ip') || '192.168.1.1';
+				// 1. Read Snapshot
+				let wan_device = uci_cursor.get(UCI_CONFIG, 'router_state', 'wan_device');
+				let lan_proto = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_proto') || 'static';
+				let lan_ipaddr = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_ipaddr') || '192.168.1.1';
+				let lan_netmask = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_netmask') || '';
+				let lan_gateway = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_gateway') || '';
+				let lan_dns = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_dns') || [];
+				let dhcp_ignore = uci_cursor.get(UCI_CONFIG, 'router_state', 'dhcp_ignore') || '0';
+				let wan_disabled = uci_cursor.get(UCI_CONFIG, 'router_state', 'wan_disabled') || '0';
+				let wan6_disabled = uci_cursor.get(UCI_CONFIG, 'router_state', 'wan6_disabled') || '0';
 
 				uci_cursor.set(UCI_CONFIG, 'settings', 'mode', 'router');
 
@@ -168,17 +179,35 @@ const methods = {
 					});
 				}
 
-				// 3. Restore LAN to Static
-				uci_cursor.set('network', 'lan', 'proto', 'static');
-				uci_cursor.set('network', 'lan', 'ipaddr', lan_ip);
-				uci_cursor.set('network', 'lan', 'netmask', '255.255.255.0');
+				// 3. Restore LAN settings accurately without hardcoding
+				uci_cursor.set('network', 'lan', 'proto', lan_proto);
+				if (lan_ipaddr) uci_cursor.set('network', 'lan', 'ipaddr', lan_ipaddr);
+				if (lan_netmask) uci_cursor.set('network', 'lan', 'netmask', lan_netmask);
+				if (lan_gateway) uci_cursor.set('network', 'lan', 'gateway', lan_gateway);
+				if (type(lan_dns) === 'array' && length(lan_dns) > 0) {
+					uci_cursor.set('network', 'lan', 'dns', lan_dns);
+				} else if (type(lan_dns) === 'string' && lan_dns !== '') {
+					uci_cursor.set('network', 'lan', 'dns', lan_dns);
+				}
 
-				// 4. Enable WAN interface
-				uci_cursor.delete('network', 'wan', 'disabled');
-				uci_cursor.delete('network', 'wan6', 'disabled');
+				// 4. Restore WAN / WAN6 states
+				if (wan_disabled === '1') {
+					uci_cursor.set('network', 'wan', 'disabled', '1');
+				} else {
+					uci_cursor.delete('network', 'wan', 'disabled');
+				}
+				if (wan6_disabled === '1') {
+					uci_cursor.set('network', 'wan6', 'disabled', '1');
+				} else {
+					uci_cursor.delete('network', 'wan6', 'disabled');
+				}
 
-				// 5. Enable DHCP Server
-				uci_cursor.delete('dhcp', 'lan', 'ignore');
+				// 5. Restore DHCP Server state
+				if (dhcp_ignore === '1') {
+					uci_cursor.set('dhcp', 'lan', 'ignore', '1');
+				} else {
+					uci_cursor.delete('dhcp', 'lan', 'ignore');
+				}
 			}
 
 			uci_cursor.commit('ap-switch');
@@ -189,7 +218,7 @@ const methods = {
 			system('/etc/init.d/network restart &');
 			system('/etc/init.d/dnsmasq restart &');
 
-			return { success: true };
+			return { success: true, result: 'success' };
 		}
 	}
 };
