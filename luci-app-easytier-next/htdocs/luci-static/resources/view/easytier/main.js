@@ -217,13 +217,78 @@ function renderLocalNodeInfo(peerData) {
 	]);
 }
 
+function isThemeDark() {
+	if (document.querySelector('[data-darkmode="true"]') ||
+		document.body.getAttribute('data-darkmode') === 'true' ||
+		document.documentElement.getAttribute('data-darkmode') === 'true' ||
+		document.documentElement.getAttribute('data-theme') === 'dark' ||
+		document.body.classList.contains('dark') ||
+		document.body.classList.contains('theme-dark') ||
+		(document.querySelector('link[href*="dark"]') !== null)) {
+		return true;
+	}
+	try {
+		const bg = window.getComputedStyle(document.body).backgroundColor;
+		const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+		if (m) {
+			const r = parseInt(m[1]), g = parseInt(m[2]), b = parseInt(m[3]);
+			if ((r * 0.299 + g * 0.587 + b * 0.114) < 130) return true;
+		}
+	} catch(e) {}
+	return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
 function injectTooltipStyle() {
 	if (document.getElementById('et_custom_tooltip_style')) return;
 	const css = [
 		'.et-tooltip-wrap { position: relative; display: inline-block; cursor: pointer; }',
 		'.et-tooltip-wrap .et-tooltip-bubble { visibility: hidden; opacity: 0; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%) translateY(4px); background: #0f172a; color: #f8fafc; font-size: 11px; font-weight: 500; font-family: monospace, sans-serif; white-space: nowrap; padding: 5px 9px; border-radius: 4px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); z-index: 9999; pointer-events: none; transition: opacity 0.15s ease, transform 0.15s ease; border: 1px solid #334155; }',
 		'.et-tooltip-wrap .et-tooltip-bubble::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #0f172a transparent transparent transparent; }',
-		'.et-tooltip-wrap:hover .et-tooltip-bubble { visibility: visible; opacity: 1; transform: translateX(-50%) translateY(0); }'
+		'.et-tooltip-wrap:hover .et-tooltip-bubble { visibility: visible; opacity: 1; transform: translateX(-50%) translateY(0); }',
+		'',
+		'/* 拓扑图主题自适应样式 */',
+		'.et-node-title { fill: #0f172a; }',
+		'.et-node-title.is-local { fill: #1e3a8a; }',
+		'.et-node-ip { fill: #64748b; }',
+		'.et-node-ip.is-local { fill: #2563eb; }',
+		'.et-node-circle { fill: #ffffff; stroke: #94a3b8; }',
+		'.et-node-circle.is-local { fill: #2563eb; stroke: #1d4ed8; }',
+		'.et-node-server-rect { fill: #f8fafc; stroke: #475569; }',
+		'.et-node-proxy-bg { fill: #ecfdf5; stroke: #a7f3d0; }',
+		'.et-node-proxy-text { fill: #047857; }',
+		'.et-badge-rect { fill: #ffffff; }',
+		'.et-topo-container { background-color: #f8fafc; background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px); border-color: #e2e8f0; }',
+		'.et-topo-legend { color: #475569; }',
+		'.et-btn-toolbar { background: rgba(255, 255, 255, 0.95); color: #475569; border-color: #cbd5e1; }',
+		'',
+		'/* 夜间/暗黑主题自适应 (响应系统偏好及各类 OpenWrt 暗色主题) */',
+		'@media (prefers-color-scheme: dark) {',
+		'    .et-node-title { fill: #f8fafc !important; }',
+		'    .et-node-title.is-local { fill: #93c5fd !important; }',
+		'    .et-node-ip { fill: #94a3b8 !important; }',
+		'    .et-node-ip.is-local { fill: #60a5fa !important; }',
+		'    .et-node-circle { fill: #1e293b !important; stroke: #475569 !important; }',
+		'    .et-node-server-rect { fill: #0f172a !important; stroke: #64748b !important; }',
+		'    .et-node-proxy-bg { fill: #064e3b !important; stroke: #059669 !important; }',
+		'    .et-node-proxy-text { fill: #6ee7b7 !important; }',
+		'    .et-badge-rect { fill: #1e293b !important; }',
+		'    .et-topo-container { background-color: #0f172a !important; background-image: radial-gradient(#334155 1.2px, transparent 1.2px) !important; border-color: #334155 !important; }',
+		'    .et-topo-legend { color: #94a3b8 !important; }',
+		'    .et-btn-toolbar { background: rgba(30, 41, 59, 0.95) !important; color: #f1f5f9 !important; border-color: #475569 !important; }',
+		'}',
+		'',
+		'[data-darkmode="true"] .et-node-title, [data-theme="dark"] .et-node-title, [data-mode="dark"] .et-node-title, .dark .et-node-title, .theme-dark .et-node-title, body[data-theme="dark"] .et-node-title, .et-dark .et-node-title { fill: #f8fafc !important; }',
+		'[data-darkmode="true"] .et-node-title.is-local, [data-theme="dark"] .et-node-title.is-local, [data-mode="dark"] .et-node-title.is-local, .dark .et-node-title.is-local, .theme-dark .et-node-title.is-local, body[data-theme="dark"] .et-node-title.is-local, .et-dark .et-node-title.is-local { fill: #93c5fd !important; }',
+		'[data-darkmode="true"] .et-node-ip, [data-theme="dark"] .et-node-ip, [data-mode="dark"] .et-node-ip, .dark .et-node-ip, .theme-dark .et-node-ip, body[data-theme="dark"] .et-node-ip, .et-dark .et-node-ip { fill: #94a3b8 !important; }',
+		'[data-darkmode="true"] .et-node-ip.is-local, [data-theme="dark"] .et-node-ip.is-local, [data-mode="dark"] .et-node-ip.is-local, .dark .et-node-ip.is-local, .theme-dark .et-node-ip.is-local, body[data-theme="dark"] .et-node-ip.is-local, .et-dark .et-node-ip.is-local { fill: #60a5fa !important; }',
+		'[data-darkmode="true"] .et-node-circle, [data-theme="dark"] .et-node-circle, [data-mode="dark"] .et-node-circle, .dark .et-node-circle, .theme-dark .et-node-circle, body[data-theme="dark"] .et-node-circle, .et-dark .et-node-circle { fill: #1e293b !important; stroke: #475569 !important; }',
+		'[data-darkmode="true"] .et-node-server-rect, [data-theme="dark"] .et-node-server-rect, [data-mode="dark"] .et-node-server-rect, .dark .et-node-server-rect, .theme-dark .et-node-server-rect, body[data-theme="dark"] .et-node-server-rect, .et-dark .et-node-server-rect { fill: #0f172a !important; stroke: #64748b !important; }',
+		'[data-darkmode="true"] .et-node-proxy-bg, [data-theme="dark"] .et-node-proxy-bg, [data-mode="dark"] .et-node-proxy-bg, .dark .et-node-proxy-bg, .theme-dark .et-node-proxy-bg, body[data-theme="dark"] .et-node-proxy-bg, .et-dark .et-node-proxy-bg { fill: #064e3b !important; stroke: #059669 !important; }',
+		'[data-darkmode="true"] .et-node-proxy-text, [data-theme="dark"] .et-node-proxy-text, [data-mode="dark"] .et-node-proxy-text, .dark .et-node-proxy-text, .theme-dark .et-node-proxy-text, body[data-theme="dark"] .et-node-proxy-text, .et-dark .et-node-proxy-text { fill: #6ee7b7 !important; }',
+		'[data-darkmode="true"] .et-badge-rect, [data-theme="dark"] .et-badge-rect, [data-mode="dark"] .et-badge-rect, .dark .et-badge-rect, .theme-dark .et-badge-rect, body[data-theme="dark"] .et-badge-rect, .et-dark .et-badge-rect { fill: #1e293b !important; }',
+		'[data-darkmode="true"] .et-topo-container, [data-theme="dark"] .et-topo-container, [data-mode="dark"] .et-topo-container, .dark .et-topo-container, .theme-dark .et-topo-container, body[data-theme="dark"] .et-topo-container, .et-dark.et-topo-container { background-color: #0f172a !important; background-image: radial-gradient(#334155 1.2px, transparent 1.2px) !important; border-color: #334155 !important; }',
+		'[data-darkmode="true"] .et-topo-legend, [data-theme="dark"] .et-topo-legend, [data-mode="dark"] .et-topo-legend, .dark .et-topo-legend, .theme-dark .et-topo-legend, body[data-theme="dark"] .et-topo-legend, .et-dark .et-topo-legend { color: #94a3b8 !important; }',
+		'[data-darkmode="true"] .et-btn-toolbar, [data-theme="dark"] .et-btn-toolbar, [data-mode="dark"] .et-btn-toolbar, .dark .et-btn-toolbar, .theme-dark .et-btn-toolbar, body[data-theme="dark"] .et-btn-toolbar, .et-dark .et-btn-toolbar { background: rgba(30, 41, 59, 0.95) !important; color: #f1f5f9 !important; border-color: #475569 !important; }'
 	].join('\n');
 	document.head.appendChild(E('style', { id: 'et_custom_tooltip_style' }, css));
 }
@@ -430,6 +495,7 @@ function getCircleEdgePoint(cx, cy, targetX, targetY, radius) {
 }
 
 function renderTopologySvg(topoData, peerData) {
+	injectTooltipStyle();
 	let rawNodes = [];
 	if (Array.isArray(topoData)) {
 		rawNodes = topoData;
@@ -1053,6 +1119,8 @@ function renderTopologySvg(topoData, peerData) {
 	let mouseStartX = 0;
 	let mouseStartY = 0;
 
+	const isDark = isThemeDark();
+
 	for (let i = 0; i < nodeCount; i++) {
 		const n = nodes[i];
 		const sn = nodeMap[String(n.node_id)];
@@ -1069,8 +1137,8 @@ function renderTopologySvg(topoData, peerData) {
 		const titleStr = isSelf ? (hostname + ' (Local)') : hostname;
 
 		const nodeR = sn.radius;
-		const circleColor = isSelf ? '#2563eb' : '#ffffff';
-		const circleBorder = isSelf ? '#1d4ed8' : '#94a3b8';
+		const circleColor = isSelf ? '#2563eb' : (isDark ? '#1e293b' : '#ffffff');
+		const circleBorder = isSelf ? '#1d4ed8' : (isDark ? '#475569' : '#94a3b8');
 		const borderWidth = isSelf ? '2.5' : '2';
 
 		const gChildren = [];
@@ -1093,7 +1161,8 @@ function renderTopologySvg(topoData, peerData) {
 			'fill': circleColor,
 			'stroke': circleBorder,
 			'stroke-width': borderWidth,
-			'filter': 'url(#node-shadow)'
+			'filter': 'url(#node-shadow)',
+			'class': 'et-node-circle' + (isSelf ? ' is-local' : '')
 		}));
 
 		// 精致矢量图标
@@ -1114,8 +1183,8 @@ function renderTopologySvg(topoData, peerData) {
 			);
 		} else {
 			gChildren.push(
-				createSvg('rect', { 'x': '-9', 'y': '-8', 'width': '18', 'height': '6.5', 'rx': '1.5', 'fill': '#f8fafc', 'stroke': '#475569', 'stroke-width': '1.5' }),
-				createSvg('rect', { 'x': '-9', 'y': '1.5', 'width': '18', 'height': '6.5', 'rx': '1.5', 'fill': '#f8fafc', 'stroke': '#475569', 'stroke-width': '1.5' }),
+				createSvg('rect', { 'x': '-9', 'y': '-8', 'width': '18', 'height': '6.5', 'rx': '1.5', 'fill': isDark ? '#0f172a' : '#f8fafc', 'stroke': isDark ? '#64748b' : '#475569', 'stroke-width': '1.5', 'class': 'et-node-server-rect' }),
+				createSvg('rect', { 'x': '-9', 'y': '1.5', 'width': '18', 'height': '6.5', 'rx': '1.5', 'fill': isDark ? '#0f172a' : '#f8fafc', 'stroke': isDark ? '#64748b' : '#475569', 'stroke-width': '1.5', 'class': 'et-node-server-rect' }),
 				createSvg('circle', { 'cx': '5', 'cy': '-4.7', 'r': '1', 'fill': '#10b981' }),
 				createSvg('circle', { 'cx': '5', 'cy': '4.8', 'r': '1', 'fill': '#10b981' })
 			);
@@ -1130,8 +1199,8 @@ function renderTopologySvg(topoData, peerData) {
 		}
 
 		// 下方文字标签（主机名 + 虚拟 IP）
-		const titleColor = isSelf ? '#1e3a8a' : '#0f172a';
-		const ipColor = isSelf ? '#2563eb' : '#64748b';
+		const titleColor = isDark ? (isSelf ? '#93c5fd' : '#f8fafc') : (isSelf ? '#1e3a8a' : '#0f172a');
+		const ipColor = isDark ? (isSelf ? '#60a5fa' : '#94a3b8') : (isSelf ? '#2563eb' : '#64748b');
 
 		gChildren.push(
 			createSvg('text', {
@@ -1141,7 +1210,8 @@ function renderTopologySvg(topoData, peerData) {
 				'font-family': 'sans-serif',
 				'font-size': '11.5',
 				'font-weight': isSelf ? 'bold' : '600',
-				'fill': titleColor
+				'fill': titleColor,
+				'class': 'et-node-title' + (isSelf ? ' is-local' : '')
 			}, titleStr),
 			createSvg('text', {
 				'x': 0,
@@ -1150,7 +1220,8 @@ function renderTopologySvg(topoData, peerData) {
 				'font-family': 'monospace, sans-serif',
 				'font-size': '10',
 				'font-weight': isSelf ? 'bold' : 'normal',
-				'fill': ipColor
+				'fill': ipColor,
+				'class': 'et-node-ip' + (isSelf ? ' is-local' : '')
 			}, ipv4)
 		);
 
@@ -1169,7 +1240,8 @@ function renderTopologySvg(topoData, peerData) {
 						'rx': '3',
 						'fill': '#ecfdf5',
 						'stroke': '#a7f3d0',
-						'stroke-width': '1'
+						'stroke-width': '1',
+						'class': 'et-node-proxy-bg'
 					}),
 					createSvg('text', {
 						'x': 0,
@@ -1178,7 +1250,8 @@ function renderTopologySvg(topoData, peerData) {
 						'font-family': 'monospace, sans-serif',
 						'font-size': '9',
 						'font-weight': '600',
-						'fill': '#047857'
+						'fill': '#047857',
+						'class': 'et-node-proxy-text'
 					}, labelText)
 				);
 			}
@@ -1278,7 +1351,8 @@ function renderTopologySvg(topoData, peerData) {
 					'fill': '#ffffff',
 					'stroke': colorCfg.line,
 					'stroke-width': '1.2',
-					'filter': 'url(#node-shadow)'
+					'filter': 'url(#node-shadow)',
+					'class': 'et-badge-rect'
 				}),
 				textSvg
 			]);
@@ -1333,6 +1407,7 @@ function renderTopologySvg(topoData, peerData) {
 	const allElements = [defsNode].concat(linesLayer, badgesLayer, nodesLayer);
 
 	const svgNode = createSvg('svg', {
+		'id': 'easytier-topo-svg',
 		'viewBox': '0 0 ' + width + ' ' + height,
 		'style': 'width: 100%; height: 100%; display: block; margin: 0 auto; user-select: none; background: transparent; cursor: grab;'
 	}, allElements);
@@ -1427,11 +1502,11 @@ function renderTopologySvg(topoData, peerData) {
 		}
 	});
 
-	const btnStyle = 'display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; font-size: 14px; font-weight: bold; color: #475569; background: rgba(255, 255, 255, 0.95); border: 1px solid #cbd5e1; border-radius: 4px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); cursor: pointer; user-select: none; transition: all 0.15s;';
+	const btnStyle = 'display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; font-size: 14px; font-weight: bold; border-radius: 4px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); cursor: pointer; user-select: none; transition: all 0.15s;';
 	
 	const zoomInBtn = E('button', {
 		'type': 'button',
-		'class': 'btn cbi-button',
+		'class': 'btn cbi-button et-btn-toolbar',
 		'style': btnStyle,
 		'title': _('Zoom In'),
 		'click': function(ev) {
@@ -1443,7 +1518,7 @@ function renderTopologySvg(topoData, peerData) {
 
 	const zoomOutBtn = E('button', {
 		'type': 'button',
-		'class': 'btn cbi-button',
+		'class': 'btn cbi-button et-btn-toolbar',
 		'style': btnStyle,
 		'title': _('Zoom Out'),
 		'click': function(ev) {
@@ -1455,7 +1530,7 @@ function renderTopologySvg(topoData, peerData) {
 
 	const resetBtn = E('button', {
 		'type': 'button',
-		'class': 'btn cbi-button',
+		'class': 'btn cbi-button et-btn-toolbar',
 		'style': btnStyle + ' width: auto; padding: 0 8px; font-size: 11px;',
 		'title': _('Reset View'),
 		'click': function(ev) {
@@ -1469,7 +1544,7 @@ function renderTopologySvg(topoData, peerData) {
 
 	const resetLayoutBtn = E('button', {
 		'type': 'button',
-		'class': 'btn cbi-button',
+		'class': 'btn cbi-button et-btn-toolbar',
 		'style': btnStyle + ' width: auto; padding: 0 8px; font-size: 13px;',
 		'title': _('Reset Layout'),
 		'click': function(ev) {
@@ -1487,8 +1562,8 @@ function renderTopologySvg(topoData, peerData) {
 
 	const toggleLinksBtn = E('button', {
 		'type': 'button',
-		'class': 'btn cbi-button' + (showAllLinks ? ' cbi-button-action' : ''),
-		'style': btnStyle + ' width: auto; padding: 0 10px; font-size: 12px;' + (showAllLinks ? ' background: #2563eb; color: #ffffff; border-color: #1d4ed8;' : ''),
+		'class': 'btn cbi-button et-btn-toolbar' + (showAllLinks ? ' cbi-button-action' : ''),
+		'style': btnStyle + ' width: auto; padding: 0 10px; font-size: 12px;' + (showAllLinks ? ' background: #2563eb !important; color: #ffffff !important; border-color: #1d4ed8 !important;' : ''),
 		'title': showAllLinks ? _('Show Local Links Only') : _('Show All Peer Links'),
 		'click': function(ev) {
 			ev.preventDefault();
@@ -1512,10 +1587,12 @@ function renderTopologySvg(topoData, peerData) {
 	});
 
 	const graphContainer = E('div', {
-		'style': 'position: relative; width: 100%; aspect-ratio: 1 / 1; min-height: 540px; max-height: 680px; overflow: hidden; background-color: #f8fafc; background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px); background-size: 24px 24px; border: 1px solid #e2e8f0; border-radius: 6px;'
+		'class': 'et-topo-container' + (isDark ? ' et-dark' : ''),
+		'style': 'position: relative; width: 100%; aspect-ratio: 1 / 1; min-height: 540px; max-height: 680px; overflow: hidden; background-size: 24px 24px; border: 1px solid #e2e8f0; border-radius: 6px;'
 	}, [pathBanner, toolbar, svgNode]);
 
 	const legend = E('div', {
+		'class': 'et-topo-legend' + (isDark ? ' et-dark' : ''),
 		'style': 'text-align: center; margin-top: 10px; font-size: 12px; line-height: 1.6;'
 	}, [
 		E('span', { 'style': 'display: inline-block; width: 16px; height: 3px; background: #10b981; border-radius: 2px; margin-right: 5px; vertical-align: middle;' }),
