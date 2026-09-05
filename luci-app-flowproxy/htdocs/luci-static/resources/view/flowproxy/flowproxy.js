@@ -187,12 +187,13 @@ return L.view.extend({
 
         s.taboption('settings', form.Flag, 'enabled', _('Enable FlowProxy')).rmempty = false;
         s.taboption('settings', form.Flag, 'dns_proxy_enabled', _('Force upstream DNS to proxy server')).rmempty = false;
-        
+
         o = s.taboption('settings', form.Value, 'proxy_server_ip_addr', _('Proxy server IP address'));
         o.datatype = 'ip4addr'; o.rmempty = false;
+        o.placeholder = '192.168.1.254';
         o.validate = function(section_id, value) {
             var ipInCidr = function(ipStr, cidrStr) {
-                if (!cidrStr || cidrStr.indexOf(':') !== -1) return false;
+                if (!cidrStr || cidrStr.indexOf(':') !== -1 || !ipStr || ipStr.indexOf(':') !== -1) return false;
                 var parts = cidrStr.split('/');
                 var cidrIp = parts[0];
                 var maskBits = parseInt(parts[1] || '32', 10);
@@ -220,8 +221,8 @@ return L.view.extend({
 
             var target_iface = null;
             for (var i = 0; i < ifaces.length; i++) {
-                var dev = ifaces[i].getL3Device();
-                if (dev && dev.getName() === selected_interface) {
+                var dev = ifaces[i].getL3Device() || ifaces[i].getDevice();
+                if ((dev && dev.getName() === selected_interface) || ifaces[i].getName() === selected_interface) {
                     target_iface = ifaces[i];
                     break;
                 }
