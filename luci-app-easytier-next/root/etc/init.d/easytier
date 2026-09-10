@@ -2,6 +2,8 @@
 
 START=90
 USE_PROCD=1
+EXTRA_COMMANDS="update_firewall"
+EXTRA_HELP="	update_firewall	Update WAN firewall inbound rule from live easytier-cli listeners"
 
 NAME="easytier"
 PROG="/usr/bin/easytier-core"
@@ -98,26 +100,66 @@ setup_firewall_and_network() {
 		fi
 	fi
 
-	# 3. WAN Inbound Traffic Rule (controlled by allow_wan)
+	if [ "$changed_net" = "1" ]; then
+		uci -q commit network
+		/etc/init.d/network reload 2>/dev/null
+	fi
+
+	if [ "$changed_fw" = "1" ]; then
+		uci -q commit firewall
+		/etc/init.d/firewall reload 2>/dev/null
+	fi
+
+	# 3. Kernel forwarding
+	sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1
+	sysctl -w net.ipv6.conf.all.forwarding=1 >/dev/null 2>&1
+}
+
+apply_wan_firewall() {
 	local allow_wan
 	allow_wan=$(uci -q get easytier.settings.allow_wan)
 
-	if [ "$allow_wan" = "1" ]; then
-		local custom_params wan_ports=""
-		custom_params=$(uci -q get easytier.settings.custom_params)
-
-		# Extract custom listening ports ONLY if -l/--listen/--listeners is specified
-		if [ -n "$custom_params" ]; then
-			local extracted_ports
-			extracted_ports=$(echo "$custom_params" | grep -oE '(-l|--listeners?)[[:space:]=]+[^[:space:]]+' | grep -oE ':[0-9]{2,5}' | tr -d ':' | sort -u | tr '\n' ' ')
-			set -- $extracted_ports
-			extracted_ports="$*"
-			[ -n "$extracted_ports" ] && wan_ports="$extracted_ports"
+	if [ "$allow_wan" != "1" ]; then
+		if uci -q get firewall.easytier_wan_inbound >/dev/null; then
+			uci -q delete firewall.easytier_wan_inbound
+			uci -q commit firewall
+			/etc/init.d/firewall reload 2>/dev/null
 		fi
+		return 0
+	fi
 
-		# Default listener ports fallback: 11010(tcp/udp), 11011(wg/ws), 11012(quic/wss), 11013(faketcp)
-		[ -z "$wan_ports" ] && wan_ports="11010 11011 11012 11013"
+	local rpc_port="$1"
+	[ -z "$rpc_port" ] && rpc_port=$(uci -q get easytier.settings.rpc_port)
+	[ -z "$rpc_port" ] && rpc_port="15888"
+	local rpc_arg="-p 127.0.0.1:${rpc_port}"
 
+	# 纯净原子化探测：从运行态 easytier-core 查询实际生效的 listeners 端口
+	local wan_ports=""
+	if [ -x /usr/bin/easytier-cli ]; then
+		local i=0 json_out=""
+		while [ $i -lt 10 ]; do
+			json_out=$(/usr/bin/easytier-cli $rpc_arg -o json node 2>/dev/null)
+			if [ -n "$json_out" ]; then
+				local extracted_ports=""
+				if command -v jsonfilter >/dev/null 2>&1; then
+					extracted_ports=$(echo "$json_out" | jsonfilter -e '@.listeners[*]' 2>/dev/null | grep -oE ':[0-9]{2,5}/?$' | tr -d ':/' | sort -n -u)
+				else
+					extracted_ports=$(echo "$json_out" | sed -n '/"listeners": \[/,/\]/p' | grep -oE ':[0-9]{2,5}/?$' | tr -d ':/' | sort -n -u)
+				fi
+
+				if [ -n "$extracted_ports" ]; then
+					set -- $extracted_ports
+					wan_ports="$*"
+					break
+				fi
+			fi
+			i=$((i + 1))
+			sleep 1
+		done
+	fi
+
+	# 严格原子化：仅当核心成功运行且实际处于监听状态时才下发放行规则；未启动或无端口绝不下发
+	if [ -n "$wan_ports" ]; then
 		local cur_rule_ports cur_rule_enabled
 		cur_rule_ports=$(uci -q get firewall.easytier_wan_inbound.dest_port)
 		cur_rule_enabled=$(uci -q get firewall.easytier_wan_inbound.enabled)
@@ -130,28 +172,18 @@ setup_firewall_and_network() {
 			uci -q set firewall.easytier_wan_inbound.dest_port="$wan_ports"
 			uci -q set firewall.easytier_wan_inbound.target='ACCEPT'
 			uci -q set firewall.easytier_wan_inbound.enabled='1'
-			changed_fw=1
+			uci -q commit firewall
+			/etc/init.d/firewall reload 2>/dev/null
+			logger -t "$NAME" "WAN firewall inbound rule applied for active listeners: $wan_ports"
 		fi
 	else
+		logger -t "$NAME" "Warning: No active EasyTier listeners detected, keeping WAN firewall closed"
 		if uci -q get firewall.easytier_wan_inbound >/dev/null; then
 			uci -q delete firewall.easytier_wan_inbound
-			changed_fw=1
+			uci -q commit firewall
+			/etc/init.d/firewall reload 2>/dev/null
 		fi
 	fi
-
-	if [ "$changed_net" = "1" ]; then
-		uci -q commit network
-		/etc/init.d/network reload 2>/dev/null
-	fi
-
-	if [ "$changed_fw" = "1" ]; then
-		uci -q commit firewall
-		/etc/init.d/firewall reload 2>/dev/null
-	fi
-
-	# 4. Kernel forwarding
-	sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1
-	sysctl -w net.ipv6.conf.all.forwarding=1 >/dev/null 2>&1
 }
 
 setup_dnsmasq() {
@@ -443,9 +475,33 @@ start_core() {
 	procd_set_param user root
 	procd_close_instance
 
-	setup_firewall_and_network "$dev_name"
+	setup_firewall_and_network "$dev_name" "$rpc_port"
 	setup_dnsmasq
 	logger -t "$NAME" "EasyTier core service started"
+
+	# 异步触发 WAN 放行策略更新（让 procd 优先 fork 启动核心进程，随后子进程原子联动查询 listeners 并下发规则）
+	local allow_wan
+	config_get_bool allow_wan settings allow_wan 0
+	if [ "$allow_wan" -eq 1 ]; then
+		(
+			apply_wan_firewall "$rpc_port"
+		) >/dev/null 2>&1 &
+	else
+		if uci -q get firewall.easytier_wan_inbound >/dev/null; then
+			uci -q delete firewall.easytier_wan_inbound
+			uci -q commit firewall
+			/etc/init.d/firewall reload 2>/dev/null
+		fi
+	fi
+}
+
+update_firewall() {
+	config_load easytier
+	local dev_name rpc_port
+	config_get dev_name settings dev_name 'easytier0'
+	config_get rpc_port settings rpc_port '15888'
+	setup_firewall_and_network "$dev_name" "$rpc_port"
+	apply_wan_firewall "$rpc_port"
 }
 
 start_web() {
@@ -483,6 +539,12 @@ start_service() {
 
 stop_service() {
 	cleanup_dnsmasq
+	# 停止服务联动清理 WAN 防火墙放行，防止离线后端口空置暴露
+	if uci -q get firewall.easytier_wan_inbound >/dev/null; then
+		uci -q delete firewall.easytier_wan_inbound
+		uci -q commit firewall
+		/etc/init.d/firewall reload 2>/dev/null
+	fi
 	logger -t "$NAME" "EasyTier services stopped"
 }
 
