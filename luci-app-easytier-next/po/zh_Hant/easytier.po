@@ -370,8 +370,14 @@ msgstr "延遲 / 丟包"
 msgid "RX / TX"
 msgstr "接收 / 發送"
 
+msgid "(Hover/click node to trace path, drag to adjust)"
+msgstr "（懸停/點擊節點追蹤路徑，支援拖曳調整）"
 
+msgid "Clear selection"
+msgstr "清除選取"
 
+msgid "Local Node: %s"
+msgstr "本地節點: %s"
 
-
-
+msgid "Path"
+msgstr "路徑"

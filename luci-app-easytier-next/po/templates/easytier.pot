@@ -370,8 +370,14 @@ msgstr ""
 msgid "RX / TX"
 msgstr ""
 
+msgid "(Hover/click node to trace path, drag to adjust)"
+msgstr ""
 
+msgid "Clear selection"
+msgstr ""
 
+msgid "Local Node: %s"
+msgstr ""
 
-
-
+msgid "Path"
+msgstr ""
