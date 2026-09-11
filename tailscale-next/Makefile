@@ -11,41 +11,58 @@ PKG_NAME:=tailscale-next
 PKG_VERSION:=1.102.4
 PKG_RELEASE:=1
 
-PKG_SOURCE:=tailscale-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://codeload.github.com/tailscale/tailscale/tar.gz/v$(PKG_VERSION)?
-PKG_HASH:=784b023e825e1cca7b146ac6a7aff08b179d60d10839b51019f315dab426c871
+# Architecture mapping for pre-built binaries
+ifeq ($(ARCH),x86_64)
+	TS_ARCH:=amd64
+endif
+ifeq ($(ARCH),aarch64)
+	TS_ARCH:=arm64
+endif
+ifeq ($(ARCH),arm64)
+	TS_ARCH:=arm64
+endif
+ifeq ($(ARCH),armv8)
+	TS_ARCH:=arm64
+endif
+ifeq ($(ARCH),arm)
+	TS_ARCH:=arm
+endif
+ifeq ($(ARCH),armv7)
+	TS_ARCH:=arm
+endif
+ifeq ($(ARCH),i386)
+	TS_ARCH:=386
+endif
+ifeq ($(ARCH),mips)
+	TS_ARCH:=mips
+endif
+ifeq ($(ARCH),mipsel)
+	TS_ARCH:=mipsle
+endif
+ifeq ($(ARCH),riscv64)
+	TS_ARCH:=riscv64
+endif
 
-PKG_MAINTAINER:=Zephyr Lykos <self@mochaa.ws>, \
-		Sandro Jäckel <sandro.jaeckel@gmail.com>
+PKG_SOURCE:=tailscale_$(PKG_VERSION)_$(TS_ARCH).tgz
+PKG_SOURCE_URL:=https://pkgs.tailscale.com/stable/
+PKG_HASH:=skip
+
+PKG_MAINTAINER:=Dante <dante@seckv.com>
 PKG_LICENSE:=BSD-3-Clause
 PKG_LICENSE_FILES:=LICENSE
 PKG_CPE_ID:=cpe:/a:tailscale:tailscale
 
-PKG_BUILD_DIR:=$(BUILD_DIR)/tailscale-$(PKG_VERSION)
-PKG_BUILD_DEPENDS:=golang/host
-PKG_BUILD_PARALLEL:=1
-PKG_BUILD_FLAGS:=no-mips16
-
-GO_PKG:=tailscale.com/cmd/tailscaled
-GO_PKG_LDFLAGS:=-X 'tailscale.com/version.longStamp=$(PKG_VERSION)-$(PKG_RELEASE) (OpenWrt)'
-GO_PKG_LDFLAGS_X:=tailscale.com/version.shortStamp=$(PKG_VERSION)
-GO_PKG_TAGS:=ts_include_cli,ts_omit_aws,ts_omit_bird,ts_omit_completion,ts_omit_kube,ts_omit_systray,ts_omit_taildrop,ts_omit_tap,ts_omit_tpm
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
-
-define Build/Prepare
-	$(call Build/Prepare/Default)
-	$(SED) 's/^go 1\.26\..*/go 1.26.5/' $(PKG_BUILD_DIR)/go.mod
-endef
 
 define Package/tailscale-next
   SECTION:=net
   CATEGORY:=Network
   SUBMENU:=VPN
-  TITLE:=Zero config VPN (Next)
+  TITLE:=Zero config VPN (Next) - Pre-built Binary
   URL:=https://tailscale.com
-  DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle +kmod-tun
+  DEPENDS:=@(x86_64||aarch64||arm||i386||mips||mipsel||riscv64) +ca-bundle +kmod-tun +iptables
   PROVIDES:=tailscale tailscaled
   CONFLICTS:=tailscale tailscaled
 endef
@@ -53,6 +70,7 @@ endef
 define Package/tailscale-next/description
   It creates a secure network between your servers, computers,
   and cloud instances. Even when separated by firewalls or subnets.
+  This package contains official pre-built static binaries.
 endef
 
 define Package/tailscale-next/conffiles
@@ -60,10 +78,18 @@ define Package/tailscale-next/conffiles
 /etc/tailscale/
 endef
 
+define Build/Prepare
+	mkdir -p $(PKG_BUILD_DIR)
+	tar -xzf $(DL_DIR)/$(PKG_SOURCE) -C $(PKG_BUILD_DIR) --strip-components=1
+endef
+
+define Build/Compile
+endef
+
 define Package/tailscale-next/install
 	$(INSTALL_DIR) $(1)/usr/sbin $(1)/etc/init.d $(1)/etc/config
-	$(INSTALL_BIN) $(GO_PKG_BUILD_BIN_DIR)/tailscaled $(1)/usr/sbin
-	$(LN) tailscaled $(1)/usr/sbin/tailscale
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/tailscaled $(1)/usr/sbin/tailscaled
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/tailscale $(1)/usr/sbin/tailscale
 	$(INSTALL_BIN) ./files/tailscale.init $(1)/etc/init.d/tailscale
 	$(INSTALL_DATA) ./files/tailscale.conf $(1)/etc/config/tailscale
 endef
