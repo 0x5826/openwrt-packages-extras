@@ -8,33 +8,48 @@ PKG_NAME:=cloudflared-next
 PKG_VERSION:=2026.9.0
 PKG_RELEASE:=1
 
-PKG_SOURCE:=cloudflared-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://codeload.github.com/cloudflare/cloudflared/tar.gz/$(PKG_VERSION)?
-PKG_HASH:=27e04a5d86f400b7d66a2a7638acb7efd41c219cff7b0bf40de3c6647d2514db
+# Architecture mapping for pre-built binaries
+ifeq ($(ARCH),x86_64)
+	CF_ARCH:=amd64
+endif
+ifeq ($(ARCH),aarch64)
+	CF_ARCH:=arm64
+endif
+ifeq ($(ARCH),arm64)
+	CF_ARCH:=arm64
+endif
+ifeq ($(ARCH),armv8)
+	CF_ARCH:=arm64
+endif
+ifeq ($(ARCH),arm)
+	CF_ARCH:=arm
+endif
+ifeq ($(ARCH),armv7)
+	CF_ARCH:=arm
+endif
+ifeq ($(ARCH),i386)
+	CF_ARCH:=386
+endif
 
-PKG_BUILD_DIR:=$(BUILD_DIR)/cloudflared-$(PKG_VERSION)
+PKG_SOURCE:=cloudflared-linux-$(CF_ARCH)-$(PKG_VERSION)
+PKG_SOURCE_URL:=https://github.com/cloudflare/cloudflared/releases/download/$(PKG_VERSION)/cloudflared-linux-$(CF_ARCH)?
+PKG_HASH:=skip
+
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 
 PKG_LICENSE:=Apache-2.0
 PKG_LICENSE_FILES:=LICENSE
 PKG_MAINTAINER:=Tianling Shen <cnsztl@immortalwrt.org>
 
-PKG_BUILD_DEPENDS:=golang/host
-PKG_BUILD_PARALLEL:=1
-PKG_BUILD_FLAGS:=no-mips16
-
-GO_PKG:=github.com/cloudflare/cloudflared
-GO_PKG_LDFLAGS_X:=main.Version=$(PKG_VERSION)
-
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
 
 define Package/cloudflared-next
   SECTION:=net
   CATEGORY:=Network
   SUBMENU:=Web Servers/Proxies
-  TITLE:=Cloudflare Tunnel client Next
+  TITLE:=Cloudflare Tunnel client Next - Pre-built Binary
   URL:=https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/get-started/
-  DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle
+  DEPENDS:=@(x86_64||aarch64||arm||i386) +ca-bundle
   PROVIDES:=cloudflared
   CONFLICTS:=cloudflared
 endef
@@ -42,11 +57,7 @@ endef
 define Package/cloudflared-next/description
   Contains the command-line client for Cloudflare Tunnel, a tunneling
   daemon that proxies traffic from the Cloudflare network to your origins.
-
-  This daemon sits between Cloudflare network and your origin (e.g. a
-  webserver). Cloudflare attracts client requests and sends them to you
-  via this daemon, without requiring you to poke holes on your firewall
-  --- your origin can remain as closed as possible.
+  This package contains official pre-built static binaries.
 endef
 
 define Package/cloudflared-next/conffiles
@@ -54,8 +65,18 @@ define Package/cloudflared-next/conffiles
 /etc/cloudflared/
 endef
 
+define Build/Prepare
+	mkdir -p $(PKG_BUILD_DIR)
+	$(CP) $(DL_DIR)/$(PKG_SOURCE) $(PKG_BUILD_DIR)/cloudflared
+	chmod 0755 $(PKG_BUILD_DIR)/cloudflared
+endef
+
+define Build/Compile
+endef
+
 define Package/cloudflared-next/install
-	$(call GoPackage/Package/Install/Bin,$(1))
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/cloudflared $(1)/usr/bin/cloudflared
 
 	$(INSTALL_DIR) $(1)/etc/cloudflared/
 	$(INSTALL_CONF) $(CURDIR)/files/sample_config.yml $(1)/etc/cloudflared/config.yml
@@ -65,5 +86,4 @@ define Package/cloudflared-next/install
 	$(INSTALL_BIN) $(CURDIR)/files/cloudflared.init $(1)/etc/init.d/cloudflared
 endef
 
-$(eval $(call GoBinPackage,cloudflared-next))
 $(eval $(call BuildPackage,cloudflared-next))
