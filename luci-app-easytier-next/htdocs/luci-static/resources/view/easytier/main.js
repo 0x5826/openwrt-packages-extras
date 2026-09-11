@@ -290,6 +290,9 @@ function injectTooltipStyle() {
 		'[data-darkmode="true"] .et-topo-legend, [data-theme="dark"] .et-topo-legend, [data-mode="dark"] .et-topo-legend, .dark .et-topo-legend, .theme-dark .et-topo-legend, body[data-theme="dark"] .et-topo-legend, .et-dark .et-topo-legend { color: #94a3b8 !important; }',
 		'[data-darkmode="true"] .et-btn-toolbar, [data-theme="dark"] .et-btn-toolbar, [data-mode="dark"] .et-btn-toolbar, .dark .et-btn-toolbar, .theme-dark .et-btn-toolbar, body[data-theme="dark"] .et-btn-toolbar, .et-dark .et-btn-toolbar { background: rgba(30, 41, 59, 0.95) !important; color: #f1f5f9 !important; border-color: #475569 !important; }',
 		'',
+		'/* 拓扑图连线防御宿主主题全局样式污染 */',
+		'#view div[style] > svg line.et-topo-link, line.et-topo-link { vector-effect: non-scaling-stroke; }',
+		'',
 		'/* 拓扑图链路流动动画 (自本端流向目标) */',
 		'@keyframes et-dash-flow {',
 		'    from { stroke-dashoffset: 24px; }',
@@ -837,6 +840,24 @@ function renderTopologySvg(topoData, peerData) {
 		}
 	}
 
+	function setLineVisual(el, strokeColor, strokeWidth, dashArray, opacityVal) {
+		if (!el) return;
+		el.setAttribute('stroke', strokeColor);
+		el.style.setProperty('stroke', strokeColor, 'important');
+		if (strokeWidth !== undefined && strokeWidth !== null) {
+			el.setAttribute('stroke-width', strokeWidth);
+			el.style.setProperty('stroke-width', strokeWidth + 'px', 'important');
+		}
+		if (dashArray !== undefined && dashArray !== null) {
+			el.setAttribute('stroke-dasharray', dashArray);
+			el.style.setProperty('stroke-dasharray', dashArray, 'important');
+		}
+		if (opacityVal !== undefined && opacityVal !== null) {
+			el.setAttribute('opacity', opacityVal);
+			el.style.setProperty('opacity', opacityVal, 'important');
+		}
+	}
+
 	const lineElementsMap = {};
 	const badgeElementsMap = {};
 	const nodeElementsMap = {};
@@ -1024,11 +1045,8 @@ function renderTopologySvg(topoData, peerData) {
 				if (pathLinkInfo) {
 					// 路径上的链路：统一高亮、加粗、流动虚线动画，方向严格从上游流向下游目标
 					lineEl.style.display = '';
-					lineEl.setAttribute('stroke', '#f59e0b');
-					lineEl.setAttribute('stroke-width', '3.2');
-					lineEl.setAttribute('stroke-dasharray', '8,4');
+					setLineVisual(lineEl, '#f59e0b', '3.2', '8,4', '1.0');
 					lineEl.setAttribute('stroke-linecap', 'round');
-					lineEl.setAttribute('opacity', '1.0');
 
 					const snUp = nodeMap[String(pathLinkInfo.upstreamId)];
 					const snDown = nodeMap[String(pathLinkInfo.downstreamId)];
@@ -1060,10 +1078,7 @@ function renderTopologySvg(topoData, peerData) {
 						if (badgeEl) badgeEl.style.display = 'none';
 					} else {
 						lineEl.style.display = '';
-						lineEl.setAttribute('stroke', colorCfg.line);
-						lineEl.setAttribute('stroke-width', '1.0');
-						lineEl.setAttribute('stroke-dasharray', colorCfg.dash);
-						lineEl.setAttribute('opacity', '0.08');
+						setLineVisual(lineEl, colorCfg.line, '1.0', colorCfg.dash, '0.08');
 						if (badgeEl) {
 							badgeEl.style.display = '';
 							badgeEl.style.opacity = '0.08';
@@ -1089,22 +1104,13 @@ function renderTopologySvg(topoData, peerData) {
 					if (badgeEl) badgeEl.style.display = '';
 
 					if (isHoverFocused) {
-						lineEl.setAttribute('stroke', isRelayTree ? '#f59e0b' : colorCfg.line);
-						lineEl.setAttribute('stroke-width', '2.8');
-						lineEl.setAttribute('stroke-dasharray', isRelayTree ? '6,4' : 'none');
-						lineEl.setAttribute('opacity', '1.0');
+						setLineVisual(lineEl, isRelayTree ? '#f59e0b' : colorCfg.line, '2.8', isRelayTree ? '6,4' : 'none', '1.0');
 						if (badgeEl) badgeEl.style.opacity = '1.0';
 					} else if (hoveredLinkId !== null || hoveredNodeId !== null) {
-						lineEl.setAttribute('stroke', isRelayTree ? '#f59e0b' : colorCfg.line);
-						lineEl.setAttribute('stroke-width', '1.2');
-						lineEl.setAttribute('stroke-dasharray', colorCfg.dash);
-						lineEl.setAttribute('opacity', '0.12');
+						setLineVisual(lineEl, isRelayTree ? '#f59e0b' : colorCfg.line, '1.2', colorCfg.dash, '0.12');
 						if (badgeEl) badgeEl.style.opacity = '0.12';
 					} else {
-						lineEl.setAttribute('stroke', isRelayTree ? '#f59e0b' : colorCfg.line);
-						lineEl.setAttribute('stroke-width', isRelayTree ? '1.8' : colorCfg.width);
-						lineEl.setAttribute('stroke-dasharray', isRelayTree ? '5,4' : colorCfg.dash);
-						lineEl.setAttribute('opacity', isRelayTree ? '0.9' : colorCfg.opacity);
+						setLineVisual(lineEl, isRelayTree ? '#f59e0b' : colorCfg.line, isRelayTree ? '1.8' : colorCfg.width, isRelayTree ? '5,4' : colorCfg.dash, isRelayTree ? '0.9' : colorCfg.opacity);
 						if (badgeEl) badgeEl.style.opacity = '0.9';
 					}
 				}
@@ -1158,16 +1164,23 @@ function renderTopologySvg(topoData, peerData) {
 		const isRelayTree = link.isRelayTreeLink;
 		const initDisplay = (!showAllLinks && !isTreeLink) ? 'none' : '';
 
+		const lineInitStroke = isRelayTree ? '#f59e0b' : colorCfg.line;
+		const lineInitWidth = isRelayTree ? '1.8' : colorCfg.width;
+		const lineInitDash = isRelayTree ? '5,4' : colorCfg.dash;
+		const lineInitOpacity = isRelayTree ? '0.9' : colorCfg.opacity;
+
 		const lineSvg = createSvg('line', {
 			'x1': startPt.x, 'y1': startPt.y,
 			'x2': endPt.x, 'y2': endPt.y,
-			'stroke': isRelayTree ? '#f59e0b' : colorCfg.line,
-			'stroke-width': isRelayTree ? '1.8' : colorCfg.width,
-			'stroke-dasharray': isRelayTree ? '5,4' : colorCfg.dash,
+			'stroke': lineInitStroke,
+			'stroke-width': lineInitWidth,
+			'stroke-dasharray': lineInitDash,
 			'stroke-linecap': 'round',
-			'opacity': isRelayTree ? '0.9' : colorCfg.opacity,
+			'opacity': lineInitOpacity,
+			'class': 'et-topo-link',
 			'style': 'transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; display: ' + initDisplay + ';'
 		});
+		setLineVisual(lineSvg, lineInitStroke, lineInitWidth, lineInitDash, lineInitOpacity);
 		lineSvg._origX1 = startPt.x;
 		lineSvg._origY1 = startPt.y;
 		lineSvg._origX2 = endPt.x;
