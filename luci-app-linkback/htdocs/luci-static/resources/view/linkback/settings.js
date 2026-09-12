@@ -205,7 +205,7 @@ return view.extend({
 				optional: this.optional,
 				orientation: this.orientation,
 				placeholder: this.placeholder,
-				validate: this.getValidator(section_id),
+				validate: (typeof(this.getValidator) === 'function') ? this.getValidator(section_id) : (this.validate ? this.validate.bind(this, section_id) : null),
 				disabled: is_edit ? true : ((this.readonly != null) ? this.readonly : this.map.readonly)
 			});
 
