@@ -139,9 +139,9 @@ return view.extend({
 		var modeEl = document.getElementById('linkback-service-mode');
 		if (modeEl && status) {
 			if (status.mode === 'multi_gw') {
-				modeEl.textContent = _('Single-Interface Multi-Gateway') + ' (' + _('Bind Interface') + ': ' + (status.interface || 'lan') + ')';
+				modeEl.textContent = _('单wan多网关模式') + ' (' + _('Bind Interface') + ': ' + (status.interface || 'lan') + ')';
 			} else {
-				modeEl.textContent = _('Multi-WAN Interface Failover');
+				modeEl.textContent = _('多wan口模式');
 			}
 		}
 

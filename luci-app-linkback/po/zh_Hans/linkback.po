@@ -19,8 +19,8 @@ msgstr "用于 Multi-WAN 默认路由 Metric 的实时健康状态、优先级�
 msgid "Real-time health state, priority mapping, and service control for Multi-WAN / Multi-Gateway failover."
 msgstr "用于多 WAN / 多网关容灾切换的实时健康状态、优先级映射与服务控制。"
 
-msgid "Configure Multi-WAN / Multi-Gateway failover service, health check parameters, and monitored targets."
-msgstr "配置多 WAN / 单接口多网关故障切换服务、健康度检查参数与监控目标。"
+msgid "Configure Multi-WAN / Multi-Gateway failover service, shared health check parameters, and monitored targets."
+msgstr "配置多 WAN / 多网关容灾切换服务、全局共用健康检测参数与监控目标。"
 
 msgid "Service Status"
 msgstr "服务状态"
@@ -64,14 +64,11 @@ msgstr "网关切换守护进程未运行或未配置任何监控目标。请检
 msgid "Working Mode"
 msgstr "工作模式"
 
-msgid "Multi-WAN Interface Failover"
-msgstr "多 WAN 接口链路容灾模式"
+msgid "多wan口模式"
+msgstr "多wan口模式"
 
-msgid "Single-Interface Multi-Gateway (Bypass/Main Gateway)"
-msgstr "单接口多网关容灾模式 (主旁路由容灾)"
-
-msgid "Single-Interface Multi-Gateway"
-msgstr "单接口多网关模式"
+msgid "单wan多网关模式"
+msgstr "单wan多网关模式"
 
 msgid "Bind Interface"
 msgstr "绑定网络接口"
@@ -79,25 +76,37 @@ msgstr "绑定网络接口"
 msgid "The underlying network interface where all next-hop gateways reside (typically lan / br-lan)."
 msgstr "所有下一跳网关所驻留的底层网络接口 (通常为 lan / br-lan)。"
 
-msgid "Choose failover mode: Multi-WAN interface failover or Single-Interface multi-gateway redundancy (e.g. bypass gateway disaster recovery)."
-msgstr "选择故障切换模式：多 WAN 接口物理链路容灾，或单接口下多网关主备容灾（例如主旁路由高可用切换）。"
+msgid "Choose failover mode: Multi-WAN interface failover or Single-WAN multi-gateway redundancy."
+msgstr "选择容灾模式：多 WAN 接口链路容灾，或单 WAN 多网关主备容灾。"
 
-msgid "Monitored Links / Gateways"
-msgstr "监控链路 / 网关列表"
+msgid "Monitored Gateways"
+msgstr "监控网关列表"
 
-msgid "Add and prioritize your links or next-hop gateways. Lower priority number means higher preference (e.g., 1 = primary, 2 = backup)."
-msgstr "添加并配置物理链路或下一跳网关的优先级。数值越小代表优先级越高 (例如：1 = 主选，2 = 备选)。"
+msgid "Monitored WAN Interfaces"
+msgstr "监控 WAN 接口列表"
 
-msgid "Gateway Name / Alias"
-msgstr "网关别名 / 名称"
+msgid "Add next-hop gateways with custom probe targets and priorities (1 = primary, 2 = backup)."
+msgstr "添加下一跳网关并配置自定义探测目标与优先级 (1 = 主选，2 = 备选)。"
 
-msgid "Descriptive alias for this gateway (e.g. Bypass_GW, Main_Router)."
-msgstr "该网关的描述性别名 (例如：旁路由主网关、光猫备用网关)。"
+msgid "Add WAN interfaces from firewall zone with custom probe targets and priorities (1 = primary, 2 = backup)."
+msgstr "添加来自防火墙区域的 WAN 接口并配置自定义探测目标与优先级 (1 = 主选，2 = 备选)。"
+
+msgid "WAN Interface"
+msgstr "WAN 接口"
+
+msgid "Logical interface from firewall WAN zone."
+msgstr "来自防火墙 WAN 区域的逻辑接口。"
+
+msgid "Gateway Alias (Optional)"
+msgstr "网关别名 (可选)"
+
+msgid "Descriptive alias for this gateway (e.g. Bypass_GW, Main_Router). If empty, Gateway IP will be used."
+msgstr "该网关的自定义别名 (例如：旁路由主网关、光猫备用网关)。若留空则自动使用网关 IP。"
 
 msgid "Gateway IP"
 msgstr "网关 IP"
 
-msgid "Next-hop IP address of this gateway (e.g. 192.168.1.254)."
+msgid "Next-hop IPv4 address of this gateway (e.g. 192.168.1.254)."
 msgstr "该网关的下一跳 IPv4 地址 (例如：192.168.1.254)。"
 
 msgid "Gateway IP is required."
@@ -106,23 +115,35 @@ msgstr "网关 IP 不能为空。"
 msgid "Gateway IP %s is already used by another link."
 msgstr "网关 IP %s 已被其他目标使用，必须唯一。"
 
-msgid "Gateway (Optional)"
-msgstr "网关地址 (可选)"
+msgid "Add Monitored Gateway"
+msgstr "添加监控网关"
 
-msgid "Leave empty for automatic detection via netifd."
-msgstr "留空则通过 netifd 自动获取。"
+msgid "Edit Monitored Gateway"
+msgstr "编辑监控网关"
 
-msgid "Add Monitored Target"
-msgstr "添加监控目标"
+msgid "Add Monitored WAN Interface"
+msgstr "添加监控 WAN 接口"
 
-msgid "Edit Monitored Target"
-msgstr "编辑监控目标"
+msgid "Edit Monitored WAN Interface"
+msgstr "编辑监控 WAN 接口"
 
 msgid "Target / Interface"
 msgstr "监控目标 / 接口"
 
+msgid "Running State"
+msgstr "运行状态"
+
+msgid "Routing Attributes"
+msgstr "路由属性"
+
+msgid "Latency Details"
+msgstr "时延明细"
+
 msgid "Priority"
 msgstr "优先级"
+
+msgid "Lower number indicates higher priority (e.g. 1 = Primary, 2 = Backup)."
+msgstr "数值越小代表优先级越高 (例如：1 = 主选，2 = 备选)。"
 
 msgid "Metric"
 msgstr "路由跃点 (Metric)"
@@ -160,14 +181,14 @@ msgstr "启用或禁用网关切换服务的全局总开关。"
 msgid "Check Interval (s)"
 msgstr "检测间隔 (秒)"
 
-msgid "Default time in seconds between each health check cycle."
-msgstr "每个健康检测周期间隔时间 (秒)。"
+msgid "Shared interval in seconds between health check cycles for all targets."
+msgstr "所有链路与网关共用的健康检测周期时间 (秒)。"
 
 msgid "Check Timeout (s)"
 msgstr "检测超时 (秒)"
 
-msgid "Default maximum wait time in seconds for each check probe (1s recommended to prevent blocking)."
-msgstr "每个探针的最大等待超时时间 (推荐 1 秒以杜绝网络阻塞)。"
+msgid "Shared maximum wait time in seconds for each probe (1s recommended to prevent blocking)."
+msgstr "所有探针共用的最大等待超时时间 (推荐 1 秒以杜绝网络阻塞)。"
 
 msgid "Recovery Delay"
 msgstr "恢复判定延迟"
@@ -181,14 +202,8 @@ msgstr "故障判定延迟"
 msgid "Number of consecutive failed checks required before marking link as faulted (failover anti-flap)."
 msgstr "健康网关判定为故障所需连续检测失败的次数 (防抖动切换)。"
 
-msgid "Monitored WAN Interfaces"
-msgstr "监控网关接口"
-
 msgid "Interface"
 msgstr "网络接口"
-
-msgid "Select a logical WAN interface from Network settings."
-msgstr "从系统网络配置中选择一个逻辑 WAN 接口。"
 
 msgid "Enabled"
 msgstr "已启用"
@@ -200,21 +215,27 @@ msgid "Default route metric when this link is healthy (e.g., wan=10, wan2=20)."
 msgstr "当该接口健康时应用的默认路由 Metric 跃点数值 (例如：wan=10, wan2=20)。"
 
 msgid "Ping Targets"
-msgstr "Ping 检测目标"
+msgstr "Ping 探测目标"
 
-msgid "Space-separated list of IPs to ping (e.g., 223.5.5.5 8.8.8.8)."
-msgstr "通过空格分隔的 Ping 目标 IP 地址列表 (例如：223.5.5.5 8.8.8.8)。"
+msgid "Custom IP list to ping through this link/gateway (comma-separated, e.g. 223.5.5.5,119.29.29.29)."
+msgstr "通过该链路/网关探测的目标 IP 列表 (逗号分隔，例如：223.5.5.5,119.29.29.29)。"
+
+msgid "Ping Targets is required."
+msgstr "Ping 探测目标 IP 不能为空。"
+
+msgid "Invalid IP address: \"%s\""
+msgstr "无效的 IP 地址: \"%s\""
 
 msgid "DNS Server"
 msgstr "DNS 服务器"
 
-msgid "DNS server IP for UDP query probe (e.g., 119.29.29.29)."
+msgid "DNS server IP for UDP query probe (e.g. 119.29.29.29)."
 msgstr "用于 UDP 解析探测的 DNS 服务器 IP (例如：119.29.29.29)。"
 
 msgid "DNS Domain"
 msgstr "DNS 解析域名"
 
-msgid "Domain name to resolve for DNS probe (e.g., www.baidu.com)."
+msgid "Domain name to resolve for DNS probe (e.g. www.baidu.com)."
 msgstr "用于 DNS 探针解析的测试目标域名 (例如：www.baidu.com)。"
 
 msgid "TCP Target"
@@ -226,8 +247,8 @@ msgstr "用于 TCP 三次握手探测的目标主机 IP 地址。"
 msgid "TCP Port"
 msgstr "TCP 检测端口"
 
-msgid "Target port for TCP handshake probe."
-msgstr "用于 TCP 探测的测试目标端口号。"
+msgid "Target port for TCP handshake probe (e.g. 80 or 443)."
+msgstr "用于 TCP 探测的测试目标端口号 (例如：80 或 443)。"
 
 msgid "Loading logs..."
 msgstr "正在加载运行日志..."
@@ -244,23 +265,8 @@ msgstr "暂无可用运行日志。"
 msgid "Check Type"
 msgstr "检测类型"
 
-msgid "Time in seconds between each health check cycle for this link (leave empty to inherit global)."
-msgstr "该链路每次检测周期的时间间隔 (秒，留空继承全局)。"
-
-msgid "Maximum wait time in seconds for each probe for this link (leave empty to inherit global)."
-msgstr "该链路探针的最大等待超时时间 (秒，留空继承全局)。"
-
-msgid "Number of consecutive successful checks required before marking this link as healthy."
-msgstr "判定该链路恢复健康所需连续检测成功的次数。"
-
-msgid "Number of consecutive failed checks required before marking this link as faulted."
-msgstr "判定该链路发生故障所需连续检测失败的次数。"
-
-msgid "Add Monitored Interface"
-msgstr "添加监控接口"
-
-msgid "Edit Monitored Interface"
-msgstr "编辑监控接口"
+msgid "Health probe method for this specific target."
+msgstr "该目标采用的健康探测方式。"
 
 msgid "Cannot enable service: At least 2 monitored links/gateways must be configured for failover switcher."
 msgstr "无法启用服务: 容灾切换至少需要配置 2 个监控链路或网关。"
@@ -315,9 +321,6 @@ msgstr "备选待命"
 
 msgid "Faulted"
 msgstr "故障离线"
-
-msgid "Comma-separated list of IPs to ping (e.g., 223.5.5.5,8.8.8.8)."
-msgstr "逗号分隔的测试 IP 列表 (例如：223.5.5.5,8.8.8.8)。"
 
 msgid "-- Not Configured --"
 msgstr "-- 未配置 --"
