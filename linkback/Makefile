@@ -59,7 +59,7 @@ define Package/$(PKG_NAME)/install
 endef
 
 define Package/$(PKG_NAME)/postinst
-#!/sh
+#!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
 	/etc/init.d/linkback enable
 	/etc/init.d/linkback restart
