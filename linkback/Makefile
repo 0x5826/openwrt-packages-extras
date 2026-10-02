@@ -56,6 +56,10 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_CONF) ./files/linkback.config $(1)/etc/config/linkback
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/linkback.init $(1)/etc/init.d/linkback
+
+	# Install hotplug script
+	$(INSTALL_DIR) $(1)/etc/hotplug.d/iface
+	$(INSTALL_BIN) ./files/90-linkback $(1)/etc/hotplug.d/iface/90-linkback
 endef
 
 define Package/$(PKG_NAME)/postinst
