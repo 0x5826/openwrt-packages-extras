@@ -179,20 +179,12 @@ return view.extend({
 		o.rmempty = false;
 		o.onchange = function(ev, section_id, value) {
 			uci.set('linkback', section_id, 'mode', value);
+			// 切换工作模式时直接清空旧链路配置，保持单模式纯净性
+			uci.sections('linkback', 'link').forEach(function(sec) {
+				uci.remove('linkback', sec['.name']);
+			});
 			if (typeof refreshTargetsSection === 'function') {
 				refreshTargetsSection();
-			}
-			var links = uci.sections('linkback', 'link') || [];
-			if (links.length > 0) {
-				if (value === 'multi_gw') {
-					ui.addNotification(null, E('p',
-						_('已切换为单wan多网关模式。请检查下方标记为「待配置网关 IP」的目标并填写真实网关。')
-					), 'info');
-				} else {
-					ui.addNotification(null, E('p',
-						_('已切换为多wan口模式。请检查下方标记为「待选择 WAN 接口」的目标并绑定有效接口。')
-					), 'info');
-				}
 			}
 		};
 
@@ -315,24 +307,10 @@ return view.extend({
 		o.cfgvalue = function(section_id) {
 			var gw = uci.get('linkback', section_id, 'gateway');
 			var name = uci.get('linkback', section_id, 'name');
-			var mode = getActiveMode();
-			if (mode === 'multi_gw') {
-				if (gw) {
-					if (name && name !== gw) {
-						return gw + ' (' + name + ')';
-					}
-					return gw;
-				}
-				return name ? (_('待配置网关 IP (原: %s)').format(name)) : _('待配置网关 IP');
-			} else {
-				if (name && wan_interfaces[name]) {
-					return name;
-				}
-				if (name) {
-					return gw ? (_('待选择 WAN 接口 (原: %s)').format(name)) : name;
-				}
-				return _('待选择 WAN 接口');
+			if (gw) {
+				return (name && name !== gw) ? (gw + ' (' + name + ')') : gw;
 			}
+			return name || '-';
 		};
 		makeTableColumnExpand(o, '24%');
 
