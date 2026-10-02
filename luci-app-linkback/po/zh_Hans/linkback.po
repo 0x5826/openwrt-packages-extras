@@ -70,11 +70,11 @@ msgstr "多wan口模式"
 msgid "单wan多网关模式"
 msgstr "单wan多网关模式"
 
-msgid "Bind Interface"
-msgstr "绑定网络接口"
+msgid "wan网络接口"
+msgstr "wan网络接口"
 
-msgid "The underlying network interface where all next-hop gateways reside (typically lan / br-lan)."
-msgstr "所有下一跳网关所驻留的底层网络接口 (通常为 lan / br-lan)。"
+msgid "选择存在多个wan网关的接口"
+msgstr "选择存在多个wan网关的接口"
 
 msgid "Choose failover mode: Multi-WAN interface failover or Single-WAN multi-gateway redundancy."
 msgstr "选择容灾模式：多 WAN 接口链路容灾，或单 WAN 多网关主备容灾。"
@@ -271,8 +271,8 @@ msgstr "该目标采用的健康探测方式。"
 msgid "Cannot enable service: At least 2 monitored links/gateways must be configured for failover switcher."
 msgstr "无法启用服务: 容灾切换至少需要配置 2 个监控链路或网关。"
 
-msgid "Cannot enable service: Bind interface must be configured in Multi-Gateway mode."
-msgstr "无法启用服务: 单接口多网关模式下必须指定绑定的网络接口。"
+msgid "Cannot enable service: WAN interface must be configured in Multi-Gateway mode."
+msgstr "无法启用服务: 单wan多网关模式下必须指定wan网络接口。"
 
 msgid "Cannot enable service: Target \"%s\" has no health check configured."
 msgstr "无法启用服务: 监控目标「%s」未配置健康检测策略。"

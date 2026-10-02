@@ -26,9 +26,9 @@ return view.extend({
 		}
 
 		if (mode === 'multi_gw') {
-			var iface = global_sec.interface || 'lan';
+			var iface = global_sec.interface || 'wan';
 			if (!iface) {
-				return _('Cannot enable service: Bind interface must be configured in Multi-Gateway mode.');
+				return _('Cannot enable service: WAN interface must be configured in Multi-Gateway mode.');
 			}
 		}
 
@@ -165,18 +165,15 @@ return view.extend({
 		o.default = 'multi_wan';
 		o.rmempty = false;
 
-		// 3. Bind Interface in Multi-Gateway mode
-		o = s.option(form.ListValue, 'interface', _('Bind Interface'),
-			_('The underlying network interface where all next-hop gateways reside (typically lan / br-lan).'));
-		o.default = 'lan';
+		// 3. WAN Interface in Multi-Gateway mode
+		o = s.option(form.ListValue, 'interface', _('wan网络接口'),
+			_('选择存在多个wan网关的接口'));
+		o.default = 'wan';
 		o.rmempty = false;
 		o.depends('mode', 'multi_gw');
 
-		uci.sections('network', 'interface').forEach(function(sec) {
-			var n = sec['.name'];
-			if (n !== 'loopback') {
-				o.value(n);
-			}
+		Object.keys(wan_interfaces).forEach(function(iface) {
+			o.value(iface);
 		});
 
 		// 4. Global Shared Health Check & Failover Parameters (共用调度超时)

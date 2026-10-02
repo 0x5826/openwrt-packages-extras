@@ -139,7 +139,7 @@ return view.extend({
 		var modeEl = document.getElementById('linkback-service-mode');
 		if (modeEl && status) {
 			if (status.mode === 'multi_gw') {
-				modeEl.textContent = _('单wan多网关模式') + ' (' + _('Bind Interface') + ': ' + (status.interface || 'lan') + ')';
+				modeEl.textContent = _('单wan多网关模式') + ' (' + _('wan网络接口') + ': ' + (status.interface || 'wan') + ')';
 			} else {
 				modeEl.textContent = _('多wan口模式');
 			}

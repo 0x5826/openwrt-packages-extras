@@ -393,7 +393,7 @@ static bool load_config(void) {
 	// Default global settings
 	global_cfg.enabled = false;
 	global_cfg.mode = MODE_MULTI_WAN;
-	strncpy(global_cfg.interface, "lan", sizeof(global_cfg.interface) - 1);
+	strncpy(global_cfg.interface, "wan", sizeof(global_cfg.interface) - 1);
 	global_cfg.device[0] = '\0';
 	global_cfg.check_interval = 5;
 	global_cfg.check_timeout = 1;
