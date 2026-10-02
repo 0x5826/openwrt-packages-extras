@@ -301,10 +301,10 @@ return view.extend({
 
 		// 3a. Gateway IP (Multi-GW mode only, Modal only)
 		var o_gw = s.option(form.Value, 'gateway', _('Gateway IP'),
-			_('Next-hop IPv4 address of this gateway (e.g. 192.168.1.254).'));
+			_('Next-hop IPv4 address of this gateway (e.g. 192.168.1.1).'));
 		o_gw.datatype = 'ip4addr';
 		o_gw.modalonly = true;
-		o_gw.placeholder = '192.168.1.254';
+		o_gw.placeholder = '192.168.1.1';
 		var origRenderGw = o_gw.render;
 		o_gw.render = function(option_index, section_id, in_table) {
 			if (getActiveMode() !== 'multi_gw') {
@@ -350,9 +350,9 @@ return view.extend({
 
 		// 3b. Gateway Alias (Multi-GW mode only, Modal only)
 		var o_alias = s.option(form.Value, 'name_alias', _('Gateway Alias (Optional)'),
-			_('Descriptive alias for this gateway (e.g. Bypass_GW, Main_Router). If empty, Gateway IP will be used.'));
+			_('Descriptive alias for this gateway (e.g. Primary_GW, Backup_GW). If empty, Gateway IP will be used.'));
 		o_alias.modalonly = true;
-		o_alias.placeholder = 'Bypass_GW';
+		o_alias.placeholder = 'Primary_GW';
 		var origRenderAlias = o_alias.render;
 		o_alias.render = function(option_index, section_id, in_table) {
 			if (getActiveMode() !== 'multi_gw') {
