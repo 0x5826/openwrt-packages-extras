@@ -8,7 +8,8 @@ return view.extend({
 	load: function() {
 		return Promise.all([
 			uci.load('linkback'),
-			uci.load('network')
+			uci.load('network'),
+			uci.load('firewall').catch(function() { return {}; })
 		]);
 	},
 
@@ -82,6 +83,31 @@ return view.extend({
 
 		var current_mode = uci.get('linkback', '@global[0]', 'mode') || 'multi_wan';
 
+		// 智能提取 firewall 中 wan 区域关联的所有网络接口
+		var wan_interfaces = {};
+		var has_wan_zone = false;
+		uci.sections('firewall', 'zone').forEach(function(sec) {
+			if (sec.name === 'wan') {
+				has_wan_zone = true;
+				var nets = sec.network;
+				if (Array.isArray(nets)) {
+					nets.forEach(function(n) { if (n) wan_interfaces[n] = true; });
+				} else if (typeof(nets) === 'string') {
+					nets.split(/\s+/).forEach(function(n) { if (n) wan_interfaces[n] = true; });
+				}
+			}
+		});
+
+		// 若未配置 wan 区域，则安全回退至系统非回环非 lan 接口
+		if (!has_wan_zone || Object.keys(wan_interfaces).length === 0) {
+			uci.sections('network', 'interface').forEach(function(sec) {
+				var n = sec['.name'];
+				if (n !== 'loopback' && n !== 'lan') {
+					wan_interfaces[n] = true;
+				}
+			});
+		}
+
 		// 智能判断当前是否为中文环境，并提供实时校验的翻译 fallback
 		var is_zh = (_('Base Metric') === '默认跃点' || _('Base Metric') === '默认跃点 (Metric)');
 		var t_priority_empty = is_zh ? '优先级不能为空。' : _('Priority must not be empty.');
@@ -109,13 +135,13 @@ return view.extend({
 
 		m = new form.Map('linkback',
 			_('LinkBack 链路守护') + ' - ' + _('Settings'),
-			_('Configure Multi-WAN / Multi-Gateway failover service, health check parameters, and monitored targets.'));
+			_('Configure Multi-WAN / Multi-Gateway failover service, shared health check parameters, and monitored targets.'));
 
 		// --- Global Settings Section ---
 		s = m.section(form.TypedSection, 'global', _('Global Settings'));
 		s.anonymous = true;
 
-		// 1. Enable switch (总开关) - must be the first option
+		// 1. Enable switch
 		o = s.option(form.Flag, 'enabled', _('Enable Service'),
 			_('Master switch to enable or disable the LinkBack failover daemon.'));
 		o.rmempty = false;
@@ -131,11 +157,11 @@ return view.extend({
 			uci.set('linkback', section_id, 'enabled', value);
 		};
 
-		// 2. Working Mode (工作模式下拉框)
+		// 2. Working Mode
 		o = s.option(form.ListValue, 'mode', _('Working Mode'),
-			_('Choose failover mode: Multi-WAN interface failover or Single-Interface multi-gateway redundancy (e.g. bypass gateway disaster recovery).'));
-		o.value('multi_wan', _('Multi-WAN Interface Failover'));
-		o.value('multi_gw', _('Single-Interface Multi-Gateway (Bypass/Main Gateway)'));
+			_('Choose failover mode: Multi-WAN interface failover or Single-WAN multi-gateway redundancy.'));
+		o.value('multi_wan', _('多wan口模式'));
+		o.value('multi_gw', _('单wan多网关模式'));
 		o.default = 'multi_wan';
 		o.rmempty = false;
 
@@ -153,15 +179,15 @@ return view.extend({
 			}
 		});
 
-		// 4. Global Health Check Parameters
+		// 4. Global Shared Health Check & Failover Parameters (共用调度超时)
 		o = s.option(form.Value, 'check_interval', _('Check Interval (s)'),
-			_('Default time in seconds between each health check cycle.'));
+			_('Shared interval in seconds between health check cycles for all targets.'));
 		o.datatype = 'uinteger';
 		o.default = '5';
 		o.rmempty = false;
 
 		o = s.option(form.Value, 'check_timeout', _('Check Timeout (s)'),
-			_('Default maximum wait time in seconds for each check probe (1s recommended to prevent blocking).'));
+			_('Shared maximum wait time in seconds for each probe (1s recommended to prevent blocking).'));
 		o.datatype = 'uinteger';
 		o.default = '1';
 		o.rmempty = false;
@@ -179,8 +205,12 @@ return view.extend({
 		o.rmempty = false;
 
 		// --- Monitored Targets Section ---
-		s = m.section(form.GridSection, 'link', _('Monitored Links / Gateways'),
-			_('Add and prioritize your links or next-hop gateways. Lower priority number means higher preference (e.g., 1 = primary, 2 = backup).'));
+		var table_title = (current_mode === 'multi_gw') ? _('Monitored Gateways') : _('Monitored WAN Interfaces');
+		var table_desc = (current_mode === 'multi_gw')
+			? _('Add next-hop gateways with custom probe targets and priorities (1 = primary, 2 = backup).')
+			: _('Add WAN interfaces from firewall zone with custom probe targets and priorities (1 = primary, 2 = backup).');
+
+		s = m.section(form.GridSection, 'link', table_title, table_desc);
 		s.anonymous = true;
 		s.addremove = true;
 
@@ -188,11 +218,20 @@ return view.extend({
 		s.modaltitle = function(section_id) {
 			var parent_title = _('LinkBack 链路守护') + ' - ' + _('Settings');
 			var is_new = (this.map.addedSection === section_id) || !uci.get('linkback', section_id, 'name');
-			if (is_new) {
-				return parent_title + ' - ' + _('Add Monitored Target');
+			if (current_mode === 'multi_gw') {
+				if (is_new) {
+					return parent_title + ' - ' + _('Add Monitored Gateway');
+				} else {
+					var gw = uci.get('linkback', section_id, 'gateway') || uci.get('linkback', section_id, 'name') || section_id;
+					return parent_title + ' - ' + _('Edit Monitored Gateway') + ' (' + gw + ')';
+				}
 			} else {
-				var name = uci.get('linkback', section_id, 'name') || section_id;
-				return parent_title + ' - ' + _('Edit Monitored Target') + ' (' + name + ')';
+				if (is_new) {
+					return parent_title + ' - ' + _('Add Monitored WAN Interface');
+				} else {
+					var iface = uci.get('linkback', section_id, 'name') || section_id;
+					return parent_title + ' - ' + _('Edit Monitored WAN Interface') + ' (' + iface + ')';
+				}
 			}
 		};
 
@@ -218,20 +257,14 @@ return view.extend({
 		o.rmempty = false;
 		makeTableColumnExpand(o, '8%');
 
-		// 2. Name / Interface / Alias
-		// In multi_wan mode, list available interfaces; in multi_gw mode, allow alias text
+		// 2. Multi-GW vs Multi-WAN Mode column layout
 		if (current_mode === 'multi_gw') {
-			o = s.option(form.Value, 'name', _('Gateway Name / Alias'),
-				_('Descriptive alias for this gateway (e.g. Bypass_GW, Main_Router).'));
-			o.rmempty = false;
-			o.placeholder = 'Bypass_GW';
-			makeTableColumnExpand(o, '20%');
-
-			// 2b. Gateway IP
+			// 2a. Gateway IP (核心必填)
 			o = s.option(form.Value, 'gateway', _('Gateway IP'),
-				_('Next-hop IP address of this gateway (e.g. 192.168.1.254).'));
+				_('Next-hop IPv4 address of this gateway (e.g. 192.168.1.254).'));
 			o.datatype = 'ip4addr';
 			o.rmempty = false;
+			o.placeholder = '192.168.1.254';
 			o.validate = function(section_id, value) {
 				if (!value) return _('Gateway IP is required.');
 				var self_opt = this;
@@ -250,22 +283,35 @@ return view.extend({
 				}
 				return true;
 			};
+			makeTableColumnExpand(o, '22%');
+
+			// 2b. Gateway Name / Alias (选填)
+			o = s.option(form.Value, 'name', _('Gateway Alias (Optional)'),
+				_('Descriptive alias for this gateway (e.g. Bypass_GW, Main_Router). If empty, Gateway IP will be used.'));
+			o.rmempty = true;
+			o.placeholder = 'Bypass_GW';
+			o.write = function(section_id, value) {
+				var gw = uci.get('linkback', section_id, 'gateway');
+				if (!value || value.trim() === '') {
+					uci.set('linkback', section_id, 'name', gw || section_id);
+				} else {
+					uci.set('linkback', section_id, 'name', value.trim());
+				}
+			};
 			makeTableColumnExpand(o, '18%');
 		} else {
-			o = s.option(form.ListValue, 'name', _('Interface'));
+			// Multi-WAN: 仅列出从 firewall wan 区域读取的接口
+			o = s.option(form.ListValue, 'name', _('WAN Interface'),
+				_('Logical interface from firewall WAN zone.'));
 			o.rmempty = false;
 
-			var network_interfaces = {};
-			uci.sections('network', 'interface').forEach(function(sec) {
-				var n = sec['.name'];
-				if (n !== 'loopback' && n !== 'lan') {
-					network_interfaces[n] = true;
-					o.value(n);
-				}
+			Object.keys(wan_interfaces).forEach(function(iface) {
+				o.value(iface);
 			});
 
+			// 保障已配置但在 firewall 中被删除的旧接口仍然展示
 			uci.sections('linkback', 'link').forEach(function(sec) {
-				if (sec.name && !network_interfaces[sec.name]) {
+				if (sec.name && !wan_interfaces[sec.name]) {
 					o.value(sec.name, _('%s (configured)').format(sec.name));
 				}
 			});
@@ -320,17 +366,11 @@ return view.extend({
 				return true;
 			};
 			makeTableColumnExpand(o, '25%');
-
-			// In multi_wan mode, gateway is optional and usually auto-detected
-			o = s.option(form.Value, 'gateway', _('Gateway (Optional)'),
-				_('Leave empty for automatic detection via netifd.'));
-			o.datatype = 'ip4addr';
-			o.rmempty = true;
-			o.modalonly = true;
 		}
 
 		// 3. Priority
-		o = s.option(form.Value, 'priority', _('Priority'));
+		o = s.option(form.Value, 'priority', _('Priority'),
+			_('Lower number indicates higher priority (e.g. 1 = Primary, 2 = Backup).'));
 		o.datatype = 'uinteger';
 		o.default = '1';
 		o.rmempty = false;
@@ -390,7 +430,8 @@ return view.extend({
 		makeTableColumnExpand(o, '18%');
 
 		// 6. Check Type Dropdown (Virtual field, Modal only)
-		o = s.option(form.ListValue, 'check_type', _('Check Type'));
+		o = s.option(form.ListValue, 'check_type', _('Check Type'),
+			_('Health probe method for this specific target.'));
 		o.value('ping', _('Ping Probe'));
 		o.value('dns', _('DNS Probe'));
 		o.value('tcp', _('TCP Probe'));
@@ -436,14 +477,15 @@ return view.extend({
 			}
 		};
 
-		// 7. Ping Probe Parameters
+		// 7. Custom Ping Probe Parameters
 		o = s.option(form.Value, 'ping_targets', _('Ping Targets'),
-			_('Comma-separated list of IPs to ping (e.g., 223.5.5.5,8.8.8.8).'));
-		o.rmempty = true;
+			_('Custom IP list to ping through this link/gateway (comma-separated, e.g. 223.5.5.5,119.29.29.29).'));
+		o.default = '223.5.5.5,119.29.29.29';
+		o.rmempty = false;
 		o.modalonly = true;
 		o.depends('check_type', 'ping');
 		o.validate = function(section_id, value) {
-			if (!value) return true;
+			if (!value) return _('Ping Targets is required.');
 			var ips = value.replace(/\s+/g, '').split(',');
 			for (var i = 0; i < ips.length; i++) {
 				var ipPattern = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
@@ -462,60 +504,38 @@ return view.extend({
 			}
 		};
 
-		// 8. DNS Probe Parameters
+		// 8. Custom DNS Probe Parameters
 		o = s.option(form.Value, 'dns_server', _('DNS Server'),
-			_('DNS server IP for UDP query probe (e.g., 119.29.29.29).'));
+			_('DNS server IP for UDP query probe (e.g. 119.29.29.29).'));
 		o.datatype = 'ip4addr';
-		o.rmempty = true;
+		o.rmempty = false;
 		o.modalonly = true;
 		o.depends('check_type', 'dns');
 
 		o = s.option(form.Value, 'dns_domain', _('DNS Domain'),
-			_('Domain name to resolve for DNS probe (e.g., www.baidu.com).'));
-		o.rmempty = true;
+			_('Domain name to resolve for DNS probe (e.g. www.baidu.com).'));
+		o.default = 'www.baidu.com';
+		o.rmempty = false;
 		o.modalonly = true;
 		o.depends('check_type', 'dns');
 
-		// 9. TCP Probe Parameters
+		// 9. Custom TCP Probe Parameters
 		o = s.option(form.Value, 'tcp_target', _('TCP Target'),
 			_('Target IP for TCP handshake probe.'));
 		o.datatype = 'ip4addr';
-		o.rmempty = true;
+		o.rmempty = false;
 		o.modalonly = true;
 		o.depends('check_type', 'tcp');
 
 		o = s.option(form.Value, 'tcp_port', _('TCP Port'),
-			_('Target port for TCP handshake probe.'));
+			_('Target port for TCP handshake probe (e.g. 80 or 443).'));
 		o.datatype = 'port';
-		o.rmempty = true;
+		o.default = '80';
+		o.rmempty = false;
 		o.modalonly = true;
 		o.depends('check_type', 'tcp');
 
-		// 10. Individual health check override options (Modal only)
-		o = s.option(form.Value, 'check_interval', _('Check Interval (s)'),
-			_('Time in seconds between each health check cycle for this link (leave empty to inherit global).'));
-		o.datatype = 'uinteger';
-		o.rmempty = true;
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'check_timeout', _('Check Timeout (s)'),
-			_('Maximum wait time in seconds for each probe for this link (leave empty to inherit global).'));
-		o.datatype = 'uinteger';
-		o.rmempty = true;
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'recovery_delay', _('Recovery Delay'),
-			_('Number of consecutive successful checks required before marking this link as healthy.'));
-		o.datatype = 'uinteger';
-		o.rmempty = true;
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'failover_delay', _('Failover Delay'),
-			_('Number of consecutive failed checks required before marking this link as faulted.'));
-		o.datatype = 'uinteger';
-		o.rmempty = true;
-		o.modalonly = true;
-
+		// 提示：超时与防抖延迟由全局配置统一管理，子项完全无需重复配置
 		return m.render();
 	}
 });
