@@ -4,6 +4,7 @@
 START=99
 STOP=10
 USE_PROCD=1
+EXTRA_COMMANDS="add_route"
 umask 077
 
 NAME="flowproxy"
@@ -12,6 +13,7 @@ LOG_FILE="/var/log/flowproxy.log"
 IPTABLES_RULES="/tmp/flowproxy/iptables.rules"
 GENERATE_SCRIPT="/usr/share/flowproxy/generate_iptables.sh"
 STATE_FILE="/var/run/flowproxy.running"
+DNSMASQ_DROPIN="/tmp/dnsmasq.d/flowproxy.conf"
 
 destroy_single_ipset() {
     ipset destroy "$1" 2>/dev/null
@@ -117,7 +119,61 @@ check_env() {
 check_config() {
     local proxy_server_ip_addr=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
     [ -z "$proxy_server_ip_addr" ] && { log_msg error "proxy_server_ip_addr not configured"; return 1; }
+
+    if [ "$proxy_server_ip_addr" = "127.0.0.1" ] || [ "$proxy_server_ip_addr" = "0.0.0.0" ]; then
+        log_msg error "Invalid proxy_server_ip_addr: $proxy_server_ip_addr"; return 1;
+    fi
+
+    # 纵深防御：严禁将代理服务器设为本路由器自身的任一 IP，防止策略路由自指死循环导致网络崩溃
+    if ip -4 -o addr show 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | grep -Fxq "$proxy_server_ip_addr"; then
+        log_msg error "proxy_server_ip_addr ($proxy_server_ip_addr) is a local IP of this router, aborting to prevent routing loop"
+        return 1
+    fi
+
+    # 检查路由表 ID 是否为系统保留表 (0, 253, 254, 255)
+    local routing_table=$(uci -q get "$UCI_CONFIG.global.routing_table")
+    routing_table="${routing_table:-888}"
+    if [ "$routing_table" = "0" ] || [ "$routing_table" = "253" ] || [ "$routing_table" = "254" ] || [ "$routing_table" = "255" ]; then
+        log_msg error "routing_table ($routing_table) is a reserved system table (0, 253, 254, 255), aborting"
+        return 1
+    fi
+
     return 0
+}
+
+probe_proxy_server() {
+    local proxy_ip="$1"
+    local proxy_dns_port="$2"
+    local interface="$3"
+
+    log_msg info "Probing proxy server $proxy_ip on interface $interface..."
+
+    # 1. 检查 ARP 缓存或快速唤醒以获取 MAC 地址
+    local mac=""
+    if [ -f "/proc/net/arp" ]; then
+        mac=$(awk -v ip="$proxy_ip" '$1 == ip { print $4; exit }' /proc/net/arp)
+    fi
+
+    if [ -n "$mac" ] && [ "$mac" != "00:00:00:00:00:00" ]; then
+        log_msg info "Proxy server is REACHABLE: IP=$proxy_ip, MAC=$mac (found in ARP cache)"
+    else
+        # 快速单发 ping 1 秒唤醒 ARP 学习
+        ping -c 1 -W 1 "$proxy_ip" >/dev/null 2>&1
+        if [ -f "/proc/net/arp" ]; then
+            mac=$(awk -v ip="$proxy_ip" '$1 == ip { print $4; exit }' /proc/net/arp)
+        fi
+        if [ -n "$mac" ] && [ "$mac" != "00:00:00:00:00:00" ]; then
+            log_msg info "Proxy server is REACHABLE: IP=$proxy_ip, MAC=$mac"
+        else
+            log_msg warn "Proxy server $proxy_ip is NOT responding to ARP yet (it may be booting or offline, traffic will still be routed via policy table)"
+        fi
+    fi
+
+    # 2. 若启用了上游 DNS 代理，在日志中记录目标地址与端口
+    local dns_proxy=$(uci -q get "$UCI_CONFIG.global.dns_proxy_enabled" || echo 0)
+    if [ "$dns_proxy" = "1" ]; then
+        log_msg info "Upstream DNS redirection target configured: $proxy_ip#$proxy_dns_port"
+    fi
 }
 
 apply_rules() {
@@ -173,11 +229,17 @@ apply_rules() {
 }
 
 add_route() {
+    check_config || return 1
+
     local proxy_server_ip_addr=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
-    local interface=$(uci -q get "$UCI_CONFIG.global.interface" || echo "br-lan")
-    local traffic_mark=$(uci -q get "$UCI_CONFIG.global.traffic_mark" || echo "0x666")
-    local routing_table=$(uci -q get "$UCI_CONFIG.global.routing_table" || echo "888")
-    local rule_priority=$(uci -q get "$UCI_CONFIG.global.rule_priority" || echo "1000")
+    local interface=$(uci -q get "$UCI_CONFIG.global.interface")
+    interface="${interface:-br-lan}"
+    local traffic_mark=$(uci -q get "$UCI_CONFIG.global.traffic_mark")
+    traffic_mark="${traffic_mark:-0x666}"
+    local routing_table=$(uci -q get "$UCI_CONFIG.global.routing_table")
+    routing_table="${routing_table:-888}"
+    local rule_priority=$(uci -q get "$UCI_CONFIG.global.rule_priority")
+    rule_priority="${rule_priority:-1000}"
 
     # 1. 先尝试用旧记录清理一次，防止由于配置变更导致的残留
     delete_route "quiet"
@@ -200,6 +262,11 @@ add_route() {
     else
         log_msg error "Failed to add ip rule: $err"
     fi
+
+    # 抑制 ICMP 重定向，防止路由器给局域网主机下发 ICMP Redirect 导致流量绕过分流
+    sysctl -w net.ipv4.conf.all.send_redirects=0 >/dev/null 2>&1
+    sysctl -w net.ipv4.conf.default.send_redirects=0 >/dev/null 2>&1
+    [ -n "$interface" ] && sysctl -w "net.ipv4.conf.${interface}.send_redirects=0" >/dev/null 2>&1
 }
 
 delete_route() {
@@ -216,9 +283,14 @@ delete_route() {
         [ "$quiet" != "quiet" ] && rm -f "/var/run/flowproxy.mark"
     fi
 
-    local curr_mark=$(uci -q get "$UCI_CONFIG.global.traffic_mark" || echo "0x666")
-    local curr_table=$(uci -q get "$UCI_CONFIG.global.routing_table" || echo "888")
-    local curr_prio=$(uci -q get "$UCI_CONFIG.global.rule_priority" || echo "1000")
+    local curr_mark=$(uci -q get "$UCI_CONFIG.global.traffic_mark")
+    curr_mark="${curr_mark:-0x666}"
+    local curr_table=$(uci -q get "$UCI_CONFIG.global.routing_table")
+    curr_table="${curr_table:-888}"
+    local curr_prio=$(uci -q get "$UCI_CONFIG.global.rule_priority")
+    curr_prio="${curr_prio:-1000}"
+    local curr_iface=$(uci -q get "$UCI_CONFIG.global.interface")
+    curr_iface="${curr_iface:-br-lan}"
 
     [ "$quiet" != "quiet" ] && log_msg info "Cleaning up FlowProxy routes (Atomic Mode)..."
     
@@ -226,6 +298,10 @@ delete_route() {
     safe_del_rule() {
         local m="$1" t="$2" p="$3"
         [ -z "$m" ] || [ -z "$t" ] && return
+        if [ "$t" = "0" ] || [ "$t" = "253" ] || [ "$t" = "254" ] || [ "$t" = "255" ]; then
+            log_msg error "Refusing to flush reserved system routing table $t"
+            return
+        fi
         log_msg debug "Attempting cleanup: mark=$m, table=$t, priority=${p:-any}"
         # 精准清理 (带优先级)
         [ -n "$p" ] && while ip rule del fwmark "$m" lookup "$t" priority "$p" 2>/dev/null; do 
@@ -244,6 +320,9 @@ delete_route() {
     safe_del_rule "$old_mark" "$old_table" "$old_prio"
     [ "$old_mark" != "$curr_mark" ] || [ "$old_table" != "$curr_table" ] && \
         safe_del_rule "$curr_mark" "$curr_table" "$curr_prio"
+
+    # 恢复网卡的 send_redirects 默认配置
+    [ -n "$curr_iface" ] && sysctl -w "net.ipv4.conf.${curr_iface}.send_redirects=1" >/dev/null 2>&1
 }
 
 delete_rules() {
@@ -270,7 +349,13 @@ setup_dns() {
     local proxy_server_dns_port=$(uci -q get "$UCI_CONFIG.global.proxy_server_dns_port" || echo 5353)
     local proxy_server_ip_addr=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
 
-    # Only apply DNS proxy if BOTH main service and DNS proxy are enabled
+    # 清除旧版本遗留的 UCI dns_backup 配置节
+    if uci -q get "$UCI_CONFIG.dns_backup" >/dev/null; then
+        uci -q delete "$UCI_CONFIG.dns_backup"
+        uci commit "$UCI_CONFIG"
+    fi
+
+    # 仅当总开关与 DNS 转发同时开启时才应用 Drop-in DNS 规则
     if [ "$enabled" -eq 0 ] || [ "$dns_proxy_enabled" -eq 0 ]; then
         cleanup_dns
         return 0
@@ -278,63 +363,25 @@ setup_dns() {
 
     [ -z "$proxy_server_ip_addr" ] && { log_msg error "proxy_server_ip_addr not configured, cannot setup DNS"; return 1; }
 
-    log_msg info "Setting up DNS redirection to $proxy_server_ip_addr#$proxy_server_dns_port..."
+    log_msg info "Setting up DNS redirection to $proxy_server_ip_addr#$proxy_server_dns_port via drop-in..."
 
-    # Persistent backup in UCI
-    if ! uci -q get "$UCI_CONFIG.dns_backup" >/dev/null; then
-        local old_noresolv=$(uci -q get dhcp.@dnsmasq[0].noresolv)
-        local old_dns_redirect=$(uci -q get dhcp.@dnsmasq[0].dns_redirect)
-        local old_servers=$(uci -q get dhcp.@dnsmasq[0].server | tr '\n' ',' | sed 's/,$//')
-        
-        log_msg debug "Backing up DNS: noresolv=${old_noresolv:-empty}, redirect=${old_dns_redirect:-empty}, servers=${old_servers:-empty}"
-        
-        uci set "$UCI_CONFIG.dns_backup=dns_backup"
-        [ -n "$old_noresolv" ] && uci set "$UCI_CONFIG.dns_backup.noresolv=$old_noresolv"
-        [ -n "$old_dns_redirect" ] && uci set "$UCI_CONFIG.dns_backup.dns_redirect=$old_dns_redirect"
-        [ -n "$old_servers" ] && uci set "$UCI_CONFIG.dns_backup.servers=$old_servers"
-        uci commit "$UCI_CONFIG"
-    fi
+    mkdir -p /tmp/dnsmasq.d
+    cat > "$DNSMASQ_DROPIN" << EOF
+# Generated by FlowProxy - Do not edit manually
+no-resolv
+server=$proxy_server_ip_addr#$proxy_server_dns_port
+EOF
+    chmod 644 "$DNSMASQ_DROPIN"
 
-    log_msg debug "Applying new DNS: noresolv=1, redirect=0, server=$proxy_server_ip_addr#$proxy_server_dns_port"
-    uci set dhcp.@dnsmasq[0].noresolv='1'
-    uci set dhcp.@dnsmasq[0].dns_redirect='0'
-    
-    # Delete current servers and add our proxy
-    uci -q delete dhcp.@dnsmasq[0].server
-    uci add_list dhcp.@dnsmasq[0].server="$proxy_server_ip_addr#$proxy_server_dns_port"
-    
-    uci commit dhcp
-    /etc/init.d/dnsmasq restart
+    /etc/init.d/dnsmasq reload >/dev/null 2>&1 || /etc/init.d/dnsmasq restart >/dev/null 2>&1
+    log_msg info "DNS drop-in configuration applied."
 }
 
 cleanup_dns() {
-    if uci -q get "$UCI_CONFIG.dns_backup" >/dev/null; then
-        log_msg info "Restoring original DNS configuration..."
-        
-        local noresolv=$(uci -q get "$UCI_CONFIG.dns_backup.noresolv")
-        local dns_redirect=$(uci -q get "$UCI_CONFIG.dns_backup.dns_redirect")
-        local servers=$(uci -q get "$UCI_CONFIG.dns_backup.servers")
-        
-        log_msg debug "Restoring DNS values: noresolv=${noresolv:-0}, redirect=${dns_redirect:-1}, servers=${servers:-empty}"
-
-        # Restore noresolv (default to 0 if not backed up)
-        [ -n "$noresolv" ] && uci set dhcp.@dnsmasq[0].noresolv="$noresolv" || uci set dhcp.@dnsmasq[0].noresolv="0"
-
-        # Restore dns_redirect (default to 1 as requested for OpenWrt typical modded builds)
-        [ -n "$dns_redirect" ] && uci set dhcp.@dnsmasq[0].dns_redirect="$dns_redirect" || uci set dhcp.@dnsmasq[0].dns_redirect="1"
-        
-        # Restore servers
-        uci -q delete dhcp.@dnsmasq[0].server
-        if [ -n "$servers" ]; then
-            for s in $servers; do
-                [ -n "$s" ] && uci add_list dhcp.@dnsmasq[0].server="$s"
-            done
-        fi
-        
-        uci commit dhcp
-        uci delete "$UCI_CONFIG.dns_backup"
-        uci commit "$UCI_CONFIG"
-        /etc/init.d/dnsmasq restart
+    if [ -f "$DNSMASQ_DROPIN" ]; then
+        log_msg info "Cleaning up FlowProxy DNS drop-in..."
+        rm -f "$DNSMASQ_DROPIN"
+        /etc/init.d/dnsmasq reload >/dev/null 2>&1 || /etc/init.d/dnsmasq restart >/dev/null 2>&1
     fi
 }
 
@@ -351,6 +398,12 @@ start_service() {
 
     check_env || return 1
     check_config || return 1
+
+    local proxy_server_ip_addr=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
+    local proxy_server_dns_port=$(uci -q get "$UCI_CONFIG.global.proxy_server_dns_port" || echo 5353)
+    local interface=$(uci -q get "$UCI_CONFIG.global.interface" || echo "br-lan")
+    probe_proxy_server "$proxy_server_ip_addr" "$proxy_server_dns_port" "$interface"
+
     apply_rules || return 1
     add_route
     setup_dns
@@ -376,6 +429,6 @@ restart_service() {
 service_triggers() {
     # 监听自身配置改动
     procd_add_reload_trigger "$UCI_CONFIG"
-    # 监听防火墙重载事件，防止规则被 fw4 清空后无法自动恢复
+    # 监听防火墙重载事件，防止规则被防火墙清空后无法自动恢复
     procd_add_reload_trigger "firewall"
 }

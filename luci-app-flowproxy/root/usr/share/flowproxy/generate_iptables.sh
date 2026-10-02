@@ -129,13 +129,18 @@ TCP_ENABLED=$(uci -q get "$CONFIG.global.tcp_enabled" || echo "1")
 UDP_ENABLED=$(uci -q get "$CONFIG.global.udp_enabled" || echo "1")
 TRAFFIC_MARK=$(uci -q get "$CONFIG.global.traffic_mark" || echo "0x666")
 PROXY_SERVER_IP_ADDR=$(uci -q get "$CONFIG.global.proxy_server_ip_addr")
+INTERFACE=$(uci -q get "$CONFIG.global.interface" || echo "br-lan")
 
 if [ "$TCP_ENABLED" = "1" ]; then
 	cat >> "$OUTPUT_FILE" << EOF
 -A FLOWPROXY_TCP -m addrtype --dst-type LOCAL,MULTICAST,BROADCAST -j RETURN
 EOF
+	if [ -n "$INTERFACE" ]; then
+		echo "-A FLOWPROXY_TCP ! -i $INTERFACE -j RETURN" >> "$OUTPUT_FILE"
+	fi
 	if [ -n "$PROXY_SERVER_IP_ADDR" ]; then
 		echo "-A FLOWPROXY_TCP -s $PROXY_SERVER_IP_ADDR -p tcp -j RETURN" >> "$OUTPUT_FILE"
+		echo "-A FLOWPROXY_TCP -d $PROXY_SERVER_IP_ADDR -p tcp -j RETURN" >> "$OUTPUT_FILE"
 	fi
 	for s in $SECTIONS_TCP; do process_rule "$s" "tcp" >> "$OUTPUT_FILE"; done
 	echo "-A FLOWPROXY_TCP -p tcp -j MARK --set-xmark $TRAFFIC_MARK/0xffffffff" >> "$OUTPUT_FILE"
@@ -145,8 +150,12 @@ if [ "$UDP_ENABLED" = "1" ]; then
 	cat >> "$OUTPUT_FILE" << EOF
 -A FLOWPROXY_UDP -m addrtype --dst-type LOCAL,MULTICAST,BROADCAST -j RETURN
 EOF
+	if [ -n "$INTERFACE" ]; then
+		echo "-A FLOWPROXY_UDP ! -i $INTERFACE -j RETURN" >> "$OUTPUT_FILE"
+	fi
 	if [ -n "$PROXY_SERVER_IP_ADDR" ]; then
 		echo "-A FLOWPROXY_UDP -s $PROXY_SERVER_IP_ADDR -p udp -j RETURN" >> "$OUTPUT_FILE"
+		echo "-A FLOWPROXY_UDP -d $PROXY_SERVER_IP_ADDR -p udp -j RETURN" >> "$OUTPUT_FILE"
 	fi
 	for s in $SECTIONS_UDP; do process_rule "$s" "udp" >> "$OUTPUT_FILE"; done
 	echo "-A FLOWPROXY_UDP -p udp -j MARK --set-xmark $TRAFFIC_MARK/0xffffffff" >> "$OUTPUT_FILE"

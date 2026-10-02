@@ -1,0 +1,13 @@
+#!/bin/sh
+# Hotplug trigger for FlowProxy route & rule re-attachment on interface up
+
+[ "$ACTION" = "ifup" ] || exit 0
+
+enabled=$(uci -q get flowproxy.global.enabled)
+[ "$enabled" = "1" ] || exit 0
+
+target_iface=$(uci -q get flowproxy.global.interface || echo "br-lan")
+
+if [ "$INTERFACE" = "$target_iface" ] || [ "$DEVICE" = "$target_iface" ]; then
+    /etc/init.d/flowproxy add_route
+fi
