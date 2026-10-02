@@ -17,7 +17,7 @@ LUCI_DEPENDS:=+luci-base +ucode +ucode-mod-fs +ucode-mod-uci +ucode-mod-ubus +li
 LUCI_PKGARCH:=all
 
 define Package/$(PKG_NAME)/postinst
-#!/sh
+#!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
 	/etc/init.d/rpcd restart
 }
