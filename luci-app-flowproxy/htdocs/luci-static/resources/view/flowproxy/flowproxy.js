@@ -40,6 +40,18 @@ var callRestartService = rpc.declare({
     method: 'restart_service'
 });
 
+var callGetDatasetInfo = rpc.declare({
+    object: 'luci.flowproxy',
+    method: 'get_dataset_info',
+    params: ['file_path']
+});
+
+var callUpdateDataset = rpc.declare({
+    object: 'luci.flowproxy',
+    method: 'update_dataset',
+    params: ['url', 'file_path']
+});
+
 return L.view.extend({
     load: function() {
         return Promise.all([
@@ -460,7 +472,15 @@ return L.view.extend({
                 var path = uci.get('flowproxy', sid, 'file_path') || '/usr/share/flowproxy/chnroute.txt';
                 var resNode = E('span', { 'style': 'margin-left: 10px; font-weight: bold; color: #444;', 'id': 'line-count-status' }, [ '...' ]);
                 var input = node.querySelector('input'); if (input) input.parentNode.appendChild(resNode);
-                fs.exec('/usr/bin/wc', ['-l', path]).then(function(res) { L.dom.content(resNode, (res.code === 0) ? [ _('(%d lines)').format(res.stdout.trim().split(' ')[0]) ] : [ _('(n/a)') ]); });
+                callGetDatasetInfo(path).then(function(res) {
+                    if (res && res.exists) {
+                        L.dom.content(resNode, [ _('(%d lines)').format(res.lines) ]);
+                    } else {
+                        L.dom.content(resNode, [ _('(file not found)') ]);
+                    }
+                }).catch(function() {
+                    L.dom.content(resNode, [ _('(n/a)') ]);
+                });
                 return node;
             });
         };
@@ -474,14 +494,21 @@ return L.view.extend({
             if (!path) path = '/usr/share/flowproxy/chnroute.txt';
             if (!url) { ui.addNotification(null, E('p', _('Please set download_url first')), 'error'); return; }
             ui.showModal(null, [ E('p', { 'class': 'spinning', 'id': 'download-msg' }, [ _('Downloading chnroute data...') ]) ]);
-            return fs.exec('/usr/bin/wget', ['-q', '-O', path, url, '--timeout=10', '--no-check-certificate']).then(function(res) {
+            return callUpdateDataset(url, path).then(function(res) {
                 var msgEl = document.getElementById('download-msg');
-                if (res.code === 0) {
+                if (res && res.success) {
                     if (msgEl) { msgEl.classList.remove('spinning'); L.dom.content(msgEl, [ _('Updated successfully.') ]); }
-                    var cn = document.getElementById('line-count-status'); if (cn) fs.exec('/usr/bin/wc', ['-l', path]).then(function(r) { L.dom.content(cn, (r.code === 0) ? [ _('(%d lines)').format(r.stdout.trim().split(' ')[0]) ] : [ _('(n/a)') ]); });
+                    var cn = document.getElementById('line-count-status');
+                    if (cn) L.dom.content(cn, [ _('(%d lines)').format(res.lines || 0) ]);
                     setTimeout(ui.hideModal, 1500);
-                } else { ui.hideModal(); ui.addNotification(null, E('p', _('Download failed')), 'error'); }
-            }).catch(function(e) { ui.hideModal(); ui.addNotification(null, E('p', _('Error: %s').format(e.message)), 'error'); });
+                } else {
+                    ui.hideModal();
+                    ui.addNotification(null, E('p', _('Download failed: %s').format(res ? res.error : 'Unknown')), 'error');
+                }
+            }).catch(function(e) {
+                ui.hideModal();
+                ui.addNotification(null, E('p', _('Error: %s').format(e.message || String(e))), 'error');
+            });
         };
 
         var sg = s.taboption('lists', form.SectionValue, '_list_custom', form.GridSection, 'nftset', _('Custom nftables sets'));

@@ -250,3 +250,10 @@ msgstr "RPC 错误: %s"
 msgid "The proxy server IP address must be within the subnet of the selected interface (%s)."
 msgstr "代理服务器 IP 地址必须在所选网络接口的子网网段之内 (%s)。"
 
+msgid "(file not found)"
+msgstr "(文件不存在)"
+
+msgid "Download failed: %s"
+msgstr "下载失败: %s"
+
+

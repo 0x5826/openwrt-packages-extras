@@ -226,3 +226,10 @@ msgstr ""
 msgid "this will delete ALL current %s rules and generate default templates. are you sure?"
 msgstr ""
 
+msgid "(file not found)"
+msgstr ""
+
+msgid "Download failed: %s"
+msgstr ""
+
+
