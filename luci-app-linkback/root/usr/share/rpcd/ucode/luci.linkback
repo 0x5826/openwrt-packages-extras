@@ -23,7 +23,7 @@ const methods = {
 				status = {
 					enabled: false,
 					mode: "multi_wan",
-					interface: "lan",
+					interface: "wan",
 					check_interval: 5,
 					active_link: "none",
 					links: []
