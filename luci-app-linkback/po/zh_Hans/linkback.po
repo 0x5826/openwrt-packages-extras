@@ -324,3 +324,31 @@ msgstr "故障离线"
 
 msgid "-- Not Configured --"
 msgstr "-- 未配置 --"
+
+msgid "Monitored Targets"
+msgstr "监控目标列表"
+
+msgid "Configure monitored WAN interfaces or next-hop gateways with custom probe targets and priorities (1 = primary, 2 = backup)."
+msgstr "配置监控的 WAN 接口或下一跳网关，并设置自定义探测目标与优先级 (1 = 主选，2 = 备选)。"
+
+msgid "Monitored Target"
+msgstr "监控目标"
+
+msgid "Missing Gateway IP: %s"
+msgstr "缺少网关 IP: %s"
+
+msgid "Unset"
+msgstr "未设置"
+
+msgid "Unselected"
+msgstr "未选择"
+
+msgid "WAN Interface is required."
+msgstr "WAN 网络接口不能为空。"
+
+msgid "已切换为单wan多网关模式。请确保监控目标列表中配置了有效的网关 IP。"
+msgstr "已切换为单wan多网关模式。请确保监控目标列表中配置了有效的网关 IP。"
+
+msgid "已切换为多wan口模式。请确保监控目标列表中选择了正确的 WAN 接口。"
+msgstr "已切换为多wan口模式。请确保监控目标列表中选择了正确的 WAN 接口。"
+

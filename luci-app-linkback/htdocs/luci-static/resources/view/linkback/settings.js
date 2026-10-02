@@ -81,7 +81,18 @@ return view.extend({
 		var m, s, o;
 		var self = this;
 
-		var current_mode = uci.get('linkback', '@global[0]', 'mode') || 'multi_wan';
+		var getActiveMode = function() {
+			var global_sec = uci.sections('linkback', 'global')[0] || {};
+			var sid = global_sec['.name'] || '@global[0]';
+			var sel = document.querySelector('[name="cbid.linkback.' + sid + '.mode"]') ||
+			          document.querySelector('select[id*="mode"], select[name*="mode"]');
+			if (sel && sel.value) {
+				return sel.value;
+			}
+			return uci.get('linkback', sid, 'mode') || 'multi_wan';
+		};
+
+		var current_mode = getActiveMode();
 
 		// 智能提取 firewall 中 wan 区域关联的所有网络接口
 		var wan_interfaces = {};
@@ -164,6 +175,21 @@ return view.extend({
 		o.value('multi_gw', _('单wan多网关模式'));
 		o.default = 'multi_wan';
 		o.rmempty = false;
+		o.onchange = function(ev, section_id, value) {
+			uci.set('linkback', section_id, 'mode', value);
+			var links = uci.sections('linkback', 'link') || [];
+			if (links.length > 0) {
+				if (value === 'multi_gw') {
+					ui.addNotification(null, E('p',
+						_('已切换为单wan多网关模式。请确保监控目标列表中配置了有效的网关 IP。')
+					), 'info');
+				} else {
+					ui.addNotification(null, E('p',
+						_('已切换为多wan口模式。请确保监控目标列表中选择了正确的 WAN 接口。')
+					), 'info');
+				}
+			}
+		};
 
 		// 3. WAN Interface in Multi-Gateway mode
 		o = s.option(form.ListValue, 'interface', _('wan网络接口'),
@@ -202,20 +228,18 @@ return view.extend({
 		o.rmempty = false;
 
 		// --- Monitored Targets Section ---
-		var table_title = (current_mode === 'multi_gw') ? _('Monitored Gateways') : _('Monitored WAN Interfaces');
-		var table_desc = (current_mode === 'multi_gw')
-			? _('Add next-hop gateways with custom probe targets and priorities (1 = primary, 2 = backup).')
-			: _('Add WAN interfaces from firewall zone with custom probe targets and priorities (1 = primary, 2 = backup).');
-
-		s = m.section(form.GridSection, 'link', table_title, table_desc);
+		s = m.section(form.GridSection, 'link', _('Monitored Targets'),
+			_('Configure monitored WAN interfaces or next-hop gateways with custom probe targets and priorities (1 = primary, 2 = backup).'));
 		s.anonymous = true;
 		s.addremove = true;
 
 		// Custom dynamic Modal title
 		s.modaltitle = function(section_id) {
 			var parent_title = _('LinkBack 链路守护') + ' - ' + _('Settings');
-			var is_new = (this.map.addedSection === section_id) || !uci.get('linkback', section_id, 'name');
-			if (current_mode === 'multi_gw') {
+			var mode = getActiveMode();
+			var is_new = (this.map.addedSection === section_id) ||
+			             (mode === 'multi_gw' ? !uci.get('linkback', section_id, 'gateway') : !uci.get('linkback', section_id, 'name'));
+			if (mode === 'multi_gw') {
 				if (is_new) {
 					return parent_title + ' - ' + _('Add Monitored Gateway');
 				} else {
@@ -254,116 +278,158 @@ return view.extend({
 		o.rmempty = false;
 		makeTableColumnExpand(o, '8%');
 
-		// 2. Multi-GW vs Multi-WAN Mode column layout
-		if (current_mode === 'multi_gw') {
-			// 2a. Gateway IP (核心必填)
-			o = s.option(form.Value, 'gateway', _('Gateway IP'),
-				_('Next-hop IPv4 address of this gateway (e.g. 192.168.1.254).'));
-			o.datatype = 'ip4addr';
-			o.rmempty = false;
-			o.placeholder = '192.168.1.254';
-			o.validate = function(section_id, value) {
-				if (!value) return _('Gateway IP is required.');
-				var self_opt = this;
-				var conflict = false;
-				uci.sections('linkback', 'link').forEach(function(sec) {
-					var sid = sec['.name'];
-					if (sid !== section_id) {
-						var other_gw = self_opt.formvalue(sid) || uci.get('linkback', sid, 'gateway');
-						if (other_gw && other_gw === value) {
-							conflict = true;
-						}
+		// 2. Monitored Target Display (Table only)
+		o = s.option(form.DummyValue, '_target_disp', _('Monitored Target'));
+		o.modalonly = false;
+		o.cfgvalue = function(section_id) {
+			var gw = uci.get('linkback', section_id, 'gateway');
+			var name = uci.get('linkback', section_id, 'name');
+			var mode = getActiveMode();
+			if (mode === 'multi_gw' || gw) {
+				if (gw) {
+					if (name && name !== gw) {
+						return gw + ' (' + name + ')';
 					}
-				});
-				if (conflict) {
-					return _('Gateway IP %s is already used by another link.').format(value);
+					return gw;
 				}
-				return true;
-			};
-			makeTableColumnExpand(o, '22%');
+				return name ? (_('Missing Gateway IP: %s').format(name)) : _('Unset');
+			} else {
+				return name || _('Unselected');
+			}
+		};
+		makeTableColumnExpand(o, '24%');
 
-			// 2b. Gateway Name / Alias (选填)
-			o = s.option(form.Value, 'name', _('Gateway Alias (Optional)'),
-				_('Descriptive alias for this gateway (e.g. Bypass_GW, Main_Router). If empty, Gateway IP will be used.'));
-			o.rmempty = true;
-			o.placeholder = 'Bypass_GW';
-			o.write = function(section_id, value) {
+		// 3a. Gateway IP (Multi-GW mode only, Modal only)
+		var o_gw = s.option(form.Value, 'gateway', _('Gateway IP'),
+			_('Next-hop IPv4 address of this gateway (e.g. 192.168.1.254).'));
+		o_gw.datatype = 'ip4addr';
+		o_gw.modalonly = true;
+		o_gw.placeholder = '192.168.1.254';
+		var origRenderGw = o_gw.render;
+		o_gw.render = function(option_index, section_id, in_table) {
+			if (getActiveMode() !== 'multi_gw') {
+				return Promise.resolve(E('div', { 'style': 'display: none !important;' }));
+			}
+			return origRenderGw.call(this, option_index, section_id, in_table);
+		};
+		o_gw.validate = function(section_id, value) {
+			if (getActiveMode() !== 'multi_gw') {
+				return true;
+			}
+			if (!value || value.trim() === '') {
+				return _('Gateway IP is required.');
+			}
+			var val = value.trim();
+			var self_opt = this;
+			var conflict = false;
+			uci.sections('linkback', 'link').forEach(function(sec) {
+				var sid = sec['.name'];
+				if (sid !== section_id) {
+					var other_gw = self_opt.formvalue(sid) || uci.get('linkback', sid, 'gateway');
+					if (other_gw && other_gw === val) {
+						conflict = true;
+					}
+				}
+			});
+			if (conflict) {
+				return _('Gateway IP %s is already used by another link.').format(val);
+			}
+			return true;
+		};
+		o_gw.write = function(section_id, value) {
+			if (getActiveMode() === 'multi_gw') {
+				if (value != null && value.trim() !== '') {
+					uci.set('linkback', section_id, 'gateway', value.trim());
+				} else {
+					uci.remove('linkback', section_id, 'gateway');
+				}
+			} else {
+				uci.remove('linkback', section_id, 'gateway');
+			}
+		};
+
+		// 3b. Gateway Alias (Multi-GW mode only, Modal only)
+		var o_alias = s.option(form.Value, 'name_alias', _('Gateway Alias (Optional)'),
+			_('Descriptive alias for this gateway (e.g. Bypass_GW, Main_Router). If empty, Gateway IP will be used.'));
+		o_alias.modalonly = true;
+		o_alias.placeholder = 'Bypass_GW';
+		var origRenderAlias = o_alias.render;
+		o_alias.render = function(option_index, section_id, in_table) {
+			if (getActiveMode() !== 'multi_gw') {
+				return Promise.resolve(E('div', { 'style': 'display: none !important;' }));
+			}
+			return origRenderAlias.call(this, option_index, section_id, in_table);
+		};
+		o_alias.cfgvalue = function(section_id) {
+			if (getActiveMode() === 'multi_gw') {
+				var gw = uci.get('linkback', section_id, 'gateway');
+				var name = uci.get('linkback', section_id, 'name');
+				if (name && name !== gw) {
+					return name;
+				}
+			}
+			return '';
+		};
+		o_alias.write = function(section_id, value) {
+			if (getActiveMode() === 'multi_gw') {
 				var gw = uci.get('linkback', section_id, 'gateway');
 				if (!value || value.trim() === '') {
 					uci.set('linkback', section_id, 'name', gw || section_id);
 				} else {
 					uci.set('linkback', section_id, 'name', value.trim());
 				}
-			};
-			makeTableColumnExpand(o, '18%');
-		} else {
-			// Multi-WAN: 仅列出从 firewall wan 区域读取的接口
-			o = s.option(form.ListValue, 'name', _('WAN Interface'),
-				_('Logical interface from firewall WAN zone.'));
-			o.rmempty = false;
+			}
+		};
 
-			Object.keys(wan_interfaces).forEach(function(iface) {
-				o.value(iface);
-			});
-
-			// 保障已配置但在 firewall 中被删除的旧接口仍然展示
-			uci.sections('linkback', 'link').forEach(function(sec) {
-				if (sec.name && !wan_interfaces[sec.name]) {
-					o.value(sec.name, _('%s (configured)').format(sec.name));
-				}
-			});
-
-			o.renderWidget = function(section_id, option_index, cfgvalue) {
-				var used_names = {};
-				uci.sections('linkback', 'link').forEach(function(sec) {
-					if (sec['.name'] !== section_id && sec.name) {
-						used_names[sec.name] = true;
-					}
-				});
-
-				var filtered_choices = {};
-				var filtered_keylist = [];
-				if (Array.isArray(this.keylist)) {
-					for (var i = 0; i < this.keylist.length; i++) {
-						var key = this.keylist[i];
-						if (!used_names[key]) {
-							filtered_keylist.push(key);
-							filtered_choices[key] = this.vallist[i];
-						}
-					}
-				}
-
-				var is_edit = !!uci.get('linkback', section_id, 'name');
-
-				var widget = new ui.Select((cfgvalue != null) ? cfgvalue : this.default, filtered_choices, {
-					id: this.cbid(section_id),
-					size: this.size,
-					sort: filtered_keylist,
-					widget: this.widget,
-					optional: this.optional,
-					orientation: this.orientation,
-					placeholder: this.placeholder,
-					validate: (typeof(this.getValidator) === 'function') ? this.getValidator(section_id) : (this.validate ? this.validate.bind(this, section_id) : null),
-					disabled: is_edit ? true : ((this.readonly != null) ? this.readonly : this.map.readonly)
-				});
-
-				return widget.render();
-			};
-
-			o.validate = function(section_id, value) {
-				var added = false;
-				uci.sections('linkback', 'link').forEach(function(sec) {
-					if (sec['.name'] !== section_id && sec.name === value) {
-						added = true;
-					}
-				});
-				if (added) {
-					return _('This interface has already been configured.');
-				}
+		// 3c. WAN Interface (Multi-WAN mode only, Modal only)
+		var o_iface = s.option(form.ListValue, 'name_iface', _('WAN Interface'),
+			_('Logical interface from firewall WAN zone.'));
+		o_iface.modalonly = true;
+		Object.keys(wan_interfaces).forEach(function(iface) {
+			o_iface.value(iface);
+		});
+		uci.sections('linkback', 'link').forEach(function(sec) {
+			if (sec.name && !wan_interfaces[sec.name]) {
+				o_iface.value(sec.name, _('%s (configured)').format(sec.name));
+			}
+		});
+		var origRenderIface = o_iface.render;
+		o_iface.render = function(option_index, section_id, in_table) {
+			if (getActiveMode() !== 'multi_wan') {
+				return Promise.resolve(E('div', { 'style': 'display: none !important;' }));
+			}
+			return origRenderIface.call(this, option_index, section_id, in_table);
+		};
+		o_iface.cfgvalue = function(section_id) {
+			if (getActiveMode() === 'multi_wan') {
+				return uci.get('linkback', section_id, 'name');
+			}
+			return null;
+		};
+		o_iface.validate = function(section_id, value) {
+			if (getActiveMode() !== 'multi_wan') {
 				return true;
-			};
-			makeTableColumnExpand(o, '25%');
-		}
+			}
+			if (!value) {
+				return _('WAN Interface is required.');
+			}
+			var added = false;
+			uci.sections('linkback', 'link').forEach(function(sec) {
+				if (sec['.name'] !== section_id && sec.name === value) {
+					added = true;
+				}
+			});
+			if (added) {
+				return _('This interface has already been configured.');
+			}
+			return true;
+		};
+		o_iface.write = function(section_id, value) {
+			if (getActiveMode() === 'multi_wan') {
+				uci.set('linkback', section_id, 'name', value);
+				uci.remove('linkback', section_id, 'gateway');
+			}
+		};
 
 		// 3. Priority
 		o = s.option(form.Value, 'priority', _('Priority'),
