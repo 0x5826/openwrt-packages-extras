@@ -168,6 +168,8 @@ return view.extend({
 			uci.set('linkback', section_id, 'enabled', value);
 		};
 
+		var refreshTargetsSection = null;
+
 		// 2. Working Mode
 		o = s.option(form.ListValue, 'mode', _('Working Mode'),
 			_('Choose failover mode: Multi-WAN interface failover or Single-WAN multi-gateway redundancy.'));
@@ -177,15 +179,18 @@ return view.extend({
 		o.rmempty = false;
 		o.onchange = function(ev, section_id, value) {
 			uci.set('linkback', section_id, 'mode', value);
+			if (typeof refreshTargetsSection === 'function') {
+				refreshTargetsSection();
+			}
 			var links = uci.sections('linkback', 'link') || [];
 			if (links.length > 0) {
 				if (value === 'multi_gw') {
 					ui.addNotification(null, E('p',
-						_('已切换为单wan多网关模式。请确保监控目标列表中配置了有效的网关 IP。')
+						_('已切换为单wan多网关模式。请检查下方标记为「待配置网关 IP」的目标并填写真实网关。')
 					), 'info');
 				} else {
 					ui.addNotification(null, E('p',
-						_('已切换为多wan口模式。请确保监控目标列表中选择了正确的 WAN 接口。')
+						_('已切换为多wan口模式。请检查下方标记为「待选择 WAN 接口」的目标并绑定有效接口。')
 					), 'info');
 				}
 			}
@@ -228,10 +233,36 @@ return view.extend({
 		o.rmempty = false;
 
 		// --- Monitored Targets Section ---
-		s = m.section(form.GridSection, 'link', _('Monitored Targets'),
+		var targets_section = s = m.section(form.GridSection, 'link', _('Monitored Targets'),
 			_('Configure monitored WAN interfaces or next-hop gateways with custom probe targets and priorities (1 = primary, 2 = backup).'));
 		s.anonymous = true;
 		s.addremove = true;
+
+		var origSectionRender = s.render;
+		s.render = function() {
+			var mode = getActiveMode();
+			if (mode === 'multi_gw') {
+				this.title = _('Monitored Gateways');
+				this.description = _('Add next-hop gateways with custom probe targets and priorities (1 = primary, 2 = backup).');
+			} else {
+				this.title = _('Monitored WAN Interfaces');
+				this.description = _('Add WAN interfaces from firewall zone with custom probe targets and priorities (1 = primary, 2 = backup).');
+			}
+			return origSectionRender.apply(this, arguments);
+		};
+
+		refreshTargetsSection = function() {
+			var old_node = document.getElementById('cbi-linkback-link') ||
+			               document.querySelector('.cbi-section[data-tab="link"]') ||
+			               document.querySelector('.cbi-section[id*="link"]');
+			if (old_node && old_node.parentNode) {
+				targets_section.render().then(function(new_node) {
+					if (old_node.parentNode) {
+						old_node.parentNode.replaceChild(new_node, old_node);
+					}
+				});
+			}
+		};
 
 		// Custom dynamic Modal title
 		s.modaltitle = function(section_id) {
@@ -285,16 +316,22 @@ return view.extend({
 			var gw = uci.get('linkback', section_id, 'gateway');
 			var name = uci.get('linkback', section_id, 'name');
 			var mode = getActiveMode();
-			if (mode === 'multi_gw' || gw) {
+			if (mode === 'multi_gw') {
 				if (gw) {
 					if (name && name !== gw) {
 						return gw + ' (' + name + ')';
 					}
 					return gw;
 				}
-				return name ? (_('Missing Gateway IP: %s').format(name)) : _('Unset');
+				return name ? (_('待配置网关 IP (原: %s)').format(name)) : _('待配置网关 IP');
 			} else {
-				return name || _('Unselected');
+				if (name && wan_interfaces[name]) {
+					return name;
+				}
+				if (name) {
+					return gw ? (_('待选择 WAN 接口 (原: %s)').format(name)) : name;
+				}
+				return _('待选择 WAN 接口');
 			}
 		};
 		makeTableColumnExpand(o, '24%');
@@ -432,11 +469,19 @@ return view.extend({
 		};
 
 		// 3. Priority
-		o = s.option(form.Value, 'priority', _('Priority'),
-			_('Lower number indicates higher priority (e.g. 1 = Primary, 2 = Backup).'));
+		o = s.option(form.Value, 'priority', _('Priority'));
 		o.datatype = 'uinteger';
 		o.default = '1';
 		o.rmempty = false;
+		var origRenderPrio = o.render;
+		o.render = function(option_index, section_id, in_table) {
+			if (in_table) {
+				this.description = null;
+			} else {
+				this.description = _('Lower number indicates higher priority (e.g. 1 = Primary, 2 = Backup).');
+			}
+			return origRenderPrio.call(this, option_index, section_id, in_table);
+		};
 		o.validate = function(section_id, value) {
 			if (value == null || value === '') {
 				return t_priority_empty;

@@ -346,9 +346,22 @@ msgstr "未选择"
 msgid "WAN Interface is required."
 msgstr "WAN 网络接口不能为空。"
 
-msgid "已切换为单wan多网关模式。请确保监控目标列表中配置了有效的网关 IP。"
-msgstr "已切换为单wan多网关模式。请确保监控目标列表中配置了有效的网关 IP。"
+msgid "待配置网关 IP (原: %s)"
+msgstr "待配置网关 IP (原: %s)"
 
-msgid "已切换为多wan口模式。请确保监控目标列表中选择了正确的 WAN 接口。"
-msgstr "已切换为多wan口模式。请确保监控目标列表中选择了正确的 WAN 接口。"
+msgid "待配置网关 IP"
+msgstr "待配置网关 IP"
+
+msgid "待选择 WAN 接口 (原: %s)"
+msgstr "待选择 WAN 接口 (原: %s)"
+
+msgid "待选择 WAN 接口"
+msgstr "待选择 WAN 接口"
+
+msgid "已切换为单wan多网关模式。请检查下方标记为「待配置网关 IP」的目标并填写真实网关。"
+msgstr "已切换为单wan多网关模式。请检查下方标记为「待配置网关 IP」的目标并填写真实网关。"
+
+msgid "已切换为多wan口模式。请检查下方标记为「待选择 WAN 接口」的目标并绑定有效接口。"
+msgstr "已切换为多wan口模式。请检查下方标记为「待选择 WAN 接口」的目标并绑定有效接口。"
+
 
