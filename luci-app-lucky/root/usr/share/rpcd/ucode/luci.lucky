@@ -39,7 +39,7 @@ function get_procd_status() {
     return { running: false };
 }
 
-function get_rogue_pid(managed_pid) {
+function get_real_lucky_pid() {
     let p = popen('pidof /usr/bin/lucky', 'r');
     if (!p)
         return null;
@@ -51,26 +51,27 @@ function get_rogue_pid(managed_pid) {
         return null;
 
     let pids = split(trim(pid_str), /\s+/);
-    for (let i = 0; i < length(pids); i++) {
-        let pid = pids[i];
-        if (pid != '' && (managed_pid == null || pid != (managed_pid + '')))
-            return pid;
-    }
-
-    return null;
+    return (length(pids) > 0 && pids[0] != '') ? pids[0] : null;
 }
 
 function get_pid() {
     let procd_st = get_procd_status();
-    let rogue_pid = get_rogue_pid(procd_st.pid);
-    return (procd_st.pid || rogue_pid || "") + "";
+    let real_pid = get_real_lucky_pid();
+    return (real_pid || procd_st.pid || "") + "";
 }
 
 // 获取配置文件的修改时间戳，用于热更新感知自愈
 function get_config_mtime() {
     let dir = get_configdir() || '/etc/config/lucky.daji';
+    let base_file = dir + '/lucky_base.lkcf';
+    let st = stat(base_file);
+    if (st && st.mtime)
+        return st.mtime;
     let conf_file = dir + '/lucky.conf';
-    let st = stat(conf_file);
+    st = stat(conf_file);
+    if (st && st.mtime)
+        return st.mtime;
+    st = stat(dir);
     return st ? (st.mtime || 0) : 0;
 }
 
@@ -162,16 +163,16 @@ const methods = {
 
             // 1. 检测运行状态
             let procd_st = get_procd_status();
-            let rogue_pid = get_rogue_pid(procd_st.pid);
+            let real_pid = get_real_lucky_pid();
 
             let state = 'stopped';
             if (procd_st.running)
                 state = 'managed';
-            else if (rogue_pid)
+            else if (real_pid)
                 state = 'unmanaged';
 
             let running = (state !== 'stopped');
-            let pid = procd_st.pid || rogue_pid;
+            let pid = (state === 'managed' ? (real_pid || procd_st.pid) : real_pid) || null;
 
             // 2. 程序信息（从缓存或实时获取）
             let luckyInfo = "";
@@ -238,20 +239,21 @@ const methods = {
     get_status: {
         call: function() {
             let procd_st = get_procd_status();
-            let rogue_pid = get_rogue_pid(procd_st.pid);
+            let real_pid = get_real_lucky_pid();
 
             let state = 'stopped';
             if (procd_st.running)
                 state = 'managed';
-            else if (rogue_pid)
+            else if (real_pid)
                 state = 'unmanaged';
 
             let running = (state !== 'stopped');
+            let pid = (state === 'managed' ? (real_pid || procd_st.pid) : real_pid) || null;
 
             return {
                 running: running,
                 state: state,
-                pid: procd_st.pid || rogue_pid
+                pid: pid
             };
         }
     },
