@@ -1,0 +1,14 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2026 Dante <dante@seckv.com>
+#
+# Smart process runner for Lucky.
+# Automatically purges rogue orphan processes spawned during Web self-restart,
+# then atomically transforms into the official procd-managed instance via exec.
+
+# 1. Clean up any rogue orphan lucky processes to instantly release listen ports
+orphan_pids=$(pidof /usr/bin/lucky)
+[ -n "$orphan_pids" ] && kill -9 $orphan_pids >/dev/null 2>&1
+
+# 2. Atomically replace process image, retaining controlled PID under procd supervision
+exec /usr/bin/lucky "$@"

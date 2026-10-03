@@ -14,6 +14,14 @@ LUCI_TITLE:=LuCI Support for lucky
 LUCI_DEPENDS:=+lucky
 LUCI_PKGARCH:=all
 
+define Package/$(PKG_NAME)/postinst
+#!/bin/sh
+[ -n "$${IPKG_INSTROOT}" ] || {
+	(sleep 1; /etc/init.d/rpcd reload) >/dev/null 2>&1 &
+}
+exit 0
+endef
+
 define Package/$(PKG_NAME)/prerm
 #!/bin/sh
 rm -f /tmp/lucky_info_cache 2>/dev/null

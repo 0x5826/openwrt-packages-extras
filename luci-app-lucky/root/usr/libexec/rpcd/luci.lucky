@@ -4,7 +4,6 @@ local json = require "luci.jsonc"
 local UCI = require "luci.model.uci"
 local fs = require "nixio.fs"
 
-local STATE_FILE = '/var/run/lucky.running'
 local CACHE_FILE = '/tmp/lucky_info_cache'
 
 local function trim(s)
@@ -15,11 +14,6 @@ end
 local function shellquote(s)
 	if not s then return "''" end
 	return "'" .. s:gsub("'", "'\\''") .. "'"
-end
-
-local function exec(cmd)
-	local res = os.execute(cmd)
-	return (res == 0 or res == true)
 end
 
 local function get_configdir()
@@ -69,24 +63,72 @@ local function get_pid()
 	return tostring(procd_st.pid or rogue_pid or "")
 end
 
--- 读取缓存，仅在 PID 未变（包括停止状态 pid==""）时返回有效数据
+local function get_config_mtime()
+	local dir = get_configdir()
+	if dir == "" then dir = "/etc/config/lucky.daji" end
+	local st = fs.stat(dir .. "/lucky.conf")
+	return st and st.mtime or 0
+end
+
+local function detect_arch()
+	local arch = ""
+	local f = io.popen("ubus call system board")
+	if f then
+		local out = f:read("*a")
+		f:close()
+		local board = json.parse(out)
+		if board and board.release and board.release.arch then
+			arch = board.release.arch
+		end
+	end
+
+	if arch == "" then
+		local rel = fs.readfile("/etc/openwrt_release") or ""
+		arch = rel:match("DISTRIB_ARCH=['\"]?([^'\"\n]+)") or ""
+	end
+
+	if arch == "" then
+		local p = io.popen("uname -m")
+		if p then
+			arch = trim(p:read("*a"))
+			p:close()
+		end
+	end
+
+	arch = string.lower(arch)
+	if arch:match("x86_64") or arch:match("amd64") then return "x86_64" end
+	if arch:match("i[3-6]86") or arch:match("x86") then return "i386" end
+	if arch:match("aarch64") or arch:match("arm64") or arch:match("armv8") then return "arm64" end
+	if arch:match("armv7") then return "armv7" end
+	if arch:match("armv6") then return "armv6" end
+	if arch:match("armv5") then return "armv5" end
+	if arch:match("arm") then return "armv7" end
+	if arch:match("mipsel") then return "mipsle_softfloat" end
+	if arch:match("mips") then return "mips_softfloat" end
+
+	return arch ~= "" and arch or "unknown"
+end
+
+-- 读取缓存，需同时满足 PID 未变且配置文件 mtime 未变
 local function get_cache()
 	local content = fs.readfile(CACHE_FILE)
 	if content then
 		local cache = json.parse(content)
 		local currentPid = get_pid()
-		if cache and cache.pid == currentPid and cache.data then
+		local currentMtime = get_config_mtime()
+		if cache and cache.pid == currentPid and cache.mtime == currentMtime and cache.data then
 			return cache.data
 		end
 	end
 	return nil
 end
 
--- 写入缓存，绑定当前 PID
+-- 写入缓存，同时绑定 PID 与配置文件 mtime
 local function set_cache(data)
 	local pid = get_pid()
+	local mtime = get_config_mtime()
 	if data then
-		fs.writefile(CACHE_FILE, json.stringify({ pid = pid, data = data }))
+		fs.writefile(CACHE_FILE, json.stringify({ pid = pid, mtime = mtime, data = data }))
 	end
 end
 
@@ -140,11 +182,7 @@ local methods = {
 					fd:close()
 				end
 
-				fd = io.popen("/usr/bin/luckyarch")
-				if fd then
-					luckyArch = trim(fd:read('*a'))
-					fd:close()
-				end
+				luckyArch = detect_arch()
 
 				local cmd2 = "/usr/bin/lucky -baseConfInfo"
 				if configPath ~= "" then
@@ -219,7 +257,7 @@ local methods = {
 		args = { key = 'key', value = 'value' },
 		call = function(req)
 			if not req or not req.key then
-				return { ret = 1 }
+				return { ret = 1, error = "Missing key" }
 			end
 			local key = req.key
 			local value = req.value
@@ -237,9 +275,27 @@ local methods = {
 				local realKey = key
 				local cmd = ""
 
-				if key == "admin_http_port" then realKey = "AdminWebListenPort"
-				elseif key == "admin_safe_url" then realKey = "SafeURL"
-				elseif key == "switch_Internetaccess" then realKey = "AllowInternetaccess" end
+				if key == "admin_http_port" then
+					local portVal = trim(value)
+					local p = tonumber(portVal)
+					if not p or not portVal:match("^%d+$") or p < 1 or p > 65535 then
+						return { ret = 1, error = "Port out of range (1-65535)" }
+					end
+					realKey = "AdminWebListenPort"
+					value = tostring(p)
+				elseif key == "admin_safe_url" then
+					local urlVal = trim(value)
+					if urlVal ~= "" then
+						if not urlVal:match("^/[-a-zA-Z0-9_./]*$") or urlVal:match("%.%.") then
+							return { ret = 1, error = "Invalid SafeURL path" }
+						end
+					end
+					realKey = "SafeURL"
+					value = urlVal
+				elseif key == "switch_Internetaccess" then
+					realKey = "AllowInternetaccess"
+					value = (value == "1" or value == "true") and "true" or "false"
+				end
 
 				if key == "admin_safe_url" and value == "" then
 					cmd = "/usr/bin/lucky -rCancelSafeURL"
@@ -254,8 +310,18 @@ local methods = {
 				clear_cache()
 				ret = 0
 			elseif key == "configdir" then
+				local p = trim(value)
+				if not p:match("^/[-a-zA-Z0-9_./]*$") or p:match("%.%.") then
+					return { ret = 1, error = "Invalid config directory path" }
+				end
+				local forbidden = { ['/'] = true, ['/bin'] = true, ['/sbin'] = true, ['/etc'] = true, ['/usr'] = true, ['/lib'] = true, ['/dev'] = true, ['/proc'] = true, ['/sys'] = true, ['/root'] = true, ['/var'] = true }
+				local clean_p = p:gsub("/+$", "")
+				if clean_p == "" then clean_p = "/" end
+				if forbidden[clean_p] then
+					return { ret = 1, error = "System directory not allowed" }
+				end
 				local uci = UCI.cursor()
-				uci:set("lucky", "@lucky[0]", "configdir", value)
+				uci:set("lucky", "@lucky[0]", "configdir", p)
 				uci:commit("lucky")
 				clear_cache()
 				ret = 0
@@ -284,17 +350,11 @@ local methods = {
 			local action = req.action
 			local applied = true
 			if action == "start" or action == "restart" or action == "stop" then
-				-- 停止时清除缓存
-				if action == "stop" then
-					clear_cache()
-				end
-				if action == "restart" then
-					-- 重启前，强制强杀所有可能残留的 lucky 野进程，确保重新由 procd 唯一受控拉起
-					os.execute("killall -9 lucky 2>/dev/null")
-				end
+				clear_cache()
+				-- 进程控制统一由 init 脚本处理，杜绝越权强杀
 				local rc = os.execute("/etc/init.d/lucky " .. action .. " >/dev/null 2>&1")
 				applied = (rc == 0 or rc == true)
-				os.execute("sleep 2")
+				os.execute("sleep 1")
 			end
 			return { success = true, applied = applied }
 		end
