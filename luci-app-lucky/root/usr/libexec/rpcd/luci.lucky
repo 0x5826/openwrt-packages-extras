@@ -40,7 +40,7 @@ local function get_procd_status()
 	return { running = false }
 end
 
-local function get_rogue_pid(managed_pid)
+local function get_real_lucky_pid()
 	local f = io.popen("pidof /usr/bin/lucky")
 	if not f then return nil end
 	local pid_str = f:read("*a")
@@ -50,7 +50,7 @@ local function get_rogue_pid(managed_pid)
 	if pid_str == "" then return nil end
 	
 	for pid in string.gmatch(pid_str, "%S+") do
-		if pid ~= "" and (managed_pid == nil or tonumber(pid) ~= tonumber(managed_pid)) then
+		if pid ~= "" then
 			return pid
 		end
 	end
@@ -59,14 +59,18 @@ end
 
 local function get_pid()
 	local procd_st = get_procd_status()
-	local rogue_pid = get_rogue_pid(procd_st.pid)
-	return tostring(procd_st.pid or rogue_pid or "")
+	local real_pid = get_real_lucky_pid()
+	return tostring(real_pid or procd_st.pid or "")
 end
 
 local function get_config_mtime()
 	local dir = get_configdir()
 	if dir == "" then dir = "/etc/config/lucky.daji" end
-	local st = fs.stat(dir .. "/lucky.conf")
+	local st = fs.stat(dir .. "/lucky_base.lkcf")
+	if st and st.mtime then return st.mtime end
+	st = fs.stat(dir .. "/lucky.conf")
+	if st and st.mtime then return st.mtime end
+	st = fs.stat(dir)
 	return st and st.mtime or 0
 end
 
@@ -145,17 +149,17 @@ local methods = {
 
 			-- 1. 检测运行状态
 			local procd_st = get_procd_status()
-			local rogue_pid = get_rogue_pid(procd_st.pid)
+			local real_pid = get_real_lucky_pid()
 
 			local state = 'stopped'
 			if procd_st.running then
 				state = 'managed'
-			elseif rogue_pid then
+			elseif real_pid then
 				state = 'unmanaged'
 			end
 
 			local running = (state ~= 'stopped')
-			local pid = procd_st.pid or rogue_pid or ""
+			local pid = (state == 'managed' and (real_pid or procd_st.pid) or real_pid) or ""
 
 			-- 2. 程序信息（从缓存或实时获取）
 			local luckyInfo = ""
@@ -226,21 +230,22 @@ local methods = {
 	get_status = {
 		call = function()
 			local procd_st = get_procd_status()
-			local rogue_pid = get_rogue_pid(procd_st.pid)
+			local real_pid = get_real_lucky_pid()
 
 			local state = 'stopped'
 			if procd_st.running then
 				state = 'managed'
-			elseif rogue_pid then
+			elseif real_pid then
 				state = 'unmanaged'
 			end
 
 			local running = (state ~= 'stopped')
+			local pid = (state == 'managed' and (real_pid or procd_st.pid) or real_pid) or ""
 
 			return {
 				running = running,
 				state = state,
-				pid = tostring(procd_st.pid or rogue_pid or "")
+				pid = tostring(pid)
 			}
 		end
 	},
