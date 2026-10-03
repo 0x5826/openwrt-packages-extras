@@ -1,7 +1,7 @@
 #!/usr/bin/ucode
 'use strict';
 import { connect } from 'ubus';
-import { popen, readfile, writefile, unlink } from 'fs';
+import { popen, readfile, writefile, unlink, stat } from 'fs';
 import { cursor } from 'uci';
 
 function trim(s) {
@@ -66,17 +66,73 @@ function get_pid() {
     return (procd_st.pid || rogue_pid || "") + "";
 }
 
+// 获取配置文件的修改时间戳，用于热更新感知自愈
+function get_config_mtime() {
+    let dir = get_configdir() || '/etc/config/lucky.daji';
+    let conf_file = dir + '/lucky.conf';
+    let st = stat(conf_file);
+    return st ? (st.mtime || 0) : 0;
+}
+
+// 原生多级 fallback 架构探测，替代外部历史遗留脚本
+function detect_arch() {
+    let u = connect();
+    let arch = '';
+    if (u) {
+        let board = u.call('system', 'board');
+        if (board && board.release && board.release.arch) {
+            arch = board.release.arch;
+        }
+    }
+
+    if (!arch) {
+        let rel = readfile('/etc/openwrt_release');
+        if (rel) {
+            let m = match(rel, /DISTRIB_ARCH=['"]?([^'"\n]+)/);
+            if (m) arch = m[1];
+        }
+    }
+
+    if (!arch) {
+        let p = popen('uname -m', 'r');
+        if (p) {
+            arch = trim(p.read('all'));
+            p.close();
+        }
+    }
+
+    if (!arch && u) {
+        let board = u.call('system', 'board');
+        if (board && board.release && board.release.target) {
+            arch = board.release.target;
+        }
+    }
+
+    arch = lc(arch || '');
+    if (match(arch, /x86_64|amd64/)) return 'x86_64';
+    if (match(arch, /i[3-6]86|x86/)) return 'i386';
+    if (match(arch, /aarch64|arm64|armv8/)) return 'arm64';
+    if (match(arch, /armv7/)) return 'armv7';
+    if (match(arch, /armv6/)) return 'armv6';
+    if (match(arch, /armv5/)) return 'armv5';
+    if (match(arch, /arm/)) return 'armv7';
+    if (match(arch, /mipsel/)) return 'mipsle_softfloat';
+    if (match(arch, /mips/)) return 'mips_softfloat';
+
+    return arch || 'unknown';
+}
 
 const CACHE_FILE = '/tmp/lucky_info_cache';
 
-// 读取缓存，仅在 PID 未变（包括停止状态 pid==""）时返回有效数据
+// 读取缓存：需同时满足 PID 未变且配置文件 mtime 未变
 function get_cache() {
     try {
         let content = readfile(CACHE_FILE);
         if (content) {
             let cache = json(content);
             let currentPid = get_pid();
-            if (cache && cache.pid === currentPid && cache.data) {
+            let currentMtime = get_config_mtime();
+            if (cache && cache.pid === currentPid && cache.mtime === currentMtime && cache.data) {
                 return cache.data;
             }
         }
@@ -84,11 +140,12 @@ function get_cache() {
     return null;
 }
 
-// 写入缓存，绑定当前 PID
+// 写入缓存，同时绑定 PID 与配置文件 mtime
 function set_cache(data) {
     let pid = get_pid();
+    let mtime = get_config_mtime();
     if (data) {
-        writefile(CACHE_FILE, sprintf("%J", { pid: pid, data: data }));
+        writefile(CACHE_FILE, sprintf("%J", { pid: pid, mtime: mtime, data: data }));
     }
 }
 
@@ -136,8 +193,7 @@ const methods = {
                     "/usr/bin/lucky -info");
                 if (fd) { luckyInfo = trim(fd.read('all')); fd.close(); }
 
-                fd = popen("/usr/bin/luckyarch");
-                if (fd) { luckyArch = trim(fd.read('all')); fd.close(); }
+                luckyArch = detect_arch();
 
                 let cmd = configPath ?
                     `/usr/bin/lucky -baseConfInfo -cd ${shellquote(configPath)}` :
@@ -212,7 +268,7 @@ const methods = {
         args: { key: 'key', value: 'value' },
         call: function(req) {
             if (!req.args || !req.args.key) {
-                return { ret: 1 };
+                return { ret: 1, error: "Missing key" };
             }
             let key = req.args.key;
             let value = req.args.value || "";
@@ -223,9 +279,30 @@ const methods = {
                 let realKey = key;
                 let cmd = "";
 
-                if (key === "admin_http_port") realKey = "AdminWebListenPort";
-                else if (key === "admin_safe_url") realKey = "SafeURL";
-                else if (key === "switch_Internetaccess") realKey = "AllowInternetaccess";
+                if (key === "admin_http_port") {
+                    let portVal = trim("" + value);
+                    if (!match(portVal, /^[1-9][0-9]{0,4}$/)) {
+                        return { ret: 1, error: "Invalid port format" };
+                    }
+                    let p = int(portVal);
+                    if (p < 1 || p > 65535) {
+                        return { ret: 1, error: "Port out of range (1-65535)" };
+                    }
+                    realKey = "AdminWebListenPort";
+                    value = "" + p;
+                } else if (key === "admin_safe_url") {
+                    let urlVal = trim("" + value);
+                    if (urlVal !== "") {
+                        if (!match(urlVal, /^\/[-a-zA-Z0-9_\/]+$/) || match(urlVal, /\.\./)) {
+                            return { ret: 1, error: "Invalid SafeURL path" };
+                        }
+                    }
+                    realKey = "SafeURL";
+                    value = urlVal;
+                } else if (key === "switch_Internetaccess") {
+                    realKey = "AllowInternetaccess";
+                    value = (value === true || value === "1" || value === "true") ? "true" : "false";
+                }
 
                 if (key === "admin_safe_url" && value === "") {
                     cmd = `/usr/bin/lucky -rCancelSafeURL`;
@@ -237,12 +314,25 @@ const methods = {
                     cmd += ` -cd ${shellquote(configPath)}`;
                 }
                 system(cmd);
+                clear_cache();
                 ret = 0;
             } else if (key === "configdir") {
+                let p = trim("" + value);
+                if (!match(p, /^\/[-a-zA-Z0-9_.\/]+$/) || match(p, /\.\./)) {
+                    return { ret: 1, error: "Invalid config directory path" };
+                }
+                // 拦截系统敏感目录
+                let forbidden = ['/', '/bin', '/sbin', '/etc', '/usr', '/lib', '/dev', '/proc', '/sys', '/root', '/var'];
+                for (let i = 0; i < length(forbidden); i++) {
+                    if (p === forbidden[i] || p === forbidden[i] + '/') {
+                        return { ret: 1, error: "System directory not allowed" };
+                    }
+                }
                 let c = cursor();
                 c.load('lucky');
-                c.set('lucky', '@lucky[0]', 'configdir', value);
+                c.set('lucky', '@lucky[0]', 'configdir', p);
                 c.commit('lucky');
+                clear_cache();
                 ret = 0;
             } else if (key === "reset_auth_info") {
                 let cmd1 = `/usr/bin/lucky -setconf -key AdminAccount -value 666`;
@@ -253,6 +343,7 @@ const methods = {
                 }
                 system(cmd1);
                 system(cmd2);
+                clear_cache();
                 ret = 0;
             }
 
@@ -268,18 +359,11 @@ const methods = {
             let action = req.args.action;
             let applied = true;
             if (action === "start" || action === "restart" || action === "stop") {
-                // 停止时清除缓存
-                if (action === "stop") {
-                    clear_cache();
-                }
-                if (action === "restart") {
-                    // 重启前，强制强杀所有可能残留的 lucky 野进程，确保重新由 procd 唯一受控拉起
-                    let p = popen('killall -9 lucky', 'r');
-                    if (p) p.close();
-                }
+                clear_cache();
+                // 进程控制权限完全交由 init 脚本处理，杜绝 ucode 越权强杀竞态
                 let rc = system(`/etc/init.d/lucky ${action} >/dev/null 2>&1`);
                 applied = (rc === 0);
-                system("sleep 2");
+                system("sleep 1");
             }
             return { success: true, applied: applied };
         }
