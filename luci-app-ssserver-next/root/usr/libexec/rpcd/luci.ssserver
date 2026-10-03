@@ -12,7 +12,7 @@ end
 local methods = {
 	get_log = {
 		call = function()
-			local fd = io.popen('logread -e ssserver')
+			local fd = io.popen("logread -e 'ssserver' | grep -E 'ssserver(\\[[0-9]+\\])?: ' | tail -n 150")
 			local log = fd and fd:read('*a') or ""
 			if fd then fd:close() end
 			return { log = log }
