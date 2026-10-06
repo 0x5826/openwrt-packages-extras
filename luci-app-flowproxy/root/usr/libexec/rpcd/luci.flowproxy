@@ -192,6 +192,15 @@ local methods = {
 		end
 	},
 
+	generate_nft_config = {
+		call = function()
+			os.execute("rm -rf /tmp/flowproxy")
+			os.execute("mkdir -p /tmp/flowproxy && chmod 700 /tmp/flowproxy")
+			os.execute("FLOWPROXY_PREVIEW=1 /usr/share/flowproxy/generate_iptables.sh >/dev/null 2>&1")
+			return { config = safe_trim(fs.readfile("/tmp/flowproxy/iptables.rules") or "") }
+		end
+	},
+
 	get_runtime_config = {
 		call = function()
 			local res_file = '/tmp/flowproxy/runtime.tmp'

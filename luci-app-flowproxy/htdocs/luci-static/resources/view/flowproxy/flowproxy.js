@@ -108,6 +108,12 @@ return L.view.extend({
                     }, [ _('Restart') ]));
                 } else {
                     content.push(E('span', { 'style': 'color: red; font-weight: bold;' }, [ _('stopped') ]));
+                    content.push(' ');
+                    content.push(E('button', {
+                        'class': 'btn cbi-button cbi-button-apply',
+                        'style': 'margin-left: 10px;',
+                        'click': ui.createHandlerFn(this, 'handleRestart')
+                    }, [ _('Restart') ]));
                 }
                 L.dom.content(statusEl, content);
             }
@@ -673,5 +679,11 @@ return L.view.extend({
             poll.add(L.bind(function() { if (!document.body.contains(node)) return false; return this.refreshStatus(m, node); }, this), 5);
             return node;
         }, this));
+    },
+
+    handleSaveApply: function(ev, mode) {
+        return this.super('handleSaveApply', [ev, mode]).then(function() {
+            return callRestartService();
+        });
     }
 });

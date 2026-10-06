@@ -9,11 +9,6 @@ umask 077
 CONFIG="flowproxy"
 OUTPUT_FILE="/tmp/flowproxy/iptables.rules"
 
-# 安全防范：若目标规则文件为恶意软链，直接删除它，避免删掉被父进程以 700 锁定的父目录
-rm -rf "$OUTPUT_FILE"
-touch "$OUTPUT_FILE"
-chmod 600 "$OUTPUT_FILE"
-
 ENABLED_SETS=" "
 
 log_debug() {
@@ -85,7 +80,7 @@ process_rule() {
 	echo "-A $chain_name $proto_arg$segment -j $j_action"
 }
 
-SECTIONS_SET=$(uci -q show "$CONFIG" | grep "=ipset" | cut -d'.' -f2 | cut -d'=' -f1)
+SECTIONS_SET=$(uci -q show "$CONFIG" | grep -E "=(ipset|nftset)" | cut -d'.' -f2 | cut -d'=' -f1)
 SECTIONS_TCP=$(uci -q show "$CONFIG" | grep "=tcp_rule" | cut -d'.' -f2 | cut -d'=' -f1)
 SECTIONS_UDP=$(uci -q show "$CONFIG" | grep "=udp_rule" | cut -d'.' -f2 | cut -d'=' -f1)
 
@@ -156,6 +151,11 @@ if [ "$1" = "runtime" ]; then
 	ip route show table "$ROUTING_TABLE" 2>/dev/null || echo "(table empty)"
 	exit 0
 fi
+
+# 安全防范：若目标规则文件为恶意软链，直接删除它，避免删掉被父进程以 700 锁定的父目录
+rm -rf "$OUTPUT_FILE"
+touch "$OUTPUT_FILE"
+chmod 600 "$OUTPUT_FILE"
 
 cat > "$OUTPUT_FILE" << EOF
 *mangle

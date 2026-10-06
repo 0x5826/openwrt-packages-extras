@@ -69,6 +69,7 @@ create_single_ipset() {
 apply_ipsets() {
     config_load "$UCI_CONFIG"
     config_foreach create_single_ipset "ipset"
+    config_foreach create_single_ipset "nftset"
 }
 
 get_level_weight() {
@@ -190,9 +191,14 @@ apply_rules() {
         FLOWPROXY_LOG_LEVEL="$conf_level" "$iptables_gen" >/dev/null 2> "$err_file"
         local ret=$?
         
+        # 将脚本的输出记录到日志：成功时按 debug 输出，失败时按 error 输出
         if [ -s "$err_file" ]; then
             while read -r line; do
-                log_msg debug "Script: $line"
+                if [ $ret -eq 0 ]; then
+                    log_msg debug "Script: $line"
+                else
+                    log_msg error "Generator: $line"
+                fi
             done < "$err_file"
         fi
         rm -rf "$err_file"
@@ -206,7 +212,9 @@ apply_rules() {
             apply_ipsets
             
             # 3. 通过安全管道应用 iptables-restore
-            if iptables-restore -n < "$iptables_rules"; then
+            local restore_err
+            restore_err=$(iptables-restore -n < "$iptables_rules" 2>&1)
+            if [ $? -eq 0 ]; then
                 # 4. 动态解析 LAN 网卡并在 PREROUTING 挂载自定义链 (支持单/多网卡)
                 local TCP_ENABLED=$(uci -q get "$UCI_CONFIG.global.tcp_enabled" || echo "1")
                 local UDP_ENABLED=$(uci -q get "$UCI_CONFIG.global.udp_enabled" || echo "1")
@@ -217,11 +225,11 @@ apply_rules() {
                 done
                 return 0
             else
-                log_msg error "iptables-restore rules application failed"
+                log_msg error "iptables-restore rules application failed: $restore_err"
                 return 1
             fi
         else
-            log_msg error "Failed to generate iptables config"
+            log_msg error "Failed to generate iptables config (exit code: $ret)"
             return 1
         fi
     else
@@ -376,6 +384,7 @@ delete_rules() {
     # 3. 清理自定义 ipset
     config_load "$UCI_CONFIG"
     config_foreach destroy_single_ipset "ipset"
+    config_foreach destroy_single_ipset "nftset"
     log_msg info "Removed iptables rules and ipsets"
 }
 
@@ -426,9 +435,13 @@ start_service() {
 
     if [ "$enabled" -eq 0 ]; then
         log_msg info "FlowProxy is disabled, ensuring service is stopped"
+        [ -x /etc/init.d/flowproxy ] && /etc/init.d/flowproxy disable 2>/dev/null
         stop_service
         return 0
     fi
+
+    # 状态自愈：当 enabled=1 时，确保服务已在 rc.d 中 enable，防止 luci-reload 因未启用而静默跳过执行
+    [ -x /etc/init.d/flowproxy ] && /etc/init.d/flowproxy enable 2>/dev/null
 
     log_msg info "Starting FlowProxy..."
 
@@ -453,6 +466,10 @@ start_service() {
 }
 stop_service() {
     log_msg info "Stopping FlowProxy..."
+    local enabled=$(uci -q get "$UCI_CONFIG.global.enabled" || echo 0)
+    if [ "$enabled" -eq 0 ]; then
+        [ -x /etc/init.d/flowproxy ] && /etc/init.d/flowproxy disable 2>/dev/null
+    fi
     # 强制先移除标记，防止状态误报
     rm -f "$STATE_FILE"
     delete_route
