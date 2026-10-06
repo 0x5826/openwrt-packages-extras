@@ -271,13 +271,19 @@ add_route() {
     ip route flush table "$routing_table" 2>/dev/null
 
     # 4. 添加路由和策略
-    local err
-    ip route add default via "$proxy_server_ip_addr" dev "$interface" table "$routing_table" 2>/dev/null
-    err=$(ip rule add fwmark "$traffic_mark" lookup "$routing_table" priority "$rule_priority" 2>&1)
+    local route_err rule_err
+    route_err=$(ip route add default via "$proxy_server_ip_addr" dev "$interface" table "$routing_table" 2>&1)
+    if [ $? -ne 0 ]; then
+        log_msg error "Failed to add default route to table $routing_table via $proxy_server_ip_addr (dev: $interface): $route_err"
+        log_msg error "Proxy server IP $proxy_server_ip_addr is unreachable or has no valid route on interface $interface"
+        return 1
+    fi
+
+    rule_err=$(ip rule add fwmark "$traffic_mark" lookup "$routing_table" priority "$rule_priority" 2>&1)
     if [ $? -eq 0 ]; then
         log_msg info "Route added: via $proxy_server_ip_addr dev $interface table $routing_table for mark $traffic_mark with priority $rule_priority"
     else
-        log_msg error "Failed to add ip rule: $err"
+        log_msg error "Failed to add ip rule: $rule_err"
         return 1
     fi
 
@@ -435,7 +441,11 @@ start_service() {
     probe_proxy_server "$proxy_server_ip_addr" "$proxy_server_dns_port" "$interface"
 
     apply_rules || return 1
-    add_route
+    if ! add_route; then
+        log_msg error "Routing setup failed, aborting and cleaning up service..."
+        stop_service
+        return 1
+    fi
     setup_dns
 
     touch "$STATE_FILE"
