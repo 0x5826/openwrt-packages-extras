@@ -321,7 +321,6 @@ return L.view.extend({
         iface_opt.value('auto', _('Auto (Detect automatically)'));
         devices.forEach(function(d) { iface_opt.value(d.getName(), d.getName()); });
         iface_opt.default = 'auto';
-        iface_opt.description = _("Interface where the proxy server is reachable. 'Auto' will dynamically resolve the egress interface via kernel routing.");
         iface_opt.onchange = function(ev, sid, val) {
             var ip_opt = m.lookupOption('proxy_server_ip_addr', sid)[0];
             if (ip_opt) {
