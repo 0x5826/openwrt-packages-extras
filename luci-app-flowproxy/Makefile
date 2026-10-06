@@ -1,21 +1,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-flowproxy
-PKG_VERSION:=1.0.4
+PKG_VERSION:=1.0.3
 PKG_RELEASE:=1
 
 LUCI_TITLE:=LuCI Support for FlowProxy Traffic Diversion (OpenWrt 21 Compatibility)
-LUCI_DEPENDS:=+luci-base +iptables +kmod-ipt-core +ipset +ip-full
+LUCI_DEPENDS:=+luci-base
 LUCI_PKGARCH:=all
-
-define Package/$(PKG_NAME)/postinst
-#!/bin/sh
-if [ -z "$${IPKG_INSTROOT}" ]; then
-	[ -f /etc/uci-defaults/99_flowproxy ] && ( . /etc/uci-defaults/99_flowproxy ) && rm -f /etc/uci-defaults/99_flowproxy
-	(sleep 1; /etc/init.d/rpcd reload) >/dev/null 2>&1 &
-fi
-exit 0
-endef
 
 define Package/$(PKG_NAME)/prerm
 #!/bin/sh

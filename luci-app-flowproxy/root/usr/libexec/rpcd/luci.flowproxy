@@ -67,7 +67,7 @@ local methods = {
 
 			local uci = UCI.cursor()
 			local proxy_server_ip_addr = uci:get(UCI_CONFIG, "global", "proxy_server_ip_addr") or ""
-			local dns_running = fs.access('/tmp/dnsmasq.d/flowproxy.conf') and 1 or 0
+			local dns_running = uci:get(UCI_CONFIG, "dns_backup") and 1 or 0
 			local enabled_val = uci:get(UCI_CONFIG, "global", "enabled") or "0"
 			local enabled = tonumber(enabled_val) or 0
 			local proxy_server_dns_port = uci:get(UCI_CONFIG, "global", "proxy_server_dns_port") or "5353"
@@ -85,68 +85,6 @@ local methods = {
 				traffic_mark = traffic_mark,
 				nft = { tcp = tcp_active and 1 or 0, udp = udp_active and 1 or 0 }
 			}
-		end
-	},
-
-	get_dataset_info = {
-		args = { path = "/usr/share/flowproxy/chnroute.txt" },
-		call = function(args)
-			local path = (args and args.path and args.path ~= "") and args.path or "/usr/share/flowproxy/chnroute.txt"
-			if not fs.access(path) then
-				return { exists = false, lines = 0 }
-			end
-			local count = 0
-			local f = io.open(path, "r")
-			if f then
-				for line in f:lines() do
-					line = safe_trim(line)
-					if line ~= "" and not line:match("^#") then
-						count = count + 1
-					end
-				end
-				f:close()
-			end
-			return { exists = true, lines = count }
-		end
-	},
-
-	update_dataset = {
-		args = { url = "", path = "/usr/share/flowproxy/chnroute.txt" },
-		call = function(args)
-			local url = safe_trim(args and args.url or "")
-			local path = safe_trim(args and args.path or "")
-			if path == "" then path = "/usr/share/flowproxy/chnroute.txt" end
-			if url == "" then
-				return { success = false, error = "Empty download URL" }
-			end
-			if not url:match("^https?://[%w%-_%.%/:~%#%?&=%%+]+$") then
-				return { success = false, error = "Invalid URL protocol or characters" }
-			end
-			if not (path:match("^/usr/share/flowproxy/") or path:match("^/tmp/")) then
-				return { success = false, error = "Target path not allowed" }
-			end
-			local tmp_file = "/tmp/flowproxy_download.tmp"
-			os.execute(string.format("wget -q -O %q %q --timeout=15 --no-check-certificate", tmp_file, url))
-			if fs.access(tmp_file) then
-				local stat = fs.stat(tmp_file)
-				if stat and stat.size > 0 then
-					os.execute(string.format("mv -f %q %q", tmp_file, path))
-					local count = 0
-					local f = io.open(path, "r")
-					if f then
-						for line in f:lines() do
-							line = safe_trim(line)
-							if line ~= "" and not line:match("^#") then
-								count = count + 1
-							end
-						end
-						f:close()
-					end
-					return { success = true, lines = count }
-				end
-			end
-			os.execute("rm -f " .. tmp_file)
-			return { success = false, error = "Download failed or empty response" }
 		end
 	},
 
@@ -192,18 +130,10 @@ local methods = {
 		end
 	},
 
-	generate_nft_config = {
-		call = function()
-			os.execute("rm -rf /tmp/flowproxy")
-			os.execute("mkdir -p /tmp/flowproxy && chmod 700 /tmp/flowproxy")
-			os.execute("FLOWPROXY_PREVIEW=1 /usr/share/flowproxy/generate_iptables.sh >/dev/null 2>&1")
-			return { config = safe_trim(fs.readfile("/tmp/flowproxy/iptables.rules") or "") }
-		end
-	},
-
 	get_runtime_config = {
 		call = function()
 			local res_file = '/tmp/flowproxy/runtime.tmp'
+			local dns_file = '/tmp/flowproxy/dns_runtime.tmp'
 			
 			os.execute("rm -rf /tmp/flowproxy")
 			os.execute("mkdir -p /tmp/flowproxy && chmod 700 /tmp/flowproxy")
@@ -212,12 +142,12 @@ local methods = {
 			local iptables_runtime = fs.readfile(res_file) or "(failed)"
 			os.execute("rm -f " .. res_file)
 			
+			os.execute("uci show dhcp.@dnsmasq[0] | grep -E \"noresolv|dns_redirect|server\" | sed -E \"s/^dhcp\\.[^.]*\\.([^=]*)=(.*)/\\1: \\2/; s/\\x27//g; s/#/:/g\" > " .. dns_file .. " 2>&1")
+			local dns_out = fs.readfile(dns_file) or ""
+			os.execute("rm -f " .. dns_file)
+			
 			local dns_runtime = "\n--- [ DNSmasq Runtime Configuration ] ---\n"
-			if fs.access("/tmp/dnsmasq.d/flowproxy.conf") then
-				dns_runtime = dns_runtime .. (fs.readfile("/tmp/dnsmasq.d/flowproxy.conf") or "")
-			else
-				dns_runtime = dns_runtime .. "(no active dnsmasq drop-in overrides)\n"
-			end
+			dns_runtime = dns_runtime .. (dns_out ~= "" and dns_out or "(no active dnsmasq overrides)")
 			
 			return { runtime = safe_trim(iptables_runtime .. dns_runtime) }
 		end

@@ -9,6 +9,11 @@ umask 077
 CONFIG="flowproxy"
 OUTPUT_FILE="/tmp/flowproxy/iptables.rules"
 
+# 安全防范：若目标规则文件为恶意软链，直接删除它，避免删掉被父进程以 700 锁定的父目录
+rm -rf "$OUTPUT_FILE"
+touch "$OUTPUT_FILE"
+chmod 600 "$OUTPUT_FILE"
+
 ENABLED_SETS=" "
 
 log_debug() {
@@ -80,7 +85,7 @@ process_rule() {
 	echo "-A $chain_name $proto_arg$segment -j $j_action"
 }
 
-SECTIONS_SET=$(uci -q show "$CONFIG" | grep -E "=(ipset|nftset)" | cut -d'.' -f2 | cut -d'=' -f1)
+SECTIONS_SET=$(uci -q show "$CONFIG" | grep "=ipset" | cut -d'.' -f2 | cut -d'=' -f1)
 SECTIONS_TCP=$(uci -q show "$CONFIG" | grep "=tcp_rule" | cut -d'.' -f2 | cut -d'=' -f1)
 SECTIONS_UDP=$(uci -q show "$CONFIG" | grep "=udp_rule" | cut -d'.' -f2 | cut -d'=' -f1)
 
@@ -89,44 +94,6 @@ for s in $SECTIONS_SET; do
 	enabled=$(uci -q get "$CONFIG.$s.enabled")
 	[ "$enabled" != "0" ] && ENABLED_SETS="${ENABLED_SETS}@${s} "
 done
-
-get_lan_devices() {
-	local dev="" devs="" nets=""
-	local z_idx=0
-	while :; do
-		local z_name=$(uci -q get firewall.@zone[$z_idx].name)
-		[ -z "$z_name" ] && break
-		if [ "$z_name" = "lan" ]; then
-			nets=$(uci -q get firewall.@zone[$z_idx].network)
-			break
-		fi
-		z_idx=$((z_idx + 1))
-	done
-
-	[ -z "$nets" ] && nets="lan"
-
-	for net in $nets; do
-		dev=""
-		if command -v ubus >/dev/null 2>&1; then
-			dev=$(ubus call network.interface."$net" status 2>/dev/null | jsonfilter -e "@.l3_device" 2>/dev/null)
-			[ -z "$dev" ] && dev=$(ubus call network.interface."$net" status 2>/dev/null | jsonfilter -e "@.device" 2>/dev/null)
-		fi
-		[ -z "$dev" ] && dev=$(uci -q get network."$net".device || uci -q get network."$net".ifname)
-		if [ -n "$dev" ]; then
-			case " $devs " in
-				*" $dev "*) ;;
-				*) devs="${devs}${devs:+ }$dev" ;;
-			esac
-		fi
-	done
-
-	echo "${devs:-br-lan}"
-}
-
-if [ "$1" = "lan_devices" ]; then
-	get_lan_devices
-	exit 0
-fi
 
 if [ "$1" = "runtime" ]; then
 	TRAFFIC_MARK=$(uci -q get "$CONFIG.global.traffic_mark" || echo "0x666")
@@ -152,11 +119,6 @@ if [ "$1" = "runtime" ]; then
 	exit 0
 fi
 
-# 安全防范：若目标规则文件为恶意软链，直接删除它，避免删掉被父进程以 700 锁定的父目录
-rm -rf "$OUTPUT_FILE"
-touch "$OUTPUT_FILE"
-chmod 600 "$OUTPUT_FILE"
-
 cat > "$OUTPUT_FILE" << EOF
 *mangle
 :FLOWPROXY_TCP - [0:0]
@@ -174,7 +136,6 @@ if [ "$TCP_ENABLED" = "1" ]; then
 EOF
 	if [ -n "$PROXY_SERVER_IP_ADDR" ]; then
 		echo "-A FLOWPROXY_TCP -s $PROXY_SERVER_IP_ADDR -p tcp -j RETURN" >> "$OUTPUT_FILE"
-		echo "-A FLOWPROXY_TCP -d $PROXY_SERVER_IP_ADDR -p tcp -j RETURN" >> "$OUTPUT_FILE"
 	fi
 	for s in $SECTIONS_TCP; do process_rule "$s" "tcp" >> "$OUTPUT_FILE"; done
 	echo "-A FLOWPROXY_TCP -p tcp -j MARK --set-xmark $TRAFFIC_MARK/0xffffffff" >> "$OUTPUT_FILE"
@@ -186,7 +147,6 @@ if [ "$UDP_ENABLED" = "1" ]; then
 EOF
 	if [ -n "$PROXY_SERVER_IP_ADDR" ]; then
 		echo "-A FLOWPROXY_UDP -s $PROXY_SERVER_IP_ADDR -p udp -j RETURN" >> "$OUTPUT_FILE"
-		echo "-A FLOWPROXY_UDP -d $PROXY_SERVER_IP_ADDR -p udp -j RETURN" >> "$OUTPUT_FILE"
 	fi
 	for s in $SECTIONS_UDP; do process_rule "$s" "udp" >> "$OUTPUT_FILE"; done
 	echo "-A FLOWPROXY_UDP -p udp -j MARK --set-xmark $TRAFFIC_MARK/0xffffffff" >> "$OUTPUT_FILE"
