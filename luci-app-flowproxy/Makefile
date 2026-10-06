@@ -11,7 +11,7 @@ LUCI_PKGARCH:=all
 define Package/$(PKG_NAME)/postinst
 #!/bin/sh
 if [ -z "$${IPKG_INSTROOT}" ]; then
-	/etc/init.d/rpcd restart
+	(sleep 1; /etc/init.d/rpcd reload) >/dev/null 2>&1 &
 fi
 exit 0
 endef

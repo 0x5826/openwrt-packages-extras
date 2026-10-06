@@ -95,6 +95,44 @@ for s in $SECTIONS_SET; do
 	[ "$enabled" != "0" ] && ENABLED_SETS="${ENABLED_SETS}@${s} "
 done
 
+get_lan_devices() {
+	local dev="" devs="" nets=""
+	local z_idx=0
+	while :; do
+		local z_name=$(uci -q get firewall.@zone[$z_idx].name)
+		[ -z "$z_name" ] && break
+		if [ "$z_name" = "lan" ]; then
+			nets=$(uci -q get firewall.@zone[$z_idx].network)
+			break
+		fi
+		z_idx=$((z_idx + 1))
+	done
+
+	[ -z "$nets" ] && nets="lan"
+
+	for net in $nets; do
+		dev=""
+		if command -v ubus >/dev/null 2>&1; then
+			dev=$(ubus call network.interface."$net" status 2>/dev/null | jsonfilter -e "@.l3_device" 2>/dev/null)
+			[ -z "$dev" ] && dev=$(ubus call network.interface."$net" status 2>/dev/null | jsonfilter -e "@.device" 2>/dev/null)
+		fi
+		[ -z "$dev" ] && dev=$(uci -q get network."$net".device || uci -q get network."$net".ifname)
+		if [ -n "$dev" ]; then
+			case " $devs " in
+				*" $dev "*) ;;
+				*) devs="${devs}${devs:+ }$dev" ;;
+			esac
+		fi
+	done
+
+	echo "${devs:-br-lan}"
+}
+
+if [ "$1" = "lan_devices" ]; then
+	get_lan_devices
+	exit 0
+fi
+
 if [ "$1" = "runtime" ]; then
 	TRAFFIC_MARK=$(uci -q get "$CONFIG.global.traffic_mark" || echo "0x666")
 	ROUTING_TABLE=$(uci -q get "$CONFIG.global.routing_table" || echo "888")
@@ -129,15 +167,11 @@ TCP_ENABLED=$(uci -q get "$CONFIG.global.tcp_enabled" || echo "1")
 UDP_ENABLED=$(uci -q get "$CONFIG.global.udp_enabled" || echo "1")
 TRAFFIC_MARK=$(uci -q get "$CONFIG.global.traffic_mark" || echo "0x666")
 PROXY_SERVER_IP_ADDR=$(uci -q get "$CONFIG.global.proxy_server_ip_addr")
-INTERFACE=$(uci -q get "$CONFIG.global.interface" || echo "br-lan")
 
 if [ "$TCP_ENABLED" = "1" ]; then
 	cat >> "$OUTPUT_FILE" << EOF
 -A FLOWPROXY_TCP -m addrtype --dst-type LOCAL,MULTICAST,BROADCAST -j RETURN
 EOF
-	if [ -n "$INTERFACE" ]; then
-		echo "-A FLOWPROXY_TCP ! -i $INTERFACE -j RETURN" >> "$OUTPUT_FILE"
-	fi
 	if [ -n "$PROXY_SERVER_IP_ADDR" ]; then
 		echo "-A FLOWPROXY_TCP -s $PROXY_SERVER_IP_ADDR -p tcp -j RETURN" >> "$OUTPUT_FILE"
 		echo "-A FLOWPROXY_TCP -d $PROXY_SERVER_IP_ADDR -p tcp -j RETURN" >> "$OUTPUT_FILE"
@@ -150,9 +184,6 @@ if [ "$UDP_ENABLED" = "1" ]; then
 	cat >> "$OUTPUT_FILE" << EOF
 -A FLOWPROXY_UDP -m addrtype --dst-type LOCAL,MULTICAST,BROADCAST -j RETURN
 EOF
-	if [ -n "$INTERFACE" ]; then
-		echo "-A FLOWPROXY_UDP ! -i $INTERFACE -j RETURN" >> "$OUTPUT_FILE"
-	fi
 	if [ -n "$PROXY_SERVER_IP_ADDR" ]; then
 		echo "-A FLOWPROXY_UDP -s $PROXY_SERVER_IP_ADDR -p udp -j RETURN" >> "$OUTPUT_FILE"
 		echo "-A FLOWPROXY_UDP -d $PROXY_SERVER_IP_ADDR -p udp -j RETURN" >> "$OUTPUT_FILE"

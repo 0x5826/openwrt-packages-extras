@@ -27,7 +27,7 @@ var callClearLogs = rpc.declare({
 
 var callGenerateNftConfig = rpc.declare({
     object: 'luci.flowproxy',
-    method: 'generate_iptables_config'
+    method: 'generate_nft_config'
 });
 
 var callGetRuntimeConfig = rpc.declare({
@@ -43,13 +43,13 @@ var callRestartService = rpc.declare({
 var callGetDatasetInfo = rpc.declare({
     object: 'luci.flowproxy',
     method: 'get_dataset_info',
-    params: ['path']
+    params: ['file_path']
 });
 
 var callUpdateDataset = rpc.declare({
     object: 'luci.flowproxy',
     method: 'update_dataset',
-    params: ['url', 'path']
+    params: ['url', 'file_path']
 });
 
 return L.view.extend({
@@ -66,10 +66,10 @@ return L.view.extend({
         if (!text || text.trim() === '') return '<span style="color: #999;">' + _('(no content / table not loaded)') + '</span>';
         var rules = [
             { rex: /#(.*)/g, cls: 'comment' },
-            { rex: /\b(table|chain|set|elements|type|COMMIT)\b|\*(?:mangle|filter|nat|raw)\b/g, cls: 'keyword' },
-            { rex: /\b(ip|ip6|tcp|udp|ether|meta|meta nfproto)\b|-(?:[ANIDFXtpmj])\b/g, cls: 'proto' },
-            { rex: /\b(saddr|daddr|sport|dport|mark|src|dst)\b|--(?:dst-type|mac-source|sport|dport|match-set)\b|-[sd]\b/g, cls: 'match' },
-            { rex: /\b(return|accept|drop|reject|counter|set|RETURN|ACCEPT|DROP|REJECT|MARK)\b|--(?:set-xmark)\b/g, cls: 'action' },
+            { rex: /\b(table|chain|set|elements|type)\b/g, cls: 'keyword' },
+            { rex: /\b(ip|ip6|tcp|udp|ether|meta|meta nfproto)\b/g, cls: 'proto' },
+            { rex: /\b(saddr|daddr|sport|dport|mark)\b/g, cls: 'match' },
+            { rex: /\b(return|accept|drop|reject|counter|set)\b/g, cls: 'action' },
             { rex: /@[\w_]+/g, cls: 'variable' },
             { rex: /\{|\}/g, cls: 'bracket' }
         ];
@@ -168,8 +168,8 @@ return L.view.extend({
         var ifaces = data[3] || [];
         var m, s, o;
 
-        var desc = _('Traffic diversion based on iptables rules. The service will automatically start/stop when you click "Save & Apply".');
-        m = new form.Map('flowproxy', _('FlowProxy'), desc);
+        m = new form.Map('flowproxy', _('FlowProxy'),
+            _('Traffic diversion based on nftables rules. The service will automatically start/stop when you click "Save & Apply".'));
 
         if (!document.getElementById('flowproxy-style')) {
             document.head.appendChild(E('style', { id: 'flowproxy-style' }, `
@@ -199,7 +199,7 @@ return L.view.extend({
 
         s.taboption('settings', form.Flag, 'enabled', _('Enable FlowProxy')).rmempty = false;
         s.taboption('settings', form.Flag, 'dns_proxy_enabled', _('Force upstream DNS to proxy server')).rmempty = false;
-        
+
         o = s.taboption('settings', form.Value, 'proxy_server_ip_addr', _('Proxy server IP address'));
         o.placeholder = '192.168.1.254';
         o.rmempty = true;
@@ -276,7 +276,7 @@ return L.view.extend({
             };
 
             var selected_interface = s.formvalue(section_id, 'interface');
-            if (!selected_interface) return true;
+            if (!selected_interface || selected_interface === 'auto') return true;
 
             var target_iface = null;
             for (var i = 0; i < ifaces.length; i++) {
@@ -318,8 +318,10 @@ return L.view.extend({
         o.datatype = 'port'; o.default = '5353'; o.rmempty = false;
 
         var iface_opt = s.taboption('settings', form.ListValue, 'interface', _('Proxy server interface'));
+        iface_opt.value('auto', _('Auto (Detect automatically)'));
         devices.forEach(function(d) { iface_opt.value(d.getName(), d.getName()); });
-        iface_opt.default = 'br-lan';
+        iface_opt.default = 'auto';
+        iface_opt.description = _("Interface where the proxy server is reachable. 'Auto' will dynamically resolve the egress interface via kernel routing.");
         iface_opt.onchange = function(ev, sid, val) {
             var ip_opt = m.lookupOption('proxy_server_ip_addr', sid)[0];
             if (ip_opt) {
@@ -363,7 +365,7 @@ return L.view.extend({
         o.default = '1000';
 
         // --- Rules ---
-        var nftsets = uci.sections('flowproxy', 'ipset').map(function(ss) { return '@' + ss['.name']; });
+        var nftsets = uci.sections('flowproxy', 'nftset').map(function(ss) { return '@' + ss['.name']; });
 
         var setupRuleTable = function(type, title, switch_opt) {
             var st = s.taboption('rules', form.SectionValue, '_tab_' + type, form.TableSection, type, title);
@@ -493,7 +495,7 @@ return L.view.extend({
                     var setName = val.substring(1);
                     // 仅当 section 确实存在时才尝试获取 type，否则不进行类型校验
                     var section = uci.get('flowproxy', setName);
-                    var setType = (section && section['.type'] === 'ipset') ? uci.get('flowproxy', setName, 'type') : null;
+                    var setType = (section && section['.type'] === 'nftset') ? uci.get('flowproxy', setName, 'type') : null;
                     if (!setType) return true; 
                     
                     var expectedType = '';
@@ -544,16 +546,16 @@ return L.view.extend({
         // --- Lists ---
         var predefined = [ { id: 'no_proxy_src_mac', name: _('no_proxy_src_mac'), type: 'macaddr' }, { id: 'no_proxy_src_ip_v4', name: _('no_proxy_src_ip_v4'), type: 'or(ip4addr, cidr4)' }, { id: 'no_proxy_dst_ip_v4', name: _('no_proxy_dst_ip_v4'), type: 'or(ip4addr, cidr4)' }, { id: 'no_proxy_dst_tcp_ports', name: _('no_proxy_dst_tcp_ports'), type: 'or(port, portrange)' }, { id: 'no_proxy_dst_udp_ports', name: _('no_proxy_dst_udp_ports'), type: 'or(port, portrange)' } ];
         predefined.forEach(function(p) {
-            var sl = s.taboption('lists', form.SectionValue, '_list_' + p.id, form.NamedSection, p.id, 'ipset', p.name + ' (@' + p.id + ')');
+            var sl = s.taboption('lists', form.SectionValue, '_list_' + p.id, form.NamedSection, p.id, 'nftset', p.name + ' (@' + p.id + ')');
             sl.subsection.option(form.Flag, 'enabled', _('Enabled')).default = '1';
             sl.subsection.option(form.DynamicList, 'elements', _('Elements')).datatype = p.type;
         });
-        var spriv = s.taboption('lists', form.SectionValue, '_list_priv', form.NamedSection, 'private_dst_ip_v4', 'ipset', _('private_dst_ip_v4') + ' (@private_dst_ip_v4)');
+        var spriv = s.taboption('lists', form.SectionValue, '_list_priv', form.NamedSection, 'private_dst_ip_v4', 'nftset', _('private_dst_ip_v4') + ' (@private_dst_ip_v4)');
         spriv.subsection.option(form.Flag, 'enabled', _('Enabled')).default = '1';
         spriv.subsection.option(form.Flag, 'auto_generate', _('auto_generate')).default = '1';
         o = spriv.subsection.option(form.DynamicList, 'elements', _('elements')); o.datatype = 'cidr4'; o.depends('auto_generate', '0');
 
-        var sc = s.taboption('lists', form.SectionValue, '_list_chnroute', form.NamedSection, 'chnroute_dst_ip_v4', 'ipset', _('chnroute_dst_ip_v4') + ' (@chnroute_dst_ip_v4)');
+        var sc = s.taboption('lists', form.SectionValue, '_list_chnroute', form.NamedSection, 'chnroute_dst_ip_v4', 'nftset', _('chnroute_dst_ip_v4') + ' (@chnroute_dst_ip_v4)');
         sc.subsection.option(form.Flag, 'enabled', _('Enabled')).default = '1';
         o = sc.subsection.option(form.Value, 'file_path', _('File Path')); o.default = '/usr/share/flowproxy/chnroute.txt';
         o.render = function(sid) {
@@ -600,7 +602,7 @@ return L.view.extend({
             });
         };
 
-        var sg = s.taboption('lists', form.SectionValue, '_list_custom', form.GridSection, 'ipset', _('Custom IP sets'));
+        var sg = s.taboption('lists', form.SectionValue, '_list_custom', form.GridSection, 'nftset', _('Custom nftables sets'));
         sg.subsection.addremove = true; sg.subsection.anonymous = false; sg.subsection.nodescription = true;
         sg.subsection.filter = function(sid) { var pre = predefined.map(function(p){return p.id}); pre.push('private_dst_ip_v4','chnroute_dst_ip_v4'); return pre.indexOf(sid) === -1; };
         sg.subsection.option(form.Flag, 'enabled', _('Enabled')).default = '1';
