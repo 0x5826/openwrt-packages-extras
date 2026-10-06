@@ -211,17 +211,17 @@ apply_rules() {
             # 2. 重新准备并批量导入新的 IP 集合
             apply_ipsets
             
-            # 3. 通过安全管道应用 iptables-restore
+            # 3. 通过安全管道应用 iptables-restore (带 -w 2 等待锁，防止并发锁冲突)
             local restore_err
-            restore_err=$(iptables-restore -n < "$iptables_rules" 2>&1)
+            restore_err=$(iptables-restore -w 2 -n < "$iptables_rules" 2>&1)
             if [ $? -eq 0 ]; then
                 # 4. 动态解析 LAN 网卡并在 PREROUTING 挂载自定义链 (支持单/多网卡)
                 local TCP_ENABLED=$(uci -q get "$UCI_CONFIG.global.tcp_enabled" || echo "1")
                 local UDP_ENABLED=$(uci -q get "$UCI_CONFIG.global.udp_enabled" || echo "1")
                 local lan_devs=$("$iptables_gen" lan_devices 2>/dev/null || echo "br-lan")
                 for d in $lan_devs; do
-                    [ "$TCP_ENABLED" = "1" ] && iptables -t mangle -A PREROUTING -i "$d" -p tcp -j FLOWPROXY_TCP 2>/dev/null
-                    [ "$UDP_ENABLED" = "1" ] && iptables -t mangle -A PREROUTING -i "$d" -p udp -j FLOWPROXY_UDP 2>/dev/null
+                    [ "$TCP_ENABLED" = "1" ] && iptables -w 2 -t mangle -A PREROUTING -i "$d" -p tcp -j FLOWPROXY_TCP 2>/dev/null
+                    [ "$UDP_ENABLED" = "1" ] && iptables -w 2 -t mangle -A PREROUTING -i "$d" -p udp -j FLOWPROXY_UDP 2>/dev/null
                 done
                 return 0
             else
@@ -364,22 +364,22 @@ delete_route() {
 delete_rules() {
     log_msg info "Removing iptables rules and ipsets..."
     # 1. 拆除挂载点 (循环清理所有可能绑定的网卡规则)
-    while iptables -t mangle -D PREROUTING -p tcp -j FLOWPROXY_TCP 2>/dev/null; do :; done
-    while iptables -t mangle -D PREROUTING -p udp -j FLOWPROXY_UDP 2>/dev/null; do :; done
+    while iptables -w 2 -t mangle -D PREROUTING -p tcp -j FLOWPROXY_TCP 2>/dev/null; do :; done
+    while iptables -w 2 -t mangle -D PREROUTING -p udp -j FLOWPROXY_UDP 2>/dev/null; do :; done
     local iptables_gen="/usr/share/flowproxy/generate_iptables.sh"
     if [ -x "$iptables_gen" ]; then
         local lan_devs=$("$iptables_gen" lan_devices 2>/dev/null || echo "br-lan")
         for d in $lan_devs; do
-            while iptables -t mangle -D PREROUTING -i "$d" -p tcp -j FLOWPROXY_TCP 2>/dev/null; do :; done
-            while iptables -t mangle -D PREROUTING -i "$d" -p udp -j FLOWPROXY_UDP 2>/dev/null; do :; done
+            while iptables -w 2 -t mangle -D PREROUTING -i "$d" -p tcp -j FLOWPROXY_TCP 2>/dev/null; do :; done
+            while iptables -w 2 -t mangle -D PREROUTING -i "$d" -p udp -j FLOWPROXY_UDP 2>/dev/null; do :; done
         done
     fi
     
     # 2. 清空并删除自定义链
-    iptables -t mangle -F FLOWPROXY_TCP 2>/dev/null
-    iptables -t mangle -X FLOWPROXY_TCP 2>/dev/null
-    iptables -t mangle -F FLOWPROXY_UDP 2>/dev/null
-    iptables -t mangle -X FLOWPROXY_UDP 2>/dev/null
+    iptables -w 2 -t mangle -F FLOWPROXY_TCP 2>/dev/null
+    iptables -w 2 -t mangle -X FLOWPROXY_TCP 2>/dev/null
+    iptables -w 2 -t mangle -F FLOWPROXY_UDP 2>/dev/null
+    iptables -w 2 -t mangle -X FLOWPROXY_UDP 2>/dev/null
     
     # 3. 清理自定义 ipset
     config_load "$UCI_CONFIG"
