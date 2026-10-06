@@ -11,6 +11,7 @@ LUCI_PKGARCH:=all
 define Package/$(PKG_NAME)/postinst
 #!/bin/sh
 if [ -z "$${IPKG_INSTROOT}" ]; then
+	[ -f /etc/uci-defaults/99_flowproxy ] && ( . /etc/uci-defaults/99_flowproxy ) && rm -f /etc/uci-defaults/99_flowproxy
 	(sleep 1; /etc/init.d/rpcd reload) >/dev/null 2>&1 &
 fi
 exit 0

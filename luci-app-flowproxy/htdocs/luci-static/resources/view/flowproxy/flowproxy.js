@@ -679,11 +679,5 @@ return L.view.extend({
             poll.add(L.bind(function() { if (!document.body.contains(node)) return false; return this.refreshStatus(m, node); }, this), 5);
             return node;
         }, this));
-    },
-
-    handleSaveApply: function(ev, mode) {
-        return this.super('handleSaveApply', [ev, mode]).then(function() {
-            return callRestartService();
-        });
     }
 });
