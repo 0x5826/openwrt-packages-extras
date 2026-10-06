@@ -276,6 +276,8 @@ msgstr "启用代理分流时，代理服务器 IP 地址为必填项。"
 
 msgid "Invalid IPv4 address format"
 msgstr "无效的 IPv4 地址格式"
+msgid "Auto (Detect automatically)"
+msgstr "自动探测"
 
-
-
+msgid "Interface where the proxy server is reachable. 'Auto' will dynamically resolve the egress interface via kernel routing."
+msgstr "代理服务器所在的通信接口。“自动探测”将由内核路由动态解析出口网卡。"

@@ -276,7 +276,7 @@ return L.view.extend({
             };
 
             var selected_interface = s.formvalue(section_id, 'interface');
-            if (!selected_interface) return true;
+            if (!selected_interface || selected_interface === 'auto') return true;
 
             var target_iface = null;
             for (var i = 0; i < ifaces.length; i++) {
@@ -318,8 +318,10 @@ return L.view.extend({
         o.datatype = 'port'; o.default = '5353'; o.rmempty = false;
 
         var iface_opt = s.taboption('settings', form.ListValue, 'interface', _('Proxy server interface'));
+        iface_opt.value('auto', _('Auto (Detect automatically)'));
         devices.forEach(function(d) { iface_opt.value(d.getName(), d.getName()); });
-        iface_opt.default = 'br-lan';
+        iface_opt.default = 'auto';
+        iface_opt.description = _("Interface where the proxy server is reachable. 'Auto' will dynamically resolve the egress interface via kernel routing.");
         iface_opt.onchange = function(ev, sid, val) {
             var ip_opt = m.lookupOption('proxy_server_ip_addr', sid)[0];
             if (ip_opt) {

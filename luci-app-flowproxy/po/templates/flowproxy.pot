@@ -273,7 +273,8 @@ msgstr ""
 
 msgid "Invalid IPv4 address format"
 msgstr ""
+msgid "Auto (Detect automatically)"
+msgstr ""
 
-
-
-
+msgid "Interface where the proxy server is reachable. 'Auto' will dynamically resolve the egress interface via kernel routing."
+msgstr ""
