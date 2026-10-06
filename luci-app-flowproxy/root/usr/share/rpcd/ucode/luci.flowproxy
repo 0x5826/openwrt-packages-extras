@@ -1,6 +1,6 @@
 'use strict';
 
-import { access, readfile, writefile, stat } from 'fs';
+import { access, readfile, writefile, stat, popen } from 'fs';
 import { cursor } from 'uci';
 import { connect } from 'ubus';
 
