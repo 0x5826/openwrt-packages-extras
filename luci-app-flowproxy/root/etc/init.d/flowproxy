@@ -320,13 +320,17 @@ cleanup_dns() {
         # Restore noresolv (default to 0 if not backed up)
         [ -n "$noresolv" ] && uci set dhcp.@dnsmasq[0].noresolv="$noresolv" || uci set dhcp.@dnsmasq[0].noresolv="0"
 
-        # Restore dns_redirect (default to 1 as requested for OpenWrt typical modded builds)
-        [ -n "$dns_redirect" ] && uci set dhcp.@dnsmasq[0].dns_redirect="$dns_redirect" || uci set dhcp.@dnsmasq[0].dns_redirect="1"
+        # Restore dns_redirect (only restore if it originally existed, avoid polluting config)
+        if [ -n "$dns_redirect" ]; then
+            uci set dhcp.@dnsmasq[0].dns_redirect="$dns_redirect"
+        else
+            uci -q delete dhcp.@dnsmasq[0].dns_redirect
+        fi
         
-        # Restore servers
+        # Restore servers correctly splitting comma-separated list
         uci -q delete dhcp.@dnsmasq[0].server
         if [ -n "$servers" ]; then
-            for s in $servers; do
+            for s in $(echo "$servers" | tr ',' ' '); do
                 [ -n "$s" ] && uci add_list dhcp.@dnsmasq[0].server="$s"
             done
         fi
@@ -373,9 +377,13 @@ restart_service() {
     start_service
 }
 
+reload_service() {
+    restart_service
+}
+
 service_triggers() {
     # 监听自身配置改动
     procd_add_reload_trigger "$UCI_CONFIG"
-    # 监听防火墙重载事件，防止规则被 fw4 清空后无法自动恢复
+    # 监听防火墙重载事件，防止规则被 fw3 清空后无法自动恢复
     procd_add_reload_trigger "firewall"
 }

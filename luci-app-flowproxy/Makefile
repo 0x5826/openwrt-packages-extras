@@ -5,8 +5,20 @@ PKG_VERSION:=1.0.3
 PKG_RELEASE:=1
 
 LUCI_TITLE:=LuCI Support for FlowProxy Traffic Diversion (OpenWrt 21 Compatibility)
-LUCI_DEPENDS:=+luci-base
+LUCI_DEPENDS:=+luci-base +iptables +ipset +ip-full
 LUCI_PKGARCH:=all
+
+define Package/$(PKG_NAME)/conffiles
+/etc/config/flowproxy
+endef
+
+define Package/$(PKG_NAME)/postinst
+#!/bin/sh
+[ -n "$${IPKG_INSTROOT}" ] || {
+	/etc/init.d/rpcd restart
+}
+exit 0
+endef
 
 define Package/$(PKG_NAME)/prerm
 #!/bin/sh
