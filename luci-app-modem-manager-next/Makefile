@@ -20,22 +20,22 @@ define Package/$(PKG_NAME)
   $(call Package/luci/webtemplate)
   TITLE:=$(LUCI_TITLE)
   DEPENDS:=$(LUCI_DEPENDS)
-  PROVIDES:=luci-app-modem-manager luci-app-modemmanager
+  PROVIDES:=luci-app-modem-manager
 endef
 
 define Package/$(PKG_NAME)/conffiles
-/etc/config/modemmanager
+/etc/config/modem-manager
 endef
 
 define Package/$(PKG_NAME)/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
-	chmod 0755 /etc/init.d/modemmanager 2>/dev/null || true
+	chmod 0755 /etc/init.d/modem-manager 2>/dev/null || true
 	chmod 0755 /etc/hotplug.d/usb/20-modem-hotplug 2>/dev/null || true
 	chmod 0755 /usr/libexec/modem-at-executor /usr/libexec/modem-detect /usr/libexec/modem-collector 2>/dev/null || true
 	/etc/init.d/rpcd restart
-	/etc/init.d/modemmanager enable
-	/etc/init.d/modemmanager restart
+	/etc/init.d/modem-manager enable
+	/etc/init.d/modem-manager restart
 }
 exit 0
 endef

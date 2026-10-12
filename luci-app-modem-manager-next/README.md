@@ -32,7 +32,7 @@
                   异步触发                                                  | 毫秒级零延迟读取
                       v                                                     |
         +-----------------------------+                       +-----------------------------+
-        | modem-detect (快速探测)     | ── 更新设备缓存 ──>   | /tmp/run/modemmanager/      |
+        | modem-detect (快速探测)     | ── 更新设备缓存 ──>   | /tmp/run/modem-manager/     |
         +-----------------------------+                       | devices.json & status.json  |
                                                               +-----------------------------+
                                                                             ^
@@ -59,14 +59,14 @@
 
 ### 3.1 模块变动触发扫描机制 (Hotplug-driven Scan)
 - 监听脚本：`/etc/hotplug.d/usb/20-modem-hotplug`；
-- 行为：当模组发生物理插入、拔出，或在配置页面执行模式切换导致 USB 端点重新枚举时，内核 UEvent 异步唤醒脚本，触发 `/usr/libexec/modem-detect --cache` 重新建立设备拓扑清单，原子更新 `/tmp/run/modemmanager/devices.json`，并通过 ubus 广播事件通知前端视图。
+- 行为：当模组发生物理插入、拔出，或在配置页面执行模式切换导致 USB 端点重新枚举时，内核 UEvent 异步唤醒脚本，触发 `/usr/libexec/modem-detect --cache` 重新建立设备拓扑清单，原子更新 `/tmp/run/modem-manager/devices.json`，并通过 ubus 广播事件通知前端视图。
 
 ### 3.2 初始状态扫描探测机制 (Boot & Startup Init)
-- 引导期预热：在 `/etc/init.d/modemmanager` 启动引导期，后台异步执行一次 `modem-detect --cache`；
+- 引导期预热：在 `/etc/init.d/modem-manager` 启动引导期，后台异步执行一次 `modem-detect --cache`；
 - 前端极速首屏：前端 RPC `get_devices` 优先读取内存缓存，实现 0 毫秒首屏呈现，彻底免除用户打开页面时的等待开销。
 
 ### 3.3 异步状态双缓冲与 AT 终端互斥主动避让 (Async Decoupled Polling & Active Yielding)
-- **单一生产者**：后台常驻守护进程 `/usr/libexec/modem-collector` 作为与串口交互的唯一常规生产者，单线程采集 CSQ、CPIN、COPS、QENG、QTEMP 并原子更新 `/tmp/run/modemmanager/status.json`；
+- **单一生产者**：后台常驻守护进程 `/usr/libexec/modem-collector` 作为与串口交互的唯一常规生产者，单线程采集 CSQ、CPIN、COPS、QENG、QTEMP 并原子更新 `/tmp/run/modem-manager/status.json`；
 - **终端最高优先级**：用户通过控制台或快捷按钮发送指令（`send_at`）时，立即触碰激活 `/var/lock/modem_terminal_active.lock`；
 - **主动退避**：后台采集器若检测到终端在过去 10 秒内有操作，立即放弃当前轮询并主动休眠，将串口控制权完全让渡给用户；
 - **前端彻底解耦**：前端 Overview 页面的 5 秒轮询仅读取内存缓存文件，调用耗时为 `0.00s`，零串口开销，杜绝死锁与缓冲区阻塞。
@@ -87,7 +87,7 @@
 ### 3.6 主控制串口用户接管与持久化机制 (User-Configured AT Port Override)
 - **设置入口**：在【设置 (Settings)】页面中提供专属“串口与通信参数配置”卡片；
 - **候选端口与自定义路径**：下拉列表枚举该模组暴露的所有物理串口，默认选中国际推荐口（标有 `[自动推荐]`），并支持选择 `[自定义设备路径]` 手动输入专用软链接（如 `/dev/modem_at` 或 `/dev/ttyACM0`）；
-- **配置与运行态全链路接管**：保存后写入 UCI `/etc/config/modemmanager` 的 `global.port`，后台采集器 `modem-collector`、前台总览页 `Overview` 与 RPC 接口均以用户指定端口作为最高优先级，彻底消除端口序号漂移和多串口设备误判风险。
+- **配置与运行态全链路接管**：保存后写入 UCI `/etc/config/modem-manager` 的 `global.port`，后台采集器 `modem-collector`、前台总览页 `Overview` 与 RPC 接口均以用户指定端口作为最高优先级，彻底消除端口序号漂移和多串口设备误判风险。
 
 ### 3.7 物联网卡零干扰熔断机制与安全短信模块 (Safe SMS with IoT Guard)
 - **默认全局熔断关闭**：考虑到部分物联网卡（IoT SIM）、企业遥测专用卡或定向纯流量卡对 SMS 业务存在特殊风控限制，若模组自动轮询或读取短信可能导致异常扣费、被运营商封卡或阻塞 AT 通道，系统在 UCI 中默认设置 `global.sms_enable=0`；
@@ -104,17 +104,17 @@ luci-app-modem-manager-next/
 ├── README.md                                   # 项目架构与设计文档
 ├── root/
 │   ├── etc/
-│   │   ├── config/modemmanager                 # UCI 配置文件 (含 sms_enable)
+│   │   ├── config/modem-manager                # UCI 配置文件 (含 sms_enable)
 │   │   ├── hotplug.d/usb/20-modem-hotplug      # USB 热插拔事件感知脚本
-│   │   ├── init.d/modemmanager                 # 系统守护服务脚本
-│   │   └── uci-defaults/99_modemmanager-init   # 初始化脚本
+│   │   ├── init.d/modem-manager                # 系统守护服务脚本
+│   │   └── uci-defaults/99_modem-manager-init  # 初始化脚本
 │   └── usr/
 │       ├── libexec/
 │       │   ├── modem-at-executor               # 纯 POSIX 串口排他安全执行器 (含 SMS 发送)
 │       │   ├── modem-collector                 # 后台异步状态采集与避让守护器
 │       │   └── modem-detect                    # sysfs 设备枚举与关联扫描工具
 │       └── share/
-│           ├── modemmanager/templates/         # 厂商预置模版库
+│           ├── modem-manager/templates/        # 厂商预置模版库
 │           │   ├── quectel.json                # 移远模组规则 (RM500Q, RM500U, RG500U 等)
 │           │   ├── fibocom.json                # 广和通模组规则 (FM650, FG650, NL668 等)
 │           │   ├── zte.json                    # 中兴微模组规则

@@ -2,7 +2,7 @@
 # Background Status Collector with Active Terminal Yielding
 # Dante <dante@seckv.com>
 
-RUN_DIR="/tmp/run/modemmanager"
+RUN_DIR="/tmp/run/modem-manager"
 CACHE_DEVICES="$RUN_DIR/devices.json"
 CACHE_STATUS="$RUN_DIR/status.json"
 TERMINAL_LOCK="/var/lock/modem_terminal_active.lock"
@@ -30,7 +30,7 @@ collect_single() {
 	[ -f "$CACHE_DEVICES" ] || /usr/libexec/modem-detect --cache >/dev/null 2>&1
 
 	# Check user manually configured port from UCI first
-	local user_port=$(uci -q get modemmanager.global.port || uci -q get modemmanager.default.port)
+	local user_port=$(uci -q get modem-manager.global.port || uci -q get modem-manager.default.port)
 
 	ucode -e '
 	import * as fs from "fs";
@@ -44,9 +44,9 @@ collect_single() {
 	if (target_port) {
 		let status = plugin.collect_raw_status.call({ args: { port: target_port, primary_net: dev?.primary_net || "usb0" } });
 		if (status) {
-			let tmp = "/tmp/run/modemmanager/status.json.tmp";
+			let tmp = "/tmp/run/modem-manager/status.json.tmp";
 			fs.writefile(tmp, sprintf("%J\n", status));
-			fs.rename(tmp, "/tmp/run/modemmanager/status.json");
+			fs.rename(tmp, "/tmp/run/modem-manager/status.json");
 		}
 	}
 	' 2>/dev/null || true

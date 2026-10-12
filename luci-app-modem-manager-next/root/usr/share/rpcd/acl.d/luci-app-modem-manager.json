@@ -14,12 +14,12 @@
 				]
 			},
 			"uci": [
-				"modemmanager",
+				"modem-manager",
 				"network"
 			],
 			"file": {
-				"/tmp/run/modemmanager/devices.json": [ "read" ],
-				"/tmp/run/modemmanager/status.json": [ "read" ]
+				"/tmp/run/modem-manager/devices.json": [ "read" ],
+				"/tmp/run/modem-manager/status.json": [ "read" ]
 			}
 		},
 		"write": {
@@ -40,13 +40,13 @@
 				]
 			},
 			"uci": [
-				"modemmanager",
+				"modem-manager",
 				"network"
 			],
 			"file": {
-				"/etc/config/modemmanager": [ "read", "write" ],
-				"/var/log/modemmanager.log": [ "read", "write" ],
-				"/tmp/run/modemmanager/*": [ "read", "write" ]
+				"/etc/config/modem-manager": [ "read", "write" ],
+				"/var/log/modem-manager.log": [ "read", "write" ],
+				"/tmp/run/modem-manager/*": [ "read", "write" ]
 			}
 		}
 	}

@@ -6,11 +6,11 @@ import { cursor } from 'uci';
 
 const DETECT_BIN = '/usr/libexec/modem-detect';
 const EXECUTOR_BIN = '/usr/libexec/modem-at-executor';
-const TEMPLATE_DIR = '/usr/share/modemmanager/templates';
-const LOG_FILE = '/var/log/modemmanager.log';
-const RUN_DIR = '/tmp/run/modemmanager';
-const CACHE_DEVICES = '/tmp/run/modemmanager/devices.json';
-const CACHE_STATUS = '/tmp/run/modemmanager/status.json';
+const TEMPLATE_DIR = '/usr/share/modem-manager/templates';
+const LOG_FILE = '/var/log/modem-manager.log';
+const RUN_DIR = '/tmp/run/modem-manager';
+const CACHE_DEVICES = '/tmp/run/modem-manager/devices.json';
+const CACHE_STATUS = '/tmp/run/modem-manager/status.json';
 const TERMINAL_LOCK = '/var/lock/modem_terminal_active.lock';
 
 function log_message(msg) {
@@ -55,8 +55,8 @@ function get_effective_port(specified_port) {
 		return specified_port;
 	let c = cursor();
 	if (c) {
-		c.load('modemmanager');
-		let p = c.get('modemmanager', 'global', 'port');
+		c.load('modem-manager');
+		let p = c.get('modem-manager', 'global', 'port');
 		if (p && match(p, /^\/dev\/tty(USB|ACM)[0-9]+$/))
 			return p;
 	}
@@ -302,8 +302,8 @@ const methods = {
 			// Inject user configured primary port from UCI
 			let c = cursor();
 			if (c) {
-				c.load('modemmanager');
-				let user_port = c.get('modemmanager', 'global', 'port');
+				c.load('modem-manager');
+				let user_port = c.get('modem-manager', 'global', 'port');
 				if (user_port && user_port != '' && res.devices && length(res.devices) > 0) {
 					res.devices[0].user_configured_port = user_port;
 					res.devices[0].primary_port = user_port;
@@ -584,9 +584,9 @@ const methods = {
 		call: function() {
 			let c = cursor();
 			if (!c) return { port: '', baud: '115200' };
-			c.load('modemmanager');
-			let port = c.get('modemmanager', 'global', 'port') || '';
-			let baud = c.get('modemmanager', 'global', 'baud') || '115200';
+			c.load('modem-manager');
+			let port = c.get('modem-manager', 'global', 'port') || '';
+			let baud = c.get('modem-manager', 'global', 'baud') || '115200';
 			return { port: port, baud: baud };
 		}
 	},
@@ -596,18 +596,18 @@ const methods = {
 		call: function(req) {
 			let c = cursor();
 			if (!c) return { success: false, error: 'Cannot open UCI cursor' };
-			c.load('modemmanager');
-			if (!c.get('modemmanager', 'global')) {
-				c.set('modemmanager', 'global', 'global');
+			c.load('modem-manager');
+			if (!c.get('modem-manager', 'global')) {
+				c.set('modem-manager', 'global', 'global');
 			}
 			if (req.args?.port != null) {
-				c.set('modemmanager', 'global', 'port', req.args.port);
+				c.set('modem-manager', 'global', 'port', req.args.port);
 			}
 			if (req.args?.baud != null) {
-				c.set('modemmanager', 'global', 'baud', req.args.baud);
+				c.set('modem-manager', 'global', 'baud', req.args.baud);
 			}
-			c.commit('modemmanager');
-			system("/etc/init.d/modemmanager restart >/dev/null 2>&1 &");
+			c.commit('modem-manager');
+			system("/etc/init.d/modem-manager restart >/dev/null 2>&1 &");
 			return { success: true };
 		}
 	},
@@ -618,8 +618,8 @@ const methods = {
 			let c = cursor();
 			let enabled = false;
 			if (c) {
-				c.load('modemmanager');
-				let val = c.get('modemmanager', 'global', 'sms_enable');
+				c.load('modem-manager');
+				let val = c.get('modem-manager', 'global', 'sms_enable');
 				enabled = (val === '1' || val === 1);
 			}
 
@@ -654,12 +654,12 @@ const methods = {
 			let is_enable = (req.args?.enabled === true || req.args?.enabled === '1' || req.args?.enabled === 1) ? '1' : '0';
 			let c = cursor();
 			if (!c) return { success: false, error: 'Cannot open UCI cursor' };
-			c.load('modemmanager');
-			if (!c.get('modemmanager', 'global')) {
-				c.set('modemmanager', 'global', 'global');
+			c.load('modem-manager');
+			if (!c.get('modem-manager', 'global')) {
+				c.set('modem-manager', 'global', 'global');
 			}
-			c.set('modemmanager', 'global', 'sms_enable', is_enable);
-			c.commit('modemmanager');
+			c.set('modem-manager', 'global', 'sms_enable', is_enable);
+			c.commit('modem-manager');
 
 			log_message(`[SMS] SMS feature toggled to: ${is_enable}`);
 
@@ -679,8 +679,8 @@ const methods = {
 			let c = cursor();
 			let enabled = false;
 			if (c) {
-				c.load('modemmanager');
-				let val = c.get('modemmanager', 'global', 'sms_enable');
+				c.load('modem-manager');
+				let val = c.get('modem-manager', 'global', 'sms_enable');
 				enabled = (val === '1' || val === 1);
 			}
 
@@ -744,8 +744,8 @@ const methods = {
 			let c = cursor();
 			let enabled = false;
 			if (c) {
-				c.load('modemmanager');
-				let val = c.get('modemmanager', 'global', 'sms_enable');
+				c.load('modem-manager');
+				let val = c.get('modem-manager', 'global', 'sms_enable');
 				enabled = (val === '1' || val === 1);
 			}
 
@@ -785,8 +785,8 @@ const methods = {
 			let c = cursor();
 			let enabled = false;
 			if (c) {
-				c.load('modemmanager');
-				let val = c.get('modemmanager', 'global', 'sms_enable');
+				c.load('modem-manager');
+				let val = c.get('modem-manager', 'global', 'sms_enable');
 				enabled = (val === '1' || val === 1);
 			}
 

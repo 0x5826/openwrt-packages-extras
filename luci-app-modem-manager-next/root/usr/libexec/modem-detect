@@ -1,8 +1,8 @@
 #!/bin/sh
 # Cellular Modem Auto-Detector for OpenWrt
-# Outputs discovered modems in JSON format and updates /tmp/run/modemmanager/devices.json
+# Outputs discovered modems in JSON format and updates /tmp/run/modem-manager/devices.json
 
-RUN_DIR="/tmp/run/modemmanager"
+RUN_DIR="/tmp/run/modem-manager"
 CACHE_FILE="$RUN_DIR/devices.json"
 KNOWN_VENDORS="2c7c 2cb7 1e0e 12d1 19d2 1bbb 05c6 413c 0bdb 1199"
 
