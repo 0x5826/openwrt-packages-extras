@@ -193,6 +193,36 @@ msgstr "动作执行成功。"
 msgid "Action failed: "
 msgstr "动作执行失败: "
 
+msgid "Serial Port and Communication Configuration"
+msgstr "串口与通信参数配置"
+
+msgid "Primary AT Port"
+msgstr "主控制串口"
+
+msgid "Auto Recommended"
+msgstr "自动推荐"
+
+msgid "Manual Custom Path"
+msgstr "自定义设备路径"
+
+msgid "Specify custom node path"
+msgstr "输入自定义串口节点路径"
+
+msgid "Select or enter the dedicated AT control port for background status polling and control commands."
+msgstr "选择或输入专用于后台状态轮询和控制指令下发的主AT控制串口。"
+
+msgid "Serial Baudrate"
+msgstr "串口波特率"
+
+msgid "Standard cellular modem AT serial baudrate (Default: 115200)."
+msgstr "蜂窝模组标准AT串口通信波特率 (默认: 115200)。"
+
+msgid "Please specify or select an active AT communication port."
+msgstr "请指定或选择一个活动的AT通信端口。"
+
+msgid "Saving port settings and sending configuration commands, please wait..."
+msgstr "正在保存串口配置并下发模组参数，请稍候..."
+
 msgid "Driver Protocol and Operation Mode"
 msgstr "驱动协议与工作模式"
 

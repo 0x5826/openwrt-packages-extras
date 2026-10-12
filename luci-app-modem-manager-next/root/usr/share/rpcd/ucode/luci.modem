@@ -224,34 +224,41 @@ function do_collect_status(port, net_dev) {
 const methods = {
 	get_devices: {
 		call: function() {
-			// Fast path: read memory cache file first
+			let parsed = null;
 			if (fs.access(CACHE_DEVICES)) {
 				let cached = fs.readfile(CACHE_DEVICES);
 				if (cached) {
 					try {
-						let res = json(cached);
-						if (res && res.devices)
-							return res;
+						parsed = json(cached);
 					} catch(e) {}
 				}
 			}
 
-			// Fallback: execute detector
-			let p = fs.popen(`${DETECT_BIN} --cache 2>/dev/null`, 'r');
-			if (!p)
-				return { devices: [] };
-
-			let content = p.read('all');
-			p.close();
-
-			let parsed = null;
-			try {
-				parsed = json(content);
-			} catch (e) {
-				parsed = { devices: [] };
+			if (!parsed || !parsed.devices) {
+				let p = fs.popen(`${DETECT_BIN} --cache 2>/dev/null`, 'r');
+				if (p) {
+					let content = p.read('all');
+					p.close();
+					try {
+						parsed = json(content);
+					} catch(e) {}
+				}
 			}
 
-			return parsed || { devices: [] };
+			let res = parsed || { devices: [] };
+
+			// Inject user configured primary port from UCI
+			let c = cursor();
+			if (c) {
+				c.load('modemmanager');
+				let user_port = c.get('modemmanager', 'global', 'port');
+				if (user_port && user_port != '' && res.devices && length(res.devices) > 0) {
+					res.devices[0].user_configured_port = user_port;
+					res.devices[0].primary_port = user_port;
+				}
+			}
+
+			return res;
 		}
 	},
 
@@ -517,6 +524,38 @@ const methods = {
 	clear_log: {
 		call: function() {
 			fs.writefile(LOG_FILE, '');
+			return { success: true };
+		}
+	},
+
+	get_config: {
+		call: function() {
+			let c = cursor();
+			if (!c) return { port: '', baud: '115200' };
+			c.load('modemmanager');
+			let port = c.get('modemmanager', 'global', 'port') || '';
+			let baud = c.get('modemmanager', 'global', 'baud') || '115200';
+			return { port: port, baud: baud };
+		}
+	},
+
+	save_config: {
+		args: { port: 'port', baud: 'baud' },
+		call: function(req) {
+			let c = cursor();
+			if (!c) return { success: false, error: 'Cannot open UCI cursor' };
+			c.load('modemmanager');
+			if (!c.get('modemmanager', 'global')) {
+				c.set('modemmanager', 'global', 'global');
+			}
+			if (req.args?.port != null) {
+				c.set('modemmanager', 'global', 'port', req.args.port);
+			}
+			if (req.args?.baud != null) {
+				c.set('modemmanager', 'global', 'baud', req.args.baud);
+			}
+			c.commit('modemmanager');
+			system("/etc/init.d/modemmanager restart >/dev/null 2>&1 &");
 			return { success: true };
 		}
 	}

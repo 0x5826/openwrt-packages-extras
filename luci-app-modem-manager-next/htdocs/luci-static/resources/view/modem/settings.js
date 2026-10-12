@@ -9,6 +9,18 @@ const callGetDevices = rpc.declare({
 	expect: { devices: [] }
 });
 
+const callGetConfig = rpc.declare({
+	object: 'luci.modem',
+	method: 'get_config',
+	expect: { port: '', baud: '115200' }
+});
+
+const callSaveConfig = rpc.declare({
+	object: 'luci.modem',
+	method: 'save_config',
+	params: [ 'port', 'baud' ]
+});
+
 const callSetMode = rpc.declare({
 	object: 'luci.modem',
 	method: 'set_mode',
@@ -35,17 +47,31 @@ return view.extend({
 	selectedPort: null,
 	selectedNet: null,
 	devicesList: [],
+	configData: {},
 
 	load: function() {
-		return callGetDevices();
+		return Promise.all([
+			callGetDevices(),
+			callGetConfig()
+		]);
 	},
 
 	handleApplySettings: function() {
 		const self = this;
-		if (!self.selectedPort) {
-			ui.addNotification(null, E('p', {}, _('Please select an active modem first.')), 'error');
+		const portSelect = document.getElementById('modem_port_select');
+		const customPortInput = document.getElementById('modem_custom_port');
+		let targetPort = (portSelect && portSelect.value === 'custom') ? (customPortInput ? customPortInput.value.trim() : '') : (portSelect ? portSelect.value : '');
+
+		if (!targetPort) {
+			targetPort = self.selectedPort;
+		}
+
+		if (!targetPort) {
+			ui.addNotification(null, E('p', {}, _('Please specify or select an active AT communication port.')), 'error');
 			return;
 		}
+
+		const baudVal = document.getElementById('modem_baud_select').value || '115200';
 
 		const modeEl = document.querySelector('input[name="modem_mode"]:checked');
 		const modeVal = modeEl ? modeEl.value : 'ncm';
@@ -59,13 +85,14 @@ return view.extend({
 		const pdpVal = document.getElementById('modem_pdp').value || 'IPV4V6';
 
 		ui.showModal(_('Applying Configuration'), [
-			E('p', { 'class': 'spinning' }, _('Sending configuration commands to modem, please wait...'))
+			E('p', { 'class': 'spinning' }, _('Saving port settings and sending configuration commands, please wait...'))
 		]);
 
 		Promise.all([
-			callSetMode(self.selectedPort, modeVal, 'quectel-5g', syncNet, ifname, self.selectedNet),
-			callSetPreferences(self.selectedPort, ratVal, [], []),
-			callSetApn(self.selectedPort, apnVal, pdpVal)
+			callSaveConfig(targetPort, baudVal),
+			callSetMode(targetPort, modeVal, 'quectel-5g', syncNet, ifname, self.selectedNet),
+			callSetPreferences(targetPort, ratVal, [], []),
+			callSetApn(targetPort, apnVal, pdpVal)
 		]).then(function(results) {
 			ui.hideModal();
 			ui.addNotification(null, E('p', {}, _('Modem settings successfully applied.')), 'info');
@@ -75,12 +102,15 @@ return view.extend({
 		});
 	},
 
-	render: function(devicesData) {
+	render: function(loadData) {
 		const self = this;
+		const devicesData = loadData ? loadData[0] : null;
+		self.configData = loadData ? loadData[1] : {};
+
 		self.devicesList = (devicesData && devicesData.devices) ? devicesData.devices : [];
 
 		if (self.devicesList.length > 0) {
-			self.selectedPort = self.devicesList[0].primary_port;
+			self.selectedPort = self.configData.port || self.devicesList[0].primary_port;
 			self.selectedNet = self.devicesList[0].primary_net;
 		}
 
@@ -114,6 +144,73 @@ return view.extend({
 			])
 		]);
 		container.appendChild(selectorNode);
+
+		// Serial Port Customization Section
+		const dev = self.devicesList[0] || {};
+		const availablePorts = dev.ports || [];
+		const activeConfigPort = self.configData.port || dev.primary_port || '';
+
+		const portSelectOptions = [];
+		let matchedInList = false;
+
+		availablePorts.forEach(function(p) {
+			let isSelected = (p === activeConfigPort);
+			if (isSelected) matchedInList = true;
+			let isAuto = (p === dev.primary_port);
+			let optLabel = p + (isAuto ? ' [' + _('Auto Recommended') + ']' : '');
+			portSelectOptions.push(E('option', { value: p, selected: isSelected }, optLabel));
+		});
+
+		portSelectOptions.push(E('option', { value: 'custom', selected: (!matchedInList && activeConfigPort !== '') }, _('Manual Custom Path')));
+
+		const portSection = E('fieldset', { 'class': 'cbi-section' }, [
+			E('legend', {}, _('Serial Port and Communication Configuration')),
+			E('div', { 'class': 'cbi-section-node' }, [
+				E('div', { 'class': 'cbi-value' }, [
+					E('label', { 'class': 'cbi-value-title' }, _('Primary AT Port')),
+					E('div', { 'class': 'cbi-value-field' }, [
+						E('select', {
+							'id': 'modem_port_select',
+							'class': 'cbi-input-select',
+							'style': 'min-width: 280px;',
+							'change': function(ev) {
+								const customWrap = document.getElementById('modem_custom_port_wrap');
+								if (customWrap) {
+									customWrap.style.display = (ev.target.value === 'custom') ? 'block' : 'none';
+								}
+							}
+						}, portSelectOptions),
+						E('div', {
+							'id': 'modem_custom_port_wrap',
+							'style': 'margin-top: 8px; display: ' + ((!matchedInList && activeConfigPort !== '') ? 'block' : 'none') + ';'
+						}, [
+							E('input', {
+								'type': 'text',
+								'id': 'modem_custom_port',
+								'class': 'cbi-input-text',
+								'style': 'min-width: 280px;',
+								'placeholder': '/dev/ttyUSB2 or /dev/modem_at',
+								'value': (!matchedInList ? activeConfigPort : '')
+							}),
+							E('span', { 'style': 'margin-left: 10px; color: #888; font-size: 12px;' }, _('Specify custom node path'))
+						]),
+						E('div', { 'class': 'cbi-value-description' }, _('Select or enter the dedicated AT control port for background status polling and control commands.'))
+					])
+				]),
+				E('div', { 'class': 'cbi-value' }, [
+					E('label', { 'class': 'cbi-value-title' }, _('Serial Baudrate')),
+					E('div', { 'class': 'cbi-value-field' }, [
+						E('select', { 'id': 'modem_baud_select', 'class': 'cbi-input-select', 'style': 'min-width: 150px;' }, [
+							['9600', '38400', '57600', '115200', '230400', '460800', '921600'].map(function(b) {
+								return E('option', { value: b, selected: (b === (self.configData.baud || '115200')) }, b);
+							})
+						]),
+						E('div', { 'class': 'cbi-value-description' }, _('Standard cellular modem AT serial baudrate (Default: 115200).'))
+					])
+				])
+			])
+		]);
+		container.appendChild(portSection);
 
 		// Protocol Mode Switching Section
 		const modeSection = E('fieldset', { 'class': 'cbi-section' }, [
