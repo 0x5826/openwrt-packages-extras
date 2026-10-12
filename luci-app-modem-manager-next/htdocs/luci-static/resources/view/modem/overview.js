@@ -245,15 +245,15 @@ return view.extend({
 			dom.content(netTraffic, [
 				E('div', { 'style': 'display: flex; gap: 24px; align-items: center; white-space: nowrap;' }, [
 					E('span', {}, [
-						E('strong', {}, _('Download: ')),
+						E('strong', {}, _('Download') + ': '),
 						rxFormatted + (rxPackets > 0 ? ' / ' + rxPackets + ' ' + _('Packets') : '')
 					]),
 					E('span', {}, [
-						E('strong', {}, _('Upload: ')),
+						E('strong', {}, _('Upload') + ': '),
 						txFormatted + (txPackets > 0 ? ' / ' + txPackets + ' ' + _('Packets') : '')
 					]),
 					E('span', { 'style': 'color: #333;' }, [
-						E('strong', {}, _('Total Traffic: ')),
+						E('strong', {}, _('Total Traffic') + ': '),
 						totalFormatted
 					])
 				])

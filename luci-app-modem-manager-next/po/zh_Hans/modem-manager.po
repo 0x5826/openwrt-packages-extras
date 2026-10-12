@@ -166,14 +166,14 @@ msgstr "已分配IPv4地址"
 msgid "Traffic Statistics"
 msgstr "流量统计"
 
-msgid "Download: "
-msgstr "下载: "
+msgid "Download"
+msgstr "下载"
 
-msgid "Upload: "
-msgstr "上传: "
+msgid "Upload"
+msgstr "上传"
 
-msgid "Total Traffic: "
-msgstr "上下行累计: "
+msgid "Total Traffic"
+msgstr "上下行累计"
 
 msgid "Restart Modem"
 msgstr "重启模组"
