@@ -8,6 +8,8 @@ PKG_LICENSE:=MIT
 PKG_MAINTAINER:=Dante <dante@seckv.com>
 
 LUCI_TITLE:=LuCI support for Cellular Modem Management (Next-Gen)
+LUCI_DESCRIPTION:=Provides a modern LuCI Web management interface for 4G/5G cellular modems.
+PKG_DESCRIPTION:=Provides a modern LuCI Web management interface for 4G/5G cellular modems.
 LUCI_DEPENDS:=+ucode +ucode-mod-fs +ucode-mod-ubus +ucode-mod-uci \
 	+kmod-usb-net +kmod-usb-serial +kmod-usb-serial-option \
 	+kmod-usb-net-cdc-ncm +kmod-usb-net-cdc-mbim +kmod-usb-net-cdc-ether +kmod-usb-net-qmi-wwan \
@@ -21,6 +23,10 @@ define Package/$(PKG_NAME)
   TITLE:=$(LUCI_TITLE)
   DEPENDS:=$(LUCI_DEPENDS)
   PROVIDES:=luci-app-modem-manager
+endef
+
+define Package/$(PKG_NAME)/description
+  Provides a modern LuCI Web management interface for 4G/5G cellular modems.
 endef
 
 define Package/$(PKG_NAME)/conffiles
