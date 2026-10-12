@@ -54,5 +54,7 @@ collect_single() {
 
 while true; do
 	collect_single
-	sleep 5
+	INTERVAL=$(uci -q get modem-manager.global.check_interval || echo 15)
+	[ "$INTERVAL" -ge 5 ] 2>/dev/null || INTERVAL=15
+	sleep "$INTERVAL"
 done

@@ -478,6 +478,13 @@ return view.extend({
 			E('div', { 'class': 'cbi-map-descr' }, _('Direct interactive terminal for sending AT commands with intelligent auto-punctuation correction, fuzzy suggestions, error translation, and custom favorites.'))
 		]);
 
+		if (portOptions.length === 0) {
+			container.appendChild(E('div', { 'class': 'alert-message warning', 'style': 'margin-top: 15px; padding: 15px; border-left: 5px solid #ff9800; background: #fff8e1;' }, [
+				E('h4', { 'style': 'margin: 0 0 8px 0; color: #d32f2f;' }, _('No Serial Ports Available')),
+				E('p', { 'style': 'margin: 0; color: #555;' }, _('No ttyUSB or ttyACM serial communication ports detected. Please verify hardware connection and driver state.'))
+			]));
+		}
+
 		// Port Selector Bar
 		const selectorNode = E('fieldset', { 'class': 'cbi-section' }, [
 			E('legend', {}, _('Serial Port Selection')),

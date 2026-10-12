@@ -77,6 +77,34 @@ if [ $locked -eq 0 ]; then
 	exit 4
 fi
 
+# Fast path: Prioritize native sms_tool engine if installed (zero echo loop, robust termios)
+if command -v sms_tool >/dev/null 2>&1; then
+	if [ -n "$SMS_TO" ]; then
+		OUT=$(sms_tool -d "$DEVICE" -b "$BAUDRATE" send "$SMS_TO" "$SMS_MSG" 2>&1)
+		RC=$?
+	else
+		OUT=$(sms_tool -d "$DEVICE" -b "$BAUDRATE" at "$COMMAND" 2>&1)
+		RC=$?
+	fi
+	flock -u 9 2>/dev/null || true
+	CLEAN_OUT=$(echo "$OUT" | tr -d "\r")
+	if [ $RC -eq 0 ] && ! echo "$CLEAN_OUT" | grep -qE "ERROR|\+CME ERROR|\+CMS ERROR"; then
+		if [ -z "$CLEAN_OUT" ]; then
+			echo "OK"
+		else
+			echo "$CLEAN_OUT"
+			case "$CLEAN_OUT" in
+				*OK*) ;;
+				*) echo "OK" ;;
+			esac
+		fi
+		exit 0
+	else
+		echo "$CLEAN_OUT"
+		exit ${RC:-1}
+	fi
+fi
+
 command -v stty >/dev/null 2>&1 && stty -F "$DEVICE" "$BAUDRATE" raw -echo -echoe -echok min 0 time 2 2>/dev/null || true
 
 OUT_FILE="/tmp/at_out_$$.tmp"
@@ -84,14 +112,16 @@ rm -f "$OUT_FILE"
 
 (
 	exec 3<>"$DEVICE"
+	# Drain stale residual buffer
+	dd if="$DEVICE" of=/dev/null bs=512 count=1 2>/dev/null || true
 	cat <&3 > "$OUT_FILE" &
 	CAT_PID=$!
 
 	if [ -n "$SMS_TO" ]; then
 		# Text mode SMS sending
-		printf "AT+CMGF=1\r" >&3
+		printf "AT+CMGF=1\r\n" >&3
 		sleep 1
-		printf "AT+CMGS=\"%s\"\r" "$SMS_TO" >&3
+		printf "AT+CMGS=\"%s\"\r\n" "$SMS_TO" >&3
 		sleep 1
 		printf "%s\x1A" "$SMS_MSG" >&3
 
@@ -108,7 +138,7 @@ rm -f "$OUT_FILE"
 			fi
 		done
 	else
-		echo -e "${COMMAND}\r" >&3
+		printf "%s\r\n" "$COMMAND" >&3
 
 		elapsed=0
 		while [ $elapsed -lt "$TIMEOUT" ]; do

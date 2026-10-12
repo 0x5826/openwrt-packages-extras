@@ -4,7 +4,7 @@
 
 RUN_DIR="/tmp/run/modem-manager"
 CACHE_FILE="$RUN_DIR/devices.json"
-KNOWN_VENDORS="2c7c 2cb7 1e0e 12d1 19d2 1bbb 05c6 413c 0bdb 1199"
+KNOWN_VENDORS="2c7c 2cb7 1e0e 12d1 19d2 1bbb 05c6 413c 0bdb 1199 2977 1508 1bc7 0e8d 1782 0489 1fac 2dee 33f8 3731 2df3 20a6"
 
 get_sys_attr() {
 	local path="$1"
@@ -41,36 +41,69 @@ detect_all() {
 			fi
 		done
 
-		local DEV_CANON=$(readlink -f "$dev" 2>/dev/null)
 		local DEVNAME=$(basename "$dev")
 
+		# Direct sysfs tree discovery for serial ports under this USB device
 		local TTYS=""
-		for t in /sys/class/tty/ttyUSB* /sys/class/tty/ttyACM*; do
-			[ -e "$t" ] || continue
-			local t_canon=$(readlink -f "$t" 2>/dev/null)
-			case "$t_canon" in
-				*"$DEV_CANON"*|*"$DEVNAME"*)
-					local b=$(basename "$t")
-					[ -e "/dev/$b" ] && TTYS="$TTYS /dev/$b"
+		for t in $(find "$dev" -maxdepth 5 \( -name "ttyUSB*" -o -name "ttyACM*" \) 2>/dev/null); do
+			local b=$(basename "$t")
+			case "$b" in
+				ttyUSB*|ttyACM*)
+					if [ -e "/dev/$b" ]; then
+						case " $TTYS " in
+							*" /dev/$b "*) ;;
+							*) TTYS="$TTYS /dev/$b" ;;
+						esac
+					fi
 					;;
 			esac
 		done
+
+		# Fallback tty search via /sys/class/tty
+		if [ -z "$TTYS" ]; then
+			for t in /sys/class/tty/ttyUSB* /sys/class/tty/ttyACM*; do
+				[ -e "$t" ] || continue
+				local t_target=$(readlink "$t" 2>/dev/null || readlink -f "$t" 2>/dev/null)
+				case "$t_target" in
+					*"$DEVNAME"*)
+						local b=$(basename "$t")
+						[ -e "/dev/$b" ] && case " $TTYS " in *" /dev/$b "*) ;; *) TTYS="$TTYS /dev/$b" ;; esac
+						;;
+				esac
+			done
+		fi
 		TTYS=$(echo "$TTYS" | sed 's/^ *//')
 
+		# Network interfaces discovery under this USB device
 		local NETS=""
-		for n in /sys/class/net/*; do
+		for n in $(find "$dev" -maxdepth 5 -name "net" 2>/dev/null); do
 			[ -d "$n" ] || continue
-			local n_canon=$(readlink -f "$n" 2>/dev/null)
-			case "$n_canon" in
-				*"$DEV_CANON"*|*"$DEVNAME"*)
-					local b=$(basename "$n")
-					case "$b" in
-						lo|br-*|eth*|lan*|wan*|sfp*) ;;
-						*) NETS="$NETS $b" ;;
-					esac
-					;;
-			esac
+			for iface in "$n"/*; do
+				[ -d "$iface" ] || continue
+				local b=$(basename "$iface")
+				case "$b" in
+					lo|br-*|eth*|lan*|wan*|sfp*) ;;
+					*) case " $NETS " in *" $b "*) ;; *) NETS="$NETS $b" ;; esac ;;
+				esac
+			done
 		done
+
+		# Fallback net search via /sys/class/net
+		if [ -z "$NETS" ]; then
+			for n in /sys/class/net/*; do
+				[ -d "$n" ] || continue
+				local n_target=$(readlink "$n" 2>/dev/null || readlink -f "$n" 2>/dev/null)
+				case "$n_target" in
+					*"$DEVNAME"*)
+						local b=$(basename "$n")
+						case "$b" in
+							lo|br-*|eth*|lan*|wan*|sfp*) ;;
+							*) case " $NETS " in *" $b "*) ;; *) NETS="$NETS $b" ;; esac ;;
+						esac
+						;;
+				esac
+			done
+		fi
 		NETS=$(echo "$NETS" | sed 's/^ *//')
 
 		if [ -n "$TTYS" ] || [ -n "$NETS" ] || [ $IS_MODEM -eq 1 ]; then

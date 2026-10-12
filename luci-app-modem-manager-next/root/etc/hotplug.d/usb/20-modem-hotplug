@@ -5,7 +5,7 @@
 [ "$DEVTYPE" = "usb_device" ] || exit 0
 
 case "$ACTION" in
-	bind|remove)
+	add|bind|remove)
 		# Delay slightly to allow sysfs device tree and tty nodes to settle
 		(
 			sleep 1

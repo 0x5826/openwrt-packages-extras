@@ -387,3 +387,36 @@ msgstr ""
 
 msgid "No log entries recorded yet."
 msgstr ""
+
+msgid "No Active Cellular Modem Detected"
+msgstr ""
+
+msgid "No active 4G or 5G cellular modem detected on the USB bus. Please verify hardware connection, power supply, or driver status."
+msgstr ""
+
+msgid "Rescan Devices"
+msgstr ""
+
+msgid "No Serial Ports Available"
+msgstr ""
+
+msgid "No ttyUSB or ttyACM serial communication ports detected. Please verify hardware connection and driver state."
+msgstr ""
+
+msgid "No Cellular Modem Detected"
+msgstr ""
+
+msgid "No active cellular modem detected. Unable to manage SMS messages. Please check physical connection."
+msgstr ""
+
+msgid "No active cellular modem detected. You can still pre-configure serial port path or refresh after connecting."
+msgstr ""
+
+msgid "Signal Strength CSQ"
+msgstr ""
+
+msgid "Signal Power RSRP"
+msgstr ""
+
+msgid "Signal Quality SINR"
+msgstr ""

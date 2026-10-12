@@ -634,3 +634,36 @@ msgstr "清空短信失败: "
 msgid "Confirm Clear"
 msgstr "确认清空"
 
+msgid "No Active Cellular Modem Detected"
+msgstr "未检测到活动的蜂窝模组"
+
+msgid "No active 4G or 5G cellular modem detected on the USB bus. Please verify hardware connection, power supply, or driver status."
+msgstr "当前 USB 总线上未发现活动的 4G 或 5G 蜂窝通信模组。请检查硬件连接、USB 供电或系统内核驱动加载状态。"
+
+msgid "Rescan Devices"
+msgstr "重新扫描设备"
+
+msgid "No Serial Ports Available"
+msgstr "未检测到可用串口"
+
+msgid "No ttyUSB or ttyACM serial communication ports detected. Please verify hardware connection and driver state."
+msgstr "当前未发现可供通信的 ttyUSB 或 ttyACM 串口设备。请检查蜂窝模组物理连接或驱动状态。"
+
+msgid "No Cellular Modem Detected"
+msgstr "未检测到蜂窝模组"
+
+msgid "No active cellular modem detected. Unable to manage SMS messages. Please check physical connection."
+msgstr "当前未发现活动的蜂窝模组设备，无法读取或发送短信。请检查模组物理连接。"
+
+msgid "No active cellular modem detected. You can still pre-configure serial port path or refresh after connecting."
+msgstr "当前未发现活动的蜂窝模组设备。您仍可预设串口路径或等待插入硬件后刷新页面。"
+
+msgid "Signal Strength CSQ"
+msgstr "信号强度 CSQ"
+
+msgid "Signal Power RSRP"
+msgstr "参考信号接收功率 RSRP"
+
+msgid "Signal Quality SINR"
+msgstr "信噪比 SINR"
+

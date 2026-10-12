@@ -125,6 +125,13 @@ return view.extend({
 			E('div', { 'class': 'cbi-map-descr' }, _('Configure driver protocols, lock preferred access technologies, customize APN credentials, and manage cellular network interfaces.'))
 		]);
 
+		if (self.devicesList.length === 0) {
+			container.appendChild(E('div', { 'class': 'alert-message warning', 'style': 'margin-top: 15px; padding: 15px; border-left: 5px solid #ff9800; background: #fff8e1;' }, [
+				E('h4', { 'style': 'margin: 0 0 8px 0; color: #d32f2f;' }, _('No Cellular Modem Detected')),
+				E('p', { 'style': 'margin: 0; color: #555;' }, _('No active cellular modem detected. You can still pre-configure serial port path or refresh after connecting.'))
+			]));
+		}
+
 		// Device Selector
 		const selectorNode = E('fieldset', { 'class': 'cbi-section' }, [
 			E('legend', {}, _('Target Modem Selection')),

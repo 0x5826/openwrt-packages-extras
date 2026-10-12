@@ -451,20 +451,28 @@ return view.extend({
 			E('div', { 'class': 'cbi-map-descr' }, _('Read, compose, and manage cellular SMS messages stored on the SIM card.'))
 		]);
 
+		if (self.devicesList.length === 0) {
+			container.appendChild(E('div', { 'class': 'alert-message warning', 'style': 'margin-top: 15px; padding: 15px; border-left: 5px solid #ff9800; background: #fff8e1;' }, [
+				E('h4', { 'style': 'margin: 0 0 8px 0; color: #d32f2f;' }, _('No Cellular Modem Detected')),
+				E('p', { 'style': 'margin: 0; color: #555;' }, _('No active cellular modem detected. Unable to manage SMS messages. Please check physical connection.'))
+			]));
+			return container;
+		}
+
 		// Device Selector
 		const selectorNode = E('fieldset', { 'class': 'cbi-section' }, [
 			E('legend', {}, _('Active Modem Selection')),
 			E('div', { 'class': 'cbi-section-node' }, [
 				E('div', { 'style': 'display: flex; align-items: center; gap: 15px; padding: 10px 0;' }, [
 					E('label', { 'style': 'font-weight: bold;' }, _('Active Device:')),
-					deviceOptions.length > 0 ? E('select', {
+					E('select', {
 						'class': 'cbi-input-select',
 						'style': 'min-width: 320px;',
 						'change': function(ev) {
 							self.selectedPort = ev.target.value;
 							self.handleRefreshList();
 						}
-					}, deviceOptions) : E('span', { 'style': 'color: red;' }, _('No cellular modems detected.'))
+					}, deviceOptions)
 				])
 			])
 		]);

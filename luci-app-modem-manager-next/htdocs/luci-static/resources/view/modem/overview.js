@@ -185,28 +185,44 @@ return view.extend({
 		const self = this;
 		self.devicesList = (devicesData && devicesData.devices) ? devicesData.devices : [];
 
-		if (self.devicesList.length > 0) {
-			self.selectedPort = self.devicesList[0].primary_port;
-			self.selectedNet = self.devicesList[0].primary_net;
-		}
-
-		const deviceOptions = [];
-		self.devicesList.forEach(function(dev, idx) {
-			let label = dev.vendor + ' ' + dev.model + ' (' + (dev.primary_port || _('No Port')) + ' / ' + (dev.primary_net || _('No Net')) + ')';
-			deviceOptions.push(E('option', { value: dev.primary_port, 'data-net': dev.primary_net, selected: idx === 0 }, label));
-		});
-
 		const container = E('div', { 'class': 'cbi-map' }, [
 			E('h2', {}, _('Cellular Modem Manager') + ' - ' + _('Overview')),
 			E('div', { 'class': 'cbi-map-descr' }, _('Real-time overview of cellular modem hardware, network registration, signal metrics, and data connection.'))
 		]);
+
+		if (self.devicesList.length === 0) {
+			container.appendChild(E('div', { 'class': 'alert-message warning', 'style': 'margin-top: 20px; padding: 20px; border-left: 5px solid #ff9800; background: #fff8e1;' }, [
+				E('h4', { 'style': 'margin: 0 0 10px 0; color: #d32f2f; font-size: 16px;' }, _('No Active Cellular Modem Detected')),
+				E('p', { 'style': 'margin: 0 0 15px 0; line-height: 1.6; color: #555;' }, _('No active 4G or 5G cellular modem detected on the USB bus. Please verify hardware connection, power supply, or driver status.')),
+				E('div', {}, [
+					E('input', {
+						'type': 'button',
+						'class': 'btn cbi-button cbi-button-action',
+						'value': _('Rescan Devices'),
+						'click': function() {
+							location.reload();
+						}
+					})
+				])
+			]));
+			return container;
+		}
+
+		self.selectedPort = self.devicesList[0].primary_port;
+		self.selectedNet = self.devicesList[0].primary_net;
+
+		const deviceOptions = [];
+		self.devicesList.forEach(function(dev, idx) {
+			let label = dev.vendor + ' ' + dev.model + ' [' + (dev.primary_port || _('No Port')) + ' / ' + (dev.primary_net || _('No Net')) + ']';
+			deviceOptions.push(E('option', { value: dev.primary_port, 'data-net': dev.primary_net, selected: idx === 0 }, label));
+		});
 
 		const selectorNode = E('fieldset', { 'class': 'cbi-section' }, [
 			E('legend', {}, _('Active Modem Selection')),
 			E('div', { 'class': 'cbi-section-node' }, [
 				E('div', { 'style': 'display: flex; align-items: center; gap: 15px; padding: 10px 0;' }, [
 					E('label', { 'style': 'font-weight: bold;' }, _('Current Device:')),
-					deviceOptions.length > 0 ? E('select', {
+					E('select', {
 						'class': 'cbi-input-select',
 						'style': 'min-width: 320px;',
 						'change': function(ev) {
@@ -215,7 +231,7 @@ return view.extend({
 							self.selectedNet = opt.getAttribute('data-net');
 							self.forceRefresh();
 						}
-					}, deviceOptions) : E('span', { 'style': 'color: red;' }, _('No cellular modems detected on USB bus.')),
+					}, deviceOptions),
 					E('input', {
 						'type': 'button',
 						'class': 'btn cbi-button cbi-button-reload',
@@ -241,13 +257,13 @@ return view.extend({
 					E('td', { 'class': 'td left' }, _('USB Identifiers')),
 					E('td', { 'class': 'td left' }, (firstDev.vid && firstDev.pid) ? (firstDev.vid + ':' + firstDev.pid) : '-'),
 					E('td', { 'class': 'td left' }, _('Core Temperature')),
-					E('td', { 'class': 'td left', 'id': 'modem_temp_val' }, _('Querying...'))
+					E('td', { 'class': 'td left', 'id': 'modem_temp_val' }, '-')
 				]),
 				E('tr', { 'class': 'tr' }, [
 					E('td', { 'class': 'td left' }, _('Driver Binding')),
 					E('td', { 'class': 'td left' }, firstDev.driver || _('Option Driver')),
 					E('td', { 'class': 'td left' }, _('SIM Status')),
-					E('td', { 'class': 'td left', 'id': 'modem_sim_val' }, _('Querying...'))
+					E('td', { 'class': 'td left', 'id': 'modem_sim_val' }, '-')
 				])
 			])
 		]);
@@ -258,9 +274,9 @@ return view.extend({
 			E('table', { 'class': 'table cbi-section-table' }, [
 				E('tr', { 'class': 'tr' }, [
 					E('td', { 'class': 'td left', 'width': '16%' }, _('Operator')),
-					E('td', { 'class': 'td left', 'width': '34%', 'id': 'modem_operator_val' }, _('Querying...')),
+					E('td', { 'class': 'td left', 'width': '34%', 'id': 'modem_operator_val' }, '-'),
 					E('td', { 'class': 'td left', 'width': '16%' }, _('Access Technology')),
-					E('td', { 'class': 'td left', 'width': '34%', 'id': 'modem_rat_val' }, _('Querying...'))
+					E('td', { 'class': 'td left', 'width': '34%', 'id': 'modem_rat_val' }, '-')
 				]),
 				E('tr', { 'class': 'tr' }, [
 					E('td', { 'class': 'td left' }, _('Active Band')),
@@ -277,14 +293,14 @@ return view.extend({
 				E('tr', { 'class': 'tr' }, [
 					E('td', { 'class': 'td left' }, _('Carrier Channel')),
 					E('td', { 'class': 'td left', 'id': 'modem_cell_arfcn' }, '-'),
-					E('td', { 'class': 'td left' }, _('Signal Strength (CSQ)')),
-					E('td', { 'class': 'td left', 'id': 'modem_sig_csq' }, _('Querying...'))
+					E('td', { 'class': 'td left' }, _('Signal Strength CSQ')),
+					E('td', { 'class': 'td left', 'id': 'modem_sig_csq' }, '-')
 				]),
 				E('tr', { 'class': 'tr' }, [
-					E('td', { 'class': 'td left' }, _('Signal Power (RSRP)')),
-					E('td', { 'class': 'td left', 'id': 'modem_sig_rsrp' }, _('Querying...')),
-					E('td', { 'class': 'td left' }, _('Signal Quality (SINR)')),
-					E('td', { 'class': 'td left', 'id': 'modem_sig_sinr' }, _('Querying...'))
+					E('td', { 'class': 'td left' }, _('Signal Power RSRP')),
+					E('td', { 'class': 'td left', 'id': 'modem_sig_rsrp' }, '-'),
+					E('td', { 'class': 'td left' }, _('Signal Quality SINR')),
+					E('td', { 'class': 'td left', 'id': 'modem_sig_sinr' }, '-')
 				])
 			])
 		]);
@@ -295,7 +311,7 @@ return view.extend({
 			E('table', { 'class': 'table cbi-section-table' }, [
 				E('tr', { 'class': 'tr' }, [
 					E('td', { 'class': 'td left', 'width': '16%' }, _('Connection State')),
-					E('td', { 'class': 'td left', 'width': '34%', 'id': 'modem_net_status' }, _('Querying...')),
+					E('td', { 'class': 'td left', 'width': '34%', 'id': 'modem_net_status' }, '-'),
 					E('td', { 'class': 'td left', 'width': '16%' }, _('Assigned IPv4')),
 					E('td', { 'class': 'td left', 'width': '34%', 'id': 'modem_net_ip4' }, '-')
 				]),
