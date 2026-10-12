@@ -1,5 +1,5 @@
 #!/bin/sh
-# Modem AT Command Safe Executor (Zero-dependency, BusyBox compatible)
+# Modem AT Command Safe Executor (Zero-dependency, Dynamic Timeout)
 # Dante <dante@seckv.com>
 
 DEVICE=""
@@ -35,6 +35,13 @@ if [ ! -c "$DEVICE" ]; then
 	exit 3
 fi
 
+# Dynamic Timeout auto-detection: long-running commands like AT+COPS=? or scan
+case "$COMMAND" in
+	*COPS=\?*|*COPS\?*|*QSCAN*|*GTCCINFO*|*SCAN*)
+		[ "$TIMEOUT" -lt 60 ] && TIMEOUT=60
+		;;
+esac
+
 LOCKFILE="/var/lock/modem_$(basename "$DEVICE").lock"
 mkdir -p /var/lock
 
@@ -56,13 +63,11 @@ if [ $locked -eq 0 ]; then
 	exit 4
 fi
 
-# Configure serial terminal if stty exists
 command -v stty >/dev/null 2>&1 && stty -F "$DEVICE" "$BAUDRATE" raw -echo -echoe -echok min 0 time 2 2>/dev/null || true
 
 OUT_FILE="/tmp/at_out_$$.tmp"
 rm -f "$OUT_FILE"
 
-# Send command and read output safely
 (
 	exec 3<>"$DEVICE"
 	echo -e "${COMMAND}\r" >&3

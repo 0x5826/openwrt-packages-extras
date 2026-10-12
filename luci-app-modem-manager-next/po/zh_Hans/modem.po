@@ -343,20 +343,32 @@ msgstr "通讯端口:"
 msgid "Baudrate: 115200 (Auto Locked)"
 msgstr "波特率: 115200 (排他锁定)"
 
-msgid "Quick AT Command Presets"
-msgstr "常用快捷指令面板"
+msgid "Command Presets and Favorites"
+msgstr "常用指令与收藏夹"
 
-msgid "General Info:"
-msgstr "基础信息:"
+msgid "+ Add Current to Favorites"
+msgstr "+ 添加当前指令到收藏"
 
-msgid "Network State:"
-msgstr "网络状态:"
+msgid "Favorites:"
+msgstr "常用收藏:"
 
-msgid "Quectel Extra:"
-msgstr "移远专区:"
+msgid "Advanced:"
+msgstr "高级操作:"
 
-msgid "Fibocom Extra:"
-msgstr "广和通专区:"
+msgid "Scan Networks"
+msgstr "搜网扫描"
+
+msgid "Query APN"
+msgstr "查询接入点"
+
+msgid "Module Info"
+msgstr "模组信息"
+
+msgid "Signal (CSQ)"
+msgstr "信号强度"
+
+msgid "Serving Cell"
+msgstr "服务小区"
 
 msgid "Interactive Console Output"
 msgstr "交互终端输出"
@@ -364,20 +376,50 @@ msgstr "交互终端输出"
 msgid "Clear Output"
 msgstr "清屏"
 
+msgid "Export Log"
+msgstr "导出日志"
+
 msgid "Copy All"
 msgstr "复制全部"
 
 msgid "Terminal output copied to clipboard."
 msgstr "终端输出已成功复制到剪贴板。"
 
-msgid "System ready. Enter an AT command and press Enter or Send to execute."
-msgstr "系统已就绪。输入AT指令后按回车或点击发送即可执行。"
+msgid "System ready. Full-width punctuation will be automatically converted to standard ASCII."
+msgstr "系统已就绪。输入的全角及中文标点符号将自动智能转换为标准ASCII符号。"
 
-msgid "Enter AT command (e.g. AT+CSQ)..."
-msgstr "输入AT指令 (例如 AT+CSQ)..."
+msgid "Enter AT command (e.g. AT+CSQ)... Chinese punctuation auto-converted"
+msgstr "输入AT指令 (例如 AT+CSQ)... 支持中文标点自动转换"
 
 msgid "Send Command"
 msgstr "发送指令"
+
+msgid "Duration: "
+msgstr "耗时: "
+
+msgid "Error Explanation"
+msgstr "错误释义"
+
+msgid "Warning: This command may perform a factory reset on the cellular modem. Are you sure to execute?"
+msgstr "警告: 该指令可能会对蜂窝模组执行出厂重置操作。确定要执行吗?"
+
+msgid "No response from modem (Timeout or device busy)."
+msgstr "模组未响应 (通信超时或设备正忙)。"
+
+msgid "Did you mean: "
+msgstr "您是否想输入: "
+
+msgid "[Fill in]"
+msgstr "[填入]"
+
+msgid "Enter a friendly name for this shortcut:"
+msgstr "请为此快捷指令输入一个自定义名称:"
+
+msgid "Command added to favorites."
+msgstr "指令已成功添加到收藏夹。"
+
+msgid "Please enter a command to favorite."
+msgstr "请先输入一条指令再进行收藏。"
 
 msgid "Clear Log"
 msgstr "清理日志"

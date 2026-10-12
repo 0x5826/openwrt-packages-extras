@@ -335,13 +335,17 @@ const methods = {
 			touch_terminal_active();
 
 			log_message(`[AT] >>> ${cmd}`);
+			let t0 = fs.popen("date +%s%3N 2>/dev/null || date +%s", 'r')?.read('all')?.trim() || 0;
 			let res = safe_exec_at(port, cmd, timeout);
+			let t1 = fs.popen("date +%s%3N 2>/dev/null || date +%s", 'r')?.read('all')?.trim() || 0;
+			let duration_ms = (t1 > 0 && t0 > 0 && t1 >= t0) ? (int(t1) - int(t0)) : 0;
 			log_message(`[AT] <<< ${res.output}`);
 
 			return {
 				success: res.success,
 				cmd: cmd,
-				output: res.output
+				output: res.output,
+				duration_ms: duration_ms
 			};
 		}
 	},
