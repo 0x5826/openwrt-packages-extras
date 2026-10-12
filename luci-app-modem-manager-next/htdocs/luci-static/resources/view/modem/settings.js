@@ -21,6 +21,12 @@ const callSaveConfig = rpc.declare({
 	params: [ 'port', 'baud' ]
 });
 
+const callDeviceAction = rpc.declare({
+	object: 'luci.modem',
+	method: 'device_action',
+	params: [ 'port', 'action' ]
+});
+
 const callSetMode = rpc.declare({
 	object: 'luci.modem',
 	method: 'set_mode',
@@ -151,13 +157,20 @@ return view.extend({
 			}
 		}
 
+		const modeChanged = (self.currentDriverMode && modeVal !== self.currentDriverMode);
+
 		ui.showModal(_('Applying Configuration'), [
 			E('p', { 'class': 'spinning' }, _('Saving port settings and sending configuration commands, please wait...'))
 		]);
 
-		callSaveConfig(targetPort, baudVal)
+		const portToSave = modeChanged ? '' : targetPort;
+
+		callSaveConfig(portToSave, baudVal)
 			.then(function() {
-				return callSetMode(targetPort, modeVal);
+				if (modeChanged) {
+					return callSetMode(targetPort, modeVal);
+				}
+				return Promise.resolve({ success: true });
 			})
 			.then(function() {
 				return callSetPreferences(targetPort, ratVal, bandsLte, bandsNr);
@@ -169,11 +182,22 @@ return view.extend({
 				return callSetCellLock(targetPort, cellLockMode, cellLockEarfcn, cellLockPci);
 			})
 			.then(function(lockRes) {
-				ui.hideModal();
-				if (lockRes && lockRes.success === false) {
-					ui.addNotification(null, E('p', {}, _('Settings saved, but cell lock failed: ') + (lockRes.error || lockRes.output || '')), 'warning');
+				if (modeChanged) {
+					ui.showModal(_('Switching Operation Mode'), [
+						E('p', { 'class': 'spinning' }, _('Operation mode updated. The module is rebooting, please wait 20 seconds for bus re-enumeration and port re-scan...'))
+					]);
+					callDeviceAction(targetPort, 'reboot').finally(function() {
+						window.setTimeout(function() {
+							location.reload();
+						}, 20000);
+					});
 				} else {
-					ui.addNotification(null, E('p', {}, _('Modem settings successfully applied.')), 'info');
+					ui.hideModal();
+					if (lockRes && lockRes.success === false) {
+						ui.addNotification(null, E('p', {}, _('Settings saved, but cell lock failed: ') + (lockRes.error || lockRes.output || '')), 'warning');
+					} else {
+						ui.addNotification(null, E('p', {}, _('Modem settings successfully applied.')), 'info');
+					}
 				}
 			})
 			.catch(function(err) {
@@ -314,6 +338,14 @@ return view.extend({
 		container.appendChild(portSection);
 
 		// Protocol Mode Switching Section
+		let currentDriverMode = 'ncm';
+		if (dev.driver === 'cdc_mbim') currentDriverMode = 'mbim';
+		else if (dev.driver === 'qmi_wwan') currentDriverMode = 'qmi';
+		else if (dev.driver === 'cdc_ether') currentDriverMode = 'ecm';
+		else if (dev.driver === 'rndis_host') currentDriverMode = 'rndis';
+		else if (dev.driver === 'cdc_ncm') currentDriverMode = 'ncm';
+		self.currentDriverMode = currentDriverMode;
+
 		const modeSection = E('fieldset', { 'class': 'cbi-section' }, [
 			E('legend', {}, _('Driver Protocol and Operation Mode')),
 			E('div', { 'class': 'cbi-section-node' }, [
@@ -321,22 +353,22 @@ return view.extend({
 					E('label', { 'class': 'cbi-value-title' }, _('Driver Mode')),
 					E('div', { 'class': 'cbi-value-field' }, [
 						E('label', { 'style': 'margin-right: 20px;' }, [
-							E('input', { 'type': 'radio', 'name': 'modem_mode', 'value': 'ncm', 'checked': 'checked' }), ' ',
+							E('input', { 'type': 'radio', 'name': 'modem_mode', 'value': 'ncm', 'checked': (currentDriverMode === 'ncm' ? 'checked' : null) }), ' ',
 							_('NCM Mode')
 						]),
 						E('label', { 'style': 'margin-right: 20px;' }, [
-							E('input', { 'type': 'radio', 'name': 'modem_mode', 'value': 'mbim' }), ' ',
+							E('input', { 'type': 'radio', 'name': 'modem_mode', 'value': 'mbim', 'checked': (currentDriverMode === 'mbim' ? 'checked' : null) }), ' ',
 							_('MBIM Mode')
 						]),
 						E('label', { 'style': 'margin-right: 20px;' }, [
-							E('input', { 'type': 'radio', 'name': 'modem_mode', 'value': 'qmi' }), ' ',
+							E('input', { 'type': 'radio', 'name': 'modem_mode', 'value': 'qmi', 'checked': (currentDriverMode === 'qmi' ? 'checked' : null) }), ' ',
 							_('QMI Mode')
 						]),
 						E('label', {}, [
-							E('input', { 'type': 'radio', 'name': 'modem_mode', 'value': 'ecm' }), ' ',
+							E('input', { 'type': 'radio', 'name': 'modem_mode', 'value': 'ecm', 'checked': (currentDriverMode === 'ecm' ? 'checked' : null) }), ' ',
 							_('ECM Mode')
 						]),
-						E('div', { 'class': 'cbi-value-description' }, _('Switching the operation mode requires restarting the modem to take effect.'))
+						E('div', { 'class': 'cbi-value-description' }, _('Switching the operation mode requires restarting the modem to take effect. Note that in MBIM mode, cellular management may have limited AT command support depending on the modem hardware.'))
 					])
 				])
 			])

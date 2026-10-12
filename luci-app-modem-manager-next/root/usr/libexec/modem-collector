@@ -39,7 +39,10 @@ collect_single() {
 	let devs_data = plugin.get_devices.call();
 	let dev = (devs_data?.devices && length(devs_data.devices) > 0) ? devs_data.devices[0] : null;
 	let user_port = "'"$user_port"'";
-	let target_port = (user_port && user_port != "") ? user_port : (dev?.primary_port || null);
+	let target_port = dev?.primary_port || user_port || null;
+	if (dev?.driver !== "cdc_mbim" && user_port && user_port != "") {
+		target_port = user_port;
+	}
 
 	if (target_port) {
 		let status = plugin.collect_raw_status.call({ args: { port: target_port, primary_net: dev?.primary_net || "usb0" } });

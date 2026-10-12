@@ -88,18 +88,33 @@ return view.extend({
 
 	forceRefresh: function() {
 		const self = this;
-		if (!self.selectedPort) return;
-		return callRefreshStatus(self.selectedPort, self.selectedNet).then(function(res) {
-			self.applyStatusDOM(res);
+		return callGetDevices().then(function(devRes) {
+			const devs = Array.isArray(devRes) ? devRes : ((devRes && Array.isArray(devRes.devices)) ? devRes.devices : []);
+			if (devs.length > 0) {
+				self.selectedPort = devs[0].primary_port;
+				self.selectedNet = devs[0].primary_net;
+			}
+			if (!self.selectedPort) return;
+			return callRefreshStatus(self.selectedPort, self.selectedNet).then(function(res) {
+				if (res && res.port && res.port !== self.selectedPort) {
+					self.selectedPort = res.port;
+				}
+				self.applyStatusDOM(res);
+			});
+		}).catch(function(err) {
+			if (!self.selectedPort) return;
+			return callRefreshStatus(self.selectedPort, self.selectedNet).then(function(res) {
+				self.applyStatusDOM(res);
+			});
 		});
 	},
 
 	updateStatus: function() {
 		const self = this;
-		if (!self.selectedPort)
-			return Promise.resolve();
-
 		return callGetStatus(self.selectedPort, self.selectedNet).then(function(res) {
+			if (res && res.port && res.port !== self.selectedPort) {
+				self.selectedPort = res.port;
+			}
 			self.applyStatusDOM(res);
 		}).catch(function(e) {});
 	},

@@ -116,28 +116,45 @@ detect_all() {
 		local PROD=$(get_sys_attr "$dev/product")
 		local SER=$(get_sys_attr "$dev/serial")
 
-		local PRIMARY_TTY=""
-		for t in $TTYS; do
-			case "$t" in
-				*ttyUSB2|*ttyACM0)
-					PRIMARY_TTY="$t"
-					break
-					;;
-			esac
+		local DRIVER="option"
+		for net_iface in $NETS; do
+			if [ -e "/sys/class/net/$net_iface/device/driver" ]; then
+				local drv_target=$(basename "$(readlink -f "/sys/class/net/$net_iface/device/driver" 2>/dev/null)")
+				case "$drv_target" in
+					cdc_mbim|cdc_ncm|qmi_wwan|cdc_ether|rndis_host)
+						DRIVER="$drv_target"
+						break
+						;;
+				esac
+			fi
 		done
+
+		local PRIMARY_TTY=""
+		if [ "$DRIVER" = "cdc_mbim" ]; then
+			for wdm in /dev/cdc-wdm*; do
+				[ -c "$wdm" ] && /sbin/umbim -d "$wdm" radio 1 >/dev/null 2>&1 &
+			done
+			for t in $TTYS; do
+				case "$t" in
+					*ttyUSB3)
+						PRIMARY_TTY="$t"
+						break
+						;;
+				esac
+			done
+		fi
+		if [ -z "$PRIMARY_TTY" ]; then
+			for t in $TTYS; do
+				case "$t" in
+					*ttyUSB2|*ttyACM0)
+						PRIMARY_TTY="$t"
+						break
+						;;
+				esac
+			done
+		fi
 		[ -z "$PRIMARY_TTY" ] && PRIMARY_TTY=$(echo "$TTYS" | awk '{print $1}')
 		local PRIMARY_NET=$(echo "$NETS" | awk '{print $1}')
-
-		local DRIVER="option"
-		for drv in $(find "$dev" -name "driver" 2>/dev/null); do
-			local drv_target=$(basename "$(readlink -f "$drv" 2>/dev/null)")
-			case "$drv_target" in
-				cdc_mbim|cdc_ncm|qmi_wwan|cdc_ether|rndis_host)
-					DRIVER="$drv_target"
-					break
-					;;
-			esac
-		done
 
 		[ $FIRST -eq 1 ] || echo ","
 		FIRST=0

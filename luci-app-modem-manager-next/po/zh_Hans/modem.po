@@ -253,6 +253,15 @@ msgstr "RNDIS模式"
 msgid "Switching the operation mode requires restarting the modem to take effect."
 msgstr "切换工作模式后需要重新复位模组方能使新驱动生效。"
 
+msgid "Switching the operation mode requires restarting the modem to take effect. Note that in MBIM mode, cellular management may have limited AT command support depending on the modem hardware."
+msgstr "切换工作模式需要重启模组生效。请注意在MBIM模式下，受模组硬件限制可能仅支持部分AT指令或控制端口发生变更。"
+
+msgid "Switching Operation Mode"
+msgstr "切换工作模式"
+
+msgid "Operation mode updated. The module is rebooting, please wait 20 seconds for bus re-enumeration and port re-scan..."
+msgstr "工作模式已更新。模组正在重启，请等待20秒以完成总线重枚举与端口重新扫描..."
+
 msgid "Sync OpenWrt Network"
 msgstr "同步网络配置"
 

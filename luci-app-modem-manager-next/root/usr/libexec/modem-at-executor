@@ -79,13 +79,43 @@ fi
 
 # Fast path: Prioritize native sms_tool engine if installed (zero echo loop, robust termios)
 if command -v sms_tool >/dev/null 2>&1; then
-	if [ -n "$SMS_TO" ]; then
-		OUT=$(sms_tool -d "$DEVICE" -b "$BAUDRATE" send "$SMS_TO" "$SMS_MSG" 2>&1)
-		RC=$?
+	TMP_OUT="/tmp/at_sms_$$.tmp"
+	TMP_DONE="/tmp/at_sms_$$.done"
+	rm -f "$TMP_OUT" "$TMP_DONE"
+
+	(
+		if [ -n "$SMS_TO" ]; then
+			sms_tool -d "$DEVICE" -b "$BAUDRATE" send "$SMS_TO" "$SMS_MSG" > "$TMP_OUT" 2>&1
+		else
+			sms_tool -d "$DEVICE" -b "$BAUDRATE" at "$COMMAND" > "$TMP_OUT" 2>&1
+		fi
+		echo $? > "$TMP_DONE"
+	) &
+	CHILD_PID=$!
+
+	elapsed=0
+	while [ $elapsed -lt "$TIMEOUT" ]; do
+		if [ -f "$TMP_DONE" ] || ! kill -0 "$CHILD_PID" 2>/dev/null; then
+			break
+		fi
+		sleep 1
+		elapsed=$((elapsed + 1))
+	done
+
+	if [ ! -f "$TMP_DONE" ] && kill -0 "$CHILD_PID" 2>/dev/null; then
+		kill -9 "$CHILD_PID" 2>/dev/null || true
+		for p in $(pgrep -f "sms_tool.*$DEVICE" 2>/dev/null); do
+			kill -9 "$p" 2>/dev/null || true
+		done
+		RC=124
+		OUT="ERROR: Command timed out after ${TIMEOUT}s"
 	else
-		OUT=$(sms_tool -d "$DEVICE" -b "$BAUDRATE" at "$COMMAND" 2>&1)
-		RC=$?
+		wait "$CHILD_PID" 2>/dev/null
+		RC=$(cat "$TMP_DONE" 2>/dev/null || echo 0)
+		OUT=$(cat "$TMP_OUT" 2>/dev/null)
 	fi
+	rm -f "$TMP_OUT" "$TMP_DONE"
+
 	flock -u 9 2>/dev/null || true
 	CLEAN_OUT=$(echo "$OUT" | tr -d "\r")
 	if [ $RC -eq 0 ] && ! echo "$CLEAN_OUT" | grep -qE "ERROR|\+CME ERROR|\+CMS ERROR"; then
