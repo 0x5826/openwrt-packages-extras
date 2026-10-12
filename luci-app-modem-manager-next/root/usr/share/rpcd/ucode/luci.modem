@@ -135,6 +135,9 @@ function parse_cops(cops_str) {
 	return { operator: op, act: act, act_raw: act_num };
 }
 
+let cached_imeis = {};
+let cached_fw = {};
+
 function parse_serving_cell(raw_output) {
 	let res = {
 		rat: 'LTE',
@@ -155,43 +158,48 @@ function parse_serving_cell(raw_output) {
 	if (!raw_output)
 		return res;
 
-	// Quectel NR5G-SA: +QENG: "servingcell","NOCONN","NR5G-SA","TDD",460,11,81A0C6063,581,81A060,633984,78,100,-104,-11,1,...
-	let m_sa = match(raw_output, /\+QENG:\s*\"servingcell\",\s*\"[^\"]*\",\s*\"NR5G-SA\",\s*\"([^\"]*)\",\s*([0-9]+),\s*([0-9]+),\s*([0-9A-Fa-f]+),\s*([0-9]+),\s*([0-9A-Fa-f]+),\s*([0-9]+),\s*([0-9]+),\s*([0-9]+),\s*(-?[0-9]+),\s*(-?[0-9]+),\s*(-?[0-9]+)/);
-	if (m_sa) {
+	let line = match(raw_output, /\+QENG:\s*\"servingcell\",([^\r\n]+)/);
+	if (!line || !line[1])
+		return res;
+
+	let p = split(line[1], ',');
+	if (length(p) < 8)
+		return res;
+
+	let rat_clean = replace(p[1], /\"/g, '');
+	if (rat_clean === 'NR5G-SA') {
 		res.rat = 'NR5G-SA';
 		res.is_5g = true;
-		res.mcc = m_sa[2];
-		res.mnc = m_sa[3];
-		res.cell_id = m_sa[4];
-		res.pci = m_sa[5];
-		res.tac = m_sa[6];
-		res.earfcn = m_sa[7];
-		res.band = 'N' + m_sa[8];
-		res.bandwidth = m_sa[9] + ' MHz';
-		res.rsrp = int(m_sa[10]);
-		res.rsrq = int(m_sa[11]);
-		res.sinr = int(m_sa[12]);
+		res.mcc = p[3];
+		res.mnc = p[4];
+		res.cell_id = p[5];
+		res.pci = p[6];
+		res.tac = p[7];
+		res.earfcn = p[8];
+		res.band = 'N' + p[9];
+		res.bandwidth = p[10] + ' MHz';
+		let val_rsrp = int(p[11]);
+		if (val_rsrp < 0 && val_rsrp >= -145) res.rsrp = val_rsrp;
+		res.rsrq = int(p[12]);
+		res.sinr = int(p[13]);
 		return res;
-	}
-
-	// Quectel LTE
-	let m_lte = match(raw_output, /\+QENG:\s*\"servingcell\",\s*\"[^\"]*\",\s*\"LTE\",\s*\"[^\"]*\",\s*([0-9]+),\s*([0-9]+),\s*([0-9A-Fa-f]+),\s*([0-9]+),\s*([0-9A-Fa-f]+),\s*([0-9]+),\s*([0-9]+),\s*([0-9]+)/);
-	if (m_lte) {
+	} else if (rat_clean === 'LTE') {
 		res.rat = 'LTE';
-		res.mcc = m_lte[1];
-		res.mnc = m_lte[2];
-		res.cell_id = m_lte[3];
-		res.pci = m_lte[4];
-		res.tac = m_lte[5];
-		res.earfcn = m_lte[6];
-		res.band = 'B' + m_lte[7];
-	}
-
-	let m_metrics = match(raw_output, /(-?[0-9]{2,3})\s*,\s*(-?[0-9]{1,3})\s*,\s*(-?[0-9]{1,3})/);
-	if (m_metrics && res.rsrp == null) {
-		res.rsrp = int(m_metrics[1]);
-		res.rsrq = int(m_metrics[2]);
-		res.sinr = int(m_metrics[3]);
+		res.is_5g = false;
+		res.mcc = p[3];
+		res.mnc = p[4];
+		res.cell_id = p[5];
+		res.pci = p[6];
+		res.earfcn = p[7];
+		res.band = 'B' + p[8];
+		res.tac = p[11];
+		let val_rsrp = int(p[12]);
+		if (val_rsrp < 0 && val_rsrp >= -145) res.rsrp = val_rsrp;
+		res.rsrq = int(p[13]);
+		if (length(p) >= 16) {
+			res.sinr = int(p[15]);
+		}
+		return res;
 	}
 
 	return res;
@@ -208,6 +216,29 @@ function do_collect_status(port, net_dev) {
 	let csq_data = parse_csq(csq_res.output);
 	let cops_data = parse_cops(cops_res.output);
 	let cell_data = parse_serving_cell(qeng_res.output);
+
+	let fw_ver = cached_fw[port] || '';
+	if (!fw_ver) {
+		let m_rev = match(info_res.output, /Revision:\s*([^\r\n]+)/);
+		if (m_rev) {
+			fw_ver = trim(m_rev[1]);
+		} else {
+			let cgmr_res = safe_exec_at(port, 'AT+CGMR', 2);
+			let m_cgmr = match(cgmr_res.output, /([A-Za-z0-9_.-]+)\s*(\n|\r)+OK/);
+			if (m_cgmr) fw_ver = trim(m_cgmr[1]);
+		}
+		if (fw_ver) cached_fw[port] = fw_ver;
+	}
+
+	let imei_val = cached_imeis[port] || '';
+	if (!imei_val) {
+		let gsn_res = safe_exec_at(port, 'AT+GSN', 2);
+		let m_imei = match(gsn_res.output, /([0-9]{15})/);
+		if (m_imei) {
+			imei_val = m_imei[1];
+			cached_imeis[port] = imei_val;
+		}
+	}
 
 	let sim_status = 'NOT_INSERTED';
 	if (match(cpin_res.output, /\+CPIN:\s*READY/))
@@ -347,6 +378,8 @@ function do_collect_status(port, net_dev) {
 	return {
 		success: true,
 		port: port,
+		firmware: fw_ver,
+		imei: imei_val,
 		sim_status: sim_status,
 		csq: csq_data,
 		operator: cops_data.operator,
@@ -537,50 +570,104 @@ const methods = {
 			log_message(`[MODE] Switching mode to ${mode} (Command: ${cmd})`);
 			let at_res = safe_exec_at(port, cmd, 5);
 
-			if (req.args?.sync_network) {
-				let c = cursor();
-				if (c) {
-					c.load('network');
-					if (!c.get('network', ifname)) {
-						c.set('network', ifname, 'interface');
-					}
-
-					if (mode === 'ncm') {
-						c.set('network', ifname, 'proto', 'ncm');
-						c.set('network', ifname, 'device', '/dev/cdc-wdm0');
-					} else if (mode === 'mbim') {
-						c.set('network', ifname, 'proto', 'mbim');
-						c.set('network', ifname, 'device', '/dev/cdc-wdm0');
-					} else if (mode === 'qmi') {
-						c.set('network', ifname, 'proto', 'qmi');
-						c.set('network', ifname, 'device', '/dev/cdc-wdm0');
-					} else {
-						c.set('network', ifname, 'proto', 'dhcp');
-						c.set('network', ifname, 'device', dev_net);
-						c.set('network', ifname, 'accept_ra', '2');
-
-						let ifname6 = ifname + '6';
-						if (!c.get('network', ifname6)) {
-							c.set('network', ifname6, 'interface');
-						}
-						c.set('network', ifname6, 'proto', 'dhcpv6');
-						c.set('network', ifname6, 'device', dev_net);
-						c.set('network', ifname6, 'reqaddress', 'try');
-						c.set('network', ifname6, 'reqprefix', 'auto');
-						c.set('network', ifname6, 'norelease', '1');
-					}
-
-					c.commit('network');
-					system("/sbin/reload_config >/dev/null 2>&1 || ubus call network reload >/dev/null 2>&1 &");
-					log_message(`[NETWORK] Synchronized OpenWrt network interface ${ifname} with proto ${mode}`);
-				}
-			}
-
 			return {
 				success: at_res.success,
 				mode: mode,
 				output: at_res.output
 			};
+		}
+	},
+
+	set_cell_lock: {
+		args: {
+			port: '',
+			mode: '',
+			earfcn: '',
+			pci: ''
+		},
+		call: function(req) {
+			let port = req.args?.port;
+			let mode = req.args?.mode || 'none';
+			let earfcn = req.args?.earfcn;
+			let pci = req.args?.pci;
+
+			if (!port) return { success: false, error: 'Port required' };
+			touch_terminal_active();
+
+			if (mode === 'none' || mode === 'clear') {
+				log_message(`[CELL] Clearing cell lock`);
+				safe_exec_at(port, 'AT+QNWLOCK="common/5g",0', 3);
+				let r_lte = safe_exec_at(port, 'AT+QNWLOCK="common/lte",0', 3);
+				if (!r_lte.success) safe_exec_at(port, 'AT+QNWLOCK="common/4g",0', 3);
+				return { success: true, message: 'Cell locking disabled' };
+			}
+
+			if (!earfcn || !pci) {
+				return { success: false, error: 'Both ARFCN/EARFCN and PCI are required' };
+			}
+
+			if (!match(earfcn, /^[0-9]+$/) || !match(pci, /^[0-9]+$/)) {
+				return { success: false, error: 'Parameters earfcn and pci must be positive numeric integers' };
+			}
+
+			let cmd = '';
+			if (mode === 'nr5g') {
+				cmd = `AT+QNWLOCK="common/5g",1,${earfcn},${pci}`;
+			} else if (mode === 'lte') {
+				cmd = `AT+QNWLOCK="common/lte",1,${earfcn},${pci}`;
+			}
+
+			log_message(`[CELL] Setting cell lock: ${cmd}`);
+			let res = safe_exec_at(port, cmd, 5);
+			if (!res.success && mode === 'lte') {
+				cmd = `AT+QNWLOCK="common/4g",1,${earfcn},${pci}`;
+				res = safe_exec_at(port, cmd, 5);
+			}
+
+			return {
+				success: res.success,
+				cmd: cmd,
+				output: res.output
+			};
+		}
+	},
+
+	get_cell_lock: {
+		args: { port: '' },
+		call: function(req) {
+			let port = req.args?.port;
+			if (!port) return { locked: false, mode: 'none' };
+			touch_terminal_active();
+
+			let r_5g = safe_exec_at(port, 'AT+QNWLOCK="common/5g"', 3);
+			let r_lte = safe_exec_at(port, 'AT+QNWLOCK="common/lte"', 3);
+			if (!r_lte.success) r_lte = safe_exec_at(port, 'AT+QNWLOCK="common/4g"', 3);
+
+			let m_5g = match(r_5g.output, /\+QNWLOCK:\s*"common\/5g",([^\r\n]+)/);
+			if (m_5g && m_5g[1]) {
+				let parts = split(m_5g[1], ',');
+				if (length(parts) == 1 && int(parts[0]) == 0) {
+					// Explicitly unlocked
+				} else if (length(parts) == 2 && int(parts[0]) > 0 && int(parts[1]) >= 0) {
+					return { locked: true, mode: 'nr5g', earfcn: parts[0], pci: parts[1] };
+				} else if (length(parts) >= 3 && int(parts[0]) > 0 && int(parts[1]) > 0) {
+					return { locked: true, mode: 'nr5g', earfcn: parts[1], pci: parts[2] };
+				}
+			}
+
+			let m_lte = match(r_lte.output, /\+QNWLOCK:\s*"common\/[a-z0-9]+",([^\r\n]+)/);
+			if (m_lte && m_lte[1]) {
+				let parts = split(m_lte[1], ',');
+				if (length(parts) == 1 && int(parts[0]) == 0) {
+					// Explicitly unlocked
+				} else if (length(parts) == 2 && int(parts[0]) > 0 && int(parts[1]) >= 0) {
+					return { locked: true, mode: 'lte', earfcn: parts[0], pci: parts[1] };
+				} else if (length(parts) >= 3 && int(parts[0]) > 0 && int(parts[1]) > 0) {
+					return { locked: true, mode: 'lte', earfcn: parts[1], pci: parts[2] };
+				}
+			}
+
+			return { locked: false, mode: 'none', earfcn: '', pci: '' };
 		}
 	},
 
@@ -609,6 +696,31 @@ const methods = {
 			}
 
 			return { success: true, outputs: results };
+		}
+	},
+
+	get_apn: {
+		args: { port: '' },
+		call: function(req) {
+			let port = req.args?.port;
+			if (!port)
+				return { success: false, apn: '', pdp_type: 'IPV4V6' };
+
+			touch_terminal_active();
+
+			let res = safe_exec_at(port, 'AT+CGDCONT?', 3);
+			if (!res.success)
+				return { success: false, apn: '', pdp_type: 'IPV4V6' };
+
+			let m = match(res.output, /\+CGDCONT:\s*1,\s*"([^"]+)",\s*"([^"]*)"/);
+			if (m && m[1]) {
+				return {
+					success: true,
+					pdp_type: m[1],
+					apn: m[2] || ''
+				};
+			}
+			return { success: true, apn: '', pdp_type: 'IPV4V6' };
 		}
 	},
 

@@ -18,13 +18,13 @@ const callGetConfig = rpc.declare({
 const callSaveConfig = rpc.declare({
 	object: 'luci.modem',
 	method: 'save_config',
-	params: [ 'port', 'baud', 'ifname' ]
+	params: [ 'port', 'baud' ]
 });
 
 const callSetMode = rpc.declare({
 	object: 'luci.modem',
 	method: 'set_mode',
-	params: [ 'port', 'mode', 'template_id', 'sync_network', 'ifname', 'device_net' ]
+	params: [ 'port', 'mode' ]
 });
 
 const callSetPreferences = rpc.declare({
@@ -39,6 +39,30 @@ const callSetApn = rpc.declare({
 	params: [ 'port', 'apn', 'pdp_type' ]
 });
 
+const callGetApn = rpc.declare({
+	object: 'luci.modem',
+	method: 'get_apn',
+	params: [ 'port' ]
+});
+
+const callGetCellLock = rpc.declare({
+	object: 'luci.modem',
+	method: 'get_cell_lock',
+	params: [ 'port' ]
+});
+
+const callSetCellLock = rpc.declare({
+	object: 'luci.modem',
+	method: 'set_cell_lock',
+	params: [ 'port', 'mode', 'earfcn', 'pci' ]
+});
+
+const callGetStatus = rpc.declare({
+	object: 'luci.modem',
+	method: 'get_status',
+	params: [ 'port', 'primary_net' ]
+});
+
 return view.extend({
 	handleSaveApply: null,
 	handleSave: null,
@@ -48,12 +72,30 @@ return view.extend({
 	selectedNet: null,
 	devicesList: [],
 	configData: {},
+	cellLockData: {},
+	apnData: {},
 
 	load: function() {
+		const self = this;
 		return Promise.all([
 			L.resolveDefault(callGetDevices(), []),
 			L.resolveDefault(callGetConfig(), {})
-		]);
+		]).then(function(results) {
+			const devs = results[0];
+			const cfg = results[1] || {};
+			const list = Array.isArray(devs) ? devs : ((devs && Array.isArray(devs.devices)) ? devs.devices : []);
+			const port = cfg.port || (list.length > 0 ? list[0].primary_port : null);
+
+			if (port) {
+				return Promise.all([
+					L.resolveDefault(callGetCellLock(port), {}),
+					L.resolveDefault(callGetApn(port), {})
+				]).then(function(extraResults) {
+					return [ devs, cfg, extraResults[0] || {}, extraResults[1] || {} ];
+				});
+			}
+			return [ devs, cfg, {}, {} ];
+		});
 	},
 
 	handleApplySettings: function() {
@@ -75,8 +117,6 @@ return view.extend({
 
 		const modeEl = document.querySelector('input[name="modem_mode"]:checked');
 		const modeVal = modeEl ? modeEl.value : 'ncm';
-		const syncNet = document.getElementById('modem_sync_net').checked;
-		const ifname = document.getElementById('modem_ifname').value || 'modem_wan';
 
 		const ratEl = document.getElementById('modem_rat_select');
 		const ratVal = ratEl ? ratEl.value : 'AUTO';
@@ -93,28 +133,61 @@ return view.extend({
 		for (let i = 0; i < lteEls.length; i++) bandsLte.push(lteEls[i].value);
 		for (let i = 0; i < nrEls.length; i++) bandsNr.push(nrEls[i].value);
 
+		const cellModeEl = document.getElementById('modem_cell_lock_mode');
+		const cellLockMode = cellModeEl ? cellModeEl.value : 'none';
+		const cellEarfcnEl = document.getElementById('modem_cell_lock_earfcn');
+		const cellLockEarfcn = cellEarfcnEl ? cellEarfcnEl.value.trim() : '';
+		const cellPciEl = document.getElementById('modem_cell_lock_pci');
+		const cellLockPci = cellPciEl ? cellPciEl.value.trim() : '';
+
+		if (cellLockMode !== 'none') {
+			if (!cellLockEarfcn || !cellLockPci) {
+				ui.addNotification(null, E('p', {}, _('Both carrier frequency and physical cell ID are required for cell locking.')), 'error');
+				return;
+			}
+			if (!/^[0-9]+$/.test(cellLockEarfcn) || !/^[0-9]+$/.test(cellLockPci)) {
+				ui.addNotification(null, E('p', {}, _('Carrier frequency and physical cell ID must be valid positive integers.')), 'error');
+				return;
+			}
+		}
+
 		ui.showModal(_('Applying Configuration'), [
 			E('p', { 'class': 'spinning' }, _('Saving port settings and sending configuration commands, please wait...'))
 		]);
 
-		Promise.all([
-			callSaveConfig(targetPort, baudVal, ifname),
-			callSetMode(targetPort, modeVal, 'quectel-5g', syncNet, ifname, self.selectedNet),
-			callSetPreferences(targetPort, ratVal, bandsLte, bandsNr),
-			callSetApn(targetPort, apnVal, pdpVal)
-		]).then(function(results) {
-			ui.hideModal();
-			ui.addNotification(null, E('p', {}, _('Modem settings successfully applied.')), 'info');
-		}).catch(function(err) {
-			ui.hideModal();
-			ui.addNotification(null, E('p', {}, _('Failed to apply settings: ') + err.message), 'error');
-		});
+		callSaveConfig(targetPort, baudVal)
+			.then(function() {
+				return callSetMode(targetPort, modeVal);
+			})
+			.then(function() {
+				return callSetPreferences(targetPort, ratVal, bandsLte, bandsNr);
+			})
+			.then(function() {
+				return callSetApn(targetPort, apnVal, pdpVal);
+			})
+			.then(function() {
+				return callSetCellLock(targetPort, cellLockMode, cellLockEarfcn, cellLockPci);
+			})
+			.then(function(lockRes) {
+				ui.hideModal();
+				if (lockRes && lockRes.success === false) {
+					ui.addNotification(null, E('p', {}, _('Settings saved, but cell lock failed: ') + (lockRes.error || lockRes.output || '')), 'warning');
+				} else {
+					ui.addNotification(null, E('p', {}, _('Modem settings successfully applied.')), 'info');
+				}
+			})
+			.catch(function(err) {
+				ui.hideModal();
+				ui.addNotification(null, E('p', {}, _('Failed to apply settings: ') + err.message), 'error');
+			});
 	},
 
 	render: function(loadData) {
 		const self = this;
 		const devicesData = loadData ? loadData[0] : null;
 		self.configData = loadData ? loadData[1] : {};
+		self.cellLockData = loadData ? loadData[2] : {};
+		self.apnData = loadData ? loadData[3] : {};
 
 		self.devicesList = Array.isArray(devicesData) ? devicesData : ((devicesData && Array.isArray(devicesData.devices)) ? devicesData.devices : []);
 
@@ -265,29 +338,132 @@ return view.extend({
 						]),
 						E('div', { 'class': 'cbi-value-description' }, _('Switching the operation mode requires restarting the modem to take effect.'))
 					])
-				]),
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Sync OpenWrt Network')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						E('input', { 'type': 'checkbox', 'id': 'modem_sync_net', 'checked': 'checked' }), ' ',
-						_('Automatically update or create corresponding logical network interface in OpenWrt')
-					])
-				]),
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Interface Name')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						E('input', {
-							'type': 'text',
-							'id': 'modem_ifname',
-							'class': 'cbi-input-text',
-							'value': (self.configData && self.configData.default_interface) ? self.configData.default_interface : 'modem_wan'
-						}),
-						E('div', { 'class': 'cbi-value-description' }, _('The OpenWrt logical interface name to associate with this modem.'))
-					])
 				])
 			])
 		]);
 		container.appendChild(modeSection);
+
+		// Cell Locking Section
+		const isCellLocked = !!(self.cellLockData && self.cellLockData.locked);
+		const cellLockType = isCellLocked ? (self.cellLockData.mode || 'nr5g') : 'none';
+
+		const cellLockSection = E('fieldset', { 'class': 'cbi-section' }, [
+			E('legend', {}, _('Base Station Cell Locking')),
+			E('div', { 'class': 'cbi-section-node' }, [
+				E('div', { 'class': 'cbi-value' }, [
+					E('label', { 'class': 'cbi-value-title' }, _('Cell Lock Mode')),
+					E('div', { 'class': 'cbi-value-field' }, [
+						E('select', {
+							'id': 'modem_cell_lock_mode',
+							'class': 'cbi-input-select',
+							'style': 'min-width: 240px;',
+							'change': function(ev) {
+								const val = ev.target.value;
+								const inputsWrap = document.getElementById('modem_cell_lock_inputs');
+								if (inputsWrap) {
+									inputsWrap.style.display = (val === 'none') ? 'none' : 'block';
+								}
+							}
+						}, [
+							E('option', { 'value': 'none', 'selected': (cellLockType === 'none' ? '' : null) }, _('Automatic Selection')),
+							E('option', { 'value': 'nr5g', 'selected': (cellLockType === 'nr5g' ? '' : null) }, _('Lock 5G NR Cell')),
+							E('option', { 'value': 'lte', 'selected': (cellLockType === 'lte' ? '' : null) }, _('Lock 4G LTE Cell'))
+						]),
+						E('div', { 'class': 'cbi-value-description' }, _('Lock cellular module to a specific base station cell ID and carrier frequency.'))
+					])
+				]),
+				E('div', { 'id': 'modem_cell_lock_inputs', 'style': 'display: ' + (isCellLocked ? 'block' : 'none') + ';' }, [
+					E('div', { 'class': 'cbi-value' }, [
+						E('label', { 'class': 'cbi-value-title' }, _('Carrier Frequency')),
+						E('div', { 'class': 'cbi-value-field' }, [
+							E('input', {
+								'type': 'text',
+								'id': 'modem_cell_lock_earfcn',
+								'class': 'cbi-input-text',
+								'style': 'min-width: 240px;',
+								'placeholder': _('e.g. 627264 or 1850'),
+								'value': (self.cellLockData.earfcn || '')
+							}),
+							E('div', { 'class': 'cbi-value-description' }, _('Target carrier ARFCN or EARFCN.'))
+						])
+					]),
+					E('div', { 'class': 'cbi-value' }, [
+						E('label', { 'class': 'cbi-value-title' }, _('Physical Cell ID')),
+						E('div', { 'class': 'cbi-value-field' }, [
+							E('input', {
+								'type': 'text',
+								'id': 'modem_cell_lock_pci',
+								'class': 'cbi-input-text',
+								'style': 'min-width: 240px;',
+								'placeholder': _('e.g. 468'),
+								'value': (self.cellLockData.pci || '')
+							}),
+							E('div', { 'class': 'cbi-value-description' }, _('Target base station physical cell identifier PCI.'))
+						])
+					]),
+					E('div', { 'class': 'cbi-value' }, [
+						E('label', { 'class': 'cbi-value-title' }, _('Lock Actions')),
+						E('div', { 'class': 'cbi-value-field' }, [
+							E('input', {
+								'type': 'button',
+								'class': 'btn cbi-button cbi-button-action',
+								'value': _('Autofill Current Serving Cell'),
+								'click': function() {
+									if (!self.selectedPort) return;
+									ui.showIndicator('modem_query', _('Querying serving cell...'));
+									callGetStatus(self.selectedPort, self.selectedNet).then(function(st) {
+										ui.hideIndicator('modem_query');
+										if (st && st.cell && st.cell.earfcn && st.cell.pci) {
+											const cell = st.cell;
+											const earfcnInput = document.getElementById('modem_cell_lock_earfcn');
+											const pciInput = document.getElementById('modem_cell_lock_pci');
+											const modeSelect = document.getElementById('modem_cell_lock_mode');
+											if (earfcnInput) earfcnInput.value = cell.earfcn;
+											if (pciInput) pciInput.value = cell.pci;
+											if (modeSelect) {
+												modeSelect.value = cell.is_5g ? 'nr5g' : 'lte';
+												const inputsWrap = document.getElementById('modem_cell_lock_inputs');
+												if (inputsWrap) inputsWrap.style.display = 'block';
+											}
+											ui.addNotification(null, E('p', {}, _('Current cell values populated.')), 'info');
+										} else {
+											ui.addNotification(null, E('p', {}, _('No active serving cell details detected.')), 'warning');
+										}
+									}).catch(function(e) {
+										ui.hideIndicator('modem_query');
+										ui.addNotification(null, E('p', {}, e.message), 'error');
+									});
+								}
+							}),
+							E('input', {
+								'type': 'button',
+								'class': 'btn cbi-button cbi-button-reset',
+								'style': 'margin-left: 10px;',
+								'value': _('Clear Lock Immediately'),
+								'click': function() {
+									if (!self.selectedPort) return;
+									ui.showModal(_('Clearing Cell Lock'), [
+										E('p', { 'class': 'spinning' }, _('Sending unlocking commands...'))
+									]);
+									callSetCellLock(self.selectedPort, 'none').then(function(res) {
+										ui.hideModal();
+										const modeSelect = document.getElementById('modem_cell_lock_mode');
+										if (modeSelect) modeSelect.value = 'none';
+										const inputsWrap = document.getElementById('modem_cell_lock_inputs');
+										if (inputsWrap) inputsWrap.style.display = 'none';
+										ui.addNotification(null, E('p', {}, _('Cell lock cleared successfully.')), 'info');
+									}).catch(function(e) {
+										ui.hideModal();
+										ui.addNotification(null, E('p', {}, e.message), 'error');
+									});
+								}
+							})
+						])
+					])
+				])
+			])
+		]);
+		container.appendChild(cellLockSection);
 
 		// Network RAT and Band Locking Section
 		const ratSection = E('fieldset', { 'class': 'cbi-section' }, [
@@ -340,13 +516,22 @@ return view.extend({
 		container.appendChild(ratSection);
 
 		// APN Section
+		const activeApn = (self.apnData && self.apnData.apn) ? self.apnData.apn : '';
+		const activePdp = (self.apnData && self.apnData.pdp_type) ? self.apnData.pdp_type : 'IPV4V6';
+
 		const apnSection = E('fieldset', { 'class': 'cbi-section' }, [
 			E('legend', {}, _('Access Point Name (APN) Settings')),
 			E('div', { 'class': 'cbi-section-node' }, [
 				E('div', { 'class': 'cbi-value' }, [
 					E('label', { 'class': 'cbi-value-title' }, _('APN Name')),
 					E('div', { 'class': 'cbi-value-field' }, [
-						E('input', { 'type': 'text', 'id': 'modem_apn', 'class': 'cbi-input-text', 'value': 'cmiot' }),
+						E('input', {
+							'type': 'text',
+							'id': 'modem_apn',
+							'class': 'cbi-input-text',
+							'placeholder': _('e.g. ctnet, cmiot, uninet'),
+							'value': activeApn
+						}),
 						E('div', { 'class': 'cbi-value-description' }, _('Cellular carrier APN profile name (e.g. cmiot, cbnet, uninet).'))
 					])
 				]),
@@ -354,9 +539,9 @@ return view.extend({
 					E('label', { 'class': 'cbi-value-title' }, _('PDP Protocol Type')),
 					E('div', { 'class': 'cbi-value-field' }, [
 						E('select', { 'id': 'modem_pdp', 'class': 'cbi-input-select' }, [
-							E('option', { 'value': 'IPV4V6', 'selected': 'selected' }, _('Dual Stack IPv4 and IPv6')),
-							E('option', { 'value': 'IP' }, _('IPv4 Only')),
-							E('option', { 'value': 'IPV6' }, _('IPv6 Only'))
+							E('option', { 'value': 'IPV4V6', 'selected': (activePdp === 'IPV4V6' ? 'selected' : null) }, _('Dual Stack IPv4 and IPv6')),
+							E('option', { 'value': 'IP', 'selected': (activePdp === 'IP' ? 'selected' : null) }, _('IPv4 Only')),
+							E('option', { 'value': 'IPV6', 'selected': (activePdp === 'IPV6' ? 'selected' : null) }, _('IPv6 Only'))
 						])
 					])
 				])

@@ -143,6 +143,12 @@ return view.extend({
 		const tBand = document.getElementById('modem_band_val');
 		if (tBand) dom.content(tBand, cell.band || _('None'));
 
+		const tFw = document.getElementById('modem_firmware_val');
+		if (tFw && status.firmware) dom.content(tFw, status.firmware);
+
+		const tImei = document.getElementById('modem_imei_val');
+		if (tImei && status.imei) dom.content(tImei, status.imei);
+
 		const tSim = document.getElementById('modem_sim_val');
 		if (tSim) {
 			let sText = _('Normal');
@@ -163,11 +169,17 @@ return view.extend({
 
 		const sigRsrp = document.getElementById('modem_sig_rsrp');
 		if (sigRsrp) {
-			let rsrpVal = (cell.rsrp !== null && cell.rsrp !== undefined) ? cell.rsrp : null;
+			let rsrpVal = (cell.rsrp !== null && cell.rsrp !== undefined && cell.rsrp < 0 && cell.rsrp >= -145) ? cell.rsrp : null;
 			let rsrpPercent = rsrpVal ? Math.max(0, Math.min(100, Math.floor((rsrpVal + 140) * (100 / 96)))) : 0;
+			let qualityText = '';
+			if (rsrpVal !== null) {
+				if (rsrpVal >= -85) qualityText = _('Excellent');
+				else if (rsrpVal >= -100) qualityText = _('Good');
+				else qualityText = _('Weak');
+			}
 			dom.content(sigRsrp, [
 				self.renderProgressBar(rsrpPercent, rsrpVal ? (rsrpVal + ' dBm') : _('Calculating'), '#4895ef'),
-				E('span', {}, rsrpVal ? (rsrpVal > -85 ? _('Excellent') : (rsrpVal > -105 ? _('Good') : _('Weak'))) : '')
+				E('span', {}, qualityText)
 			]);
 		}
 
@@ -203,16 +215,17 @@ return view.extend({
 			]);
 		}
 
+		const netPhys = document.getElementById('modem_net_phys');
+		if (netPhys) {
+			let devName = net.device || self.selectedNet || _('Not Registered');
+			dom.content(netPhys, E('span', { 'style': 'font-weight: bold; font-family: monospace; color: #0366d6;' }, devName));
+		}
+
 		const netIface = document.getElementById('modem_net_iface');
 		if (netIface) {
-			let ifaceName = net.interface || '';
-			let devName = net.device || self.selectedNet || '';
+			let ifaceName = net.interface || _('Unmanaged (Config in OpenWrt Interfaces)');
 			let protoStr = net.proto ? ' [' + net.proto.toUpperCase() + ']' : '';
-			let disp = ifaceName;
-			if (devName && devName !== ifaceName) {
-				disp = disp ? (disp + ' / ' + devName) : devName;
-			}
-			dom.content(netIface, (disp || '-') + protoStr);
+			dom.content(netIface, ifaceName + protoStr);
 		}
 
 		const netIp4 = document.getElementById('modem_net_ip4');
@@ -260,11 +273,11 @@ return view.extend({
 			dom.content(netTraffic, [
 				E('span', { 'style': 'margin-right: 15px;' }, [
 					E('strong', {}, _('Downlink: ')),
-					rxFormatted + (rxPackets > 0 ? ' (' + rxPackets + ' ' + _('Packets') + ')' : '')
+					rxFormatted + (rxPackets > 0 ? ' / ' + rxPackets + ' ' + _('Packets') : '')
 				]),
 				E('span', { 'style': 'margin-right: 15px;' }, [
 					E('strong', {}, _('Uplink: ')),
-					txFormatted + (txPackets > 0 ? ' (' + txPackets + ' ' + _('Packets') + ')' : '')
+					txFormatted + (txPackets > 0 ? ' / ' + txPackets + ' ' + _('Packets') : '')
 				]),
 				E('span', { 'style': 'color: #666;' }, [
 					E('strong', {}, _('Total: ')),
@@ -313,6 +326,12 @@ return view.extend({
 					E('td', { 'class': 'td left', 'width': '34%' }, firstDev.vendor || '-'),
 					E('td', { 'class': 'td left', 'width': '16%' }, _('Model')),
 					E('td', { 'class': 'td left', 'width': '34%' }, firstDev.model || '-')
+				]),
+				E('tr', { 'class': 'tr' }, [
+					E('td', { 'class': 'td left' }, _('Firmware Version')),
+					E('td', { 'class': 'td left', 'id': 'modem_firmware_val' }, '-'),
+					E('td', { 'class': 'td left' }, _('IMEI')),
+					E('td', { 'class': 'td left', 'id': 'modem_imei_val' }, '-')
 				]),
 				E('tr', { 'class': 'tr' }, [
 					E('td', { 'class': 'td left' }, _('USB Identifiers')),
@@ -373,8 +392,14 @@ return view.extend({
 				E('tr', { 'class': 'tr' }, [
 					E('td', { 'class': 'td left', 'width': '16%' }, _('Connection State')),
 					E('td', { 'class': 'td left', 'width': '34%', 'id': 'modem_net_status' }, '-'),
-					E('td', { 'class': 'td left', 'width': '16%' }, _('Network Interface')),
-					E('td', { 'class': 'td left', 'width': '34%', 'id': 'modem_net_iface' }, '-')
+					E('td', { 'class': 'td left', 'width': '16%' }, _('Physical Device')),
+					E('td', { 'class': 'td left', 'width': '34%', 'id': 'modem_net_phys' }, '-')
+				]),
+				E('tr', { 'class': 'tr' }, [
+					E('td', { 'class': 'td left' }, _('Logical Interface')),
+					E('td', { 'class': 'td left', 'id': 'modem_net_iface' }, '-'),
+					E('td', { 'class': 'td left' }, _('Real-time Rate')),
+					E('td', { 'class': 'td left', 'id': 'modem_net_speed' }, '-')
 				]),
 				E('tr', { 'class': 'tr' }, [
 					E('td', { 'class': 'td left' }, _('Assigned IPv4')),
@@ -383,10 +408,8 @@ return view.extend({
 					E('td', { 'class': 'td left', 'id': 'modem_net_ip6' }, '-')
 				]),
 				E('tr', { 'class': 'tr' }, [
-					E('td', { 'class': 'td left' }, _('Real-time Rate')),
-					E('td', { 'class': 'td left', 'id': 'modem_net_speed' }, '-'),
 					E('td', { 'class': 'td left' }, _('Traffic Statistics')),
-					E('td', { 'class': 'td left', 'id': 'modem_net_traffic' }, '-')
+					E('td', { 'class': 'td left', 'colspan': '3', 'id': 'modem_net_traffic' }, '-')
 				])
 			]),
 			E('div', { 'style': 'margin-top: 15px; display: flex; gap: 10px;' }, [

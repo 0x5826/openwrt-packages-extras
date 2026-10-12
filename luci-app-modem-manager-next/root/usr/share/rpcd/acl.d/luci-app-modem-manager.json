@@ -10,7 +10,9 @@
 					"get_config",
 					"get_log",
 					"get_sms_status",
-					"get_sms_list"
+					"get_sms_list",
+					"get_cell_lock",
+					"get_apn"
 				]
 			},
 			"uci": [
@@ -29,6 +31,7 @@
 					"set_mode",
 					"set_preferences",
 					"set_apn",
+					"set_cell_lock",
 					"device_action",
 					"refresh_status",
 					"save_template",

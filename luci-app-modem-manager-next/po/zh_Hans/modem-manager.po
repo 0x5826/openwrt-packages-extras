@@ -2,10 +2,10 @@ msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\n"
 
 msgid "Modem Manager"
-msgstr "蜂窝网络管理器"
+msgstr "蜂窝网络管理"
 
 msgid "Cellular Modem Manager"
-msgstr "蜂窝网络管理器"
+msgstr "蜂窝网络管理"
 
 msgid "Overview"
 msgstr "总览"
@@ -32,7 +32,7 @@ msgid "System Log"
 msgstr "运行日志"
 
 msgid "Modem Manager Logs"
-msgstr "蜂窝网络管理器日志"
+msgstr "蜂窝网络管理日志"
 
 msgid "Active Modem Selection"
 msgstr "活动模组选择"
@@ -892,3 +892,102 @@ msgstr "选择当前需要配置的目标蜂窝通信模组。"
 
 msgid "Select the active cellular module to manage SMS messages."
 msgstr "选择当前需要管理短信的目标蜂窝通信模组。"
+
+msgid "Physical Device"
+msgstr "物理网卡设备"
+
+msgid "Logical Interface"
+msgstr "逻辑网络接口"
+
+msgid "Base Station Cell Locking"
+msgstr "基站小区锁定"
+
+msgid "Cell Lock Mode"
+msgstr "锁小区模式"
+
+msgid "Automatic Selection"
+msgstr "自动选择"
+
+msgid "Lock 5G NR Cell"
+msgstr "锁定 5G NR 小区"
+
+msgid "Lock 4G LTE Cell"
+msgstr "锁定 4G LTE 小区"
+
+msgid "Lock cellular module to a specific base station cell ID and carrier frequency."
+msgstr "将蜂窝模组锁定到指定的基站物理小区与载波频点。"
+
+msgid "Carrier Frequency"
+msgstr "载波频点"
+
+msgid "Target carrier ARFCN or EARFCN."
+msgstr "目标载波频点 ARFCN 或 EARFCN。"
+
+msgid "e.g. 627264 or 1850"
+msgstr "例如 627264 或 1850"
+
+msgid "Physical Cell ID"
+msgstr "物理小区标识"
+
+msgid "Target base station physical cell identifier PCI."
+msgstr "目标基站物理小区标识符 PCI。"
+
+msgid "e.g. 468"
+msgstr "例如 468"
+
+msgid "Lock Actions"
+msgstr "锁定操作"
+
+msgid "Autofill Current Serving Cell"
+msgstr "自动填入当前驻留小区"
+
+msgid "Querying serving cell..."
+msgstr "正在查询当前驻留小区..."
+
+msgid "Current cell values populated."
+msgstr "已成功填入当前小区参数。"
+
+msgid "No active serving cell details detected."
+msgstr "未探测到有效的当前驻留小区信息。"
+
+msgid "Clear Lock Immediately"
+msgstr "立即解除锁定"
+
+msgid "Clearing Cell Lock"
+msgstr "正在解除小区锁定"
+
+msgid "Sending unlocking commands..."
+msgstr "正在下发解锁指令..."
+
+msgid "Cell lock cleared successfully."
+msgstr "已成功解除小区锁定。"
+
+msgid "Command Execution"
+msgstr "指令执行"
+
+msgid "Bound to configured primary AT control port"
+msgstr "已绑定至已配置的主 AT 控制串口"
+
+msgid "No Port Available"
+msgstr "无可用串口"
+
+msgid "Both carrier frequency and physical cell ID are required for cell locking."
+msgstr "基站小区锁定需要同时填入载波频点与物理小区标识。"
+
+msgid "Carrier frequency and physical cell ID must be valid positive integers."
+msgstr "载波频点与物理小区标识必须为有效的正整数。"
+
+msgid "Settings saved, but cell lock failed: "
+msgstr "配置已保存，但基站小区锁定失败: "
+
+msgid "No active communication port configured. Please configure an AT control port in Settings first."
+msgstr "未配置可用通信端口，请先前往设置页面配置主 AT 控制串口。"
+
+msgid "Firmware Version"
+msgstr "固件版本"
+
+msgid "IMEI"
+msgstr "IMEI"
+
+msgid "e.g. ctnet, cmiot, uninet"
+msgstr "例如 ctnet, cmiot, uninet"

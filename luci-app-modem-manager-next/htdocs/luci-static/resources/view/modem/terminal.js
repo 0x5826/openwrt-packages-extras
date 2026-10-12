@@ -185,10 +185,11 @@ return view.extend({
 		const timeStr = d.toTimeString().split(' ')[0] + '.' + String(d.getMilliseconds()).padStart(3, '0');
 
 		const line = document.createElement('div');
+		line.style.whiteSpace = 'pre-wrap';
 		line.style.wordBreak = 'break-all';
 		line.style.fontFamily = 'monospace';
 		line.style.lineHeight = '1.4em';
-		line.style.marginBottom = '2px';
+		line.style.marginBottom = '4px';
 
 		if (type === 'cmd') {
 			line.style.color = '#cc7832';
@@ -248,7 +249,7 @@ return view.extend({
 		if (!cleanCmd) return;
 
 		if (!self.selectedPort) {
-			ui.addNotification(null, E('p', {}, _('Please select a communication port first.')), 'error');
+			ui.addNotification(null, E('p', {}, _('No active communication port configured. Please configure an AT control port in Settings first.')), 'error');
 			return;
 		}
 
@@ -313,7 +314,7 @@ return view.extend({
 		line.style.fontSize = '12px';
 
 		const textSpan = document.createElement('span');
-		textSpan.textContent = _('Did you mean: ') + sugg.cmd + ' (' + sugg.desc + ')? ';
+		textSpan.textContent = _('Did you mean: ') + sugg.cmd + ' - ' + sugg.desc + '? ';
 
 		const fillBtn = document.createElement('a');
 		fillBtn.href = '#';
@@ -459,23 +460,10 @@ return view.extend({
 		self.devicesList = Array.isArray(devicesData) ? devicesData : ((devicesData && Array.isArray(devicesData.devices)) ? devicesData.devices : []);
 		self.loadFavorites();
 
-		const portOptions = [];
-		self.devicesList.forEach(function(dev) {
-			if (dev.ports && dev.ports.length > 0) {
-				dev.ports.forEach(function(p) {
-					const isPrimary = (p === dev.primary_port);
-					let label = p + ' (' + dev.vendor + ' ' + dev.model + ')' + (isPrimary ? ' [' + _('Primary AT Port') + ']' : '');
-					const optAttrs = { value: p };
-					if (isPrimary) {
-						optAttrs.selected = '';
-					}
-					portOptions.push(E('option', optAttrs, label));
-				});
-			}
-		});
-
-		if (portOptions.length > 0) {
+		if (self.devicesList.length > 0) {
 			self.selectedPort = self.devicesList[0].primary_port || (self.devicesList[0].ports ? self.devicesList[0].ports[0] : null);
+		} else {
+			self.selectedPort = null;
 		}
 
 		const container = E('div', { 'class': 'cbi-map' }, [
@@ -483,34 +471,25 @@ return view.extend({
 			E('div', { 'class': 'cbi-map-descr' }, _('Direct interactive terminal for sending AT commands with intelligent auto-punctuation correction, fuzzy suggestions, error translation, and custom favorites.'))
 		]);
 
-		if (portOptions.length === 0) {
+		if (!self.selectedPort) {
 			container.appendChild(E('div', { 'class': 'alert-message warning', 'style': 'margin-top: 15px; padding: 15px; border-left: 5px solid #ff9800; background: #fff8e1;' }, [
 				E('h4', { 'style': 'margin: 0 0 8px 0; color: #d32f2f;' }, _('No Serial Ports Available')),
 				E('p', { 'style': 'margin: 0; color: #555;' }, _('No ttyUSB or ttyACM serial communication ports detected. Please verify hardware connection and driver state.'))
 			]));
 		}
 
-		// Port Selector Bar
-		const selectorNode = E('fieldset', { 'class': 'cbi-section' }, [
-			E('legend', {}, _('Serial Port Selection')),
-			E('div', { 'class': 'cbi-section-node' }, [
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title' }, _('Communication Port')),
-					E('div', { 'class': 'cbi-value-field', 'style': 'display: flex; align-items: center; gap: 15px;' }, [
-						portOptions.length > 0 ? E('select', {
-							'id': 'modem_terminal_port_select',
-							'class': 'cbi-input-select',
-							'style': 'min-width: 320px;',
-							'change': function(ev) {
-								self.selectedPort = ev.target.value;
-							}
-						}, portOptions) : E('span', { 'style': 'color: red;' }, _('No serial communication ports detected.')),
-						E('span', { 'style': 'color: #666; font-size: 12px;' }, _('Baudrate: 115200 (Auto Locked)'))
-					])
-				])
-			])
+		// Port Status Bar (Display Only)
+		const activePortLabel = self.selectedPort ? (self.selectedPort + ' @ 115200') : _('No Port Available');
+		const portStatusBar = E('div', {
+			'style': 'margin-top: 15px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; background: #f4f6f8; border: 1px solid #e1e4e8; border-radius: 4px; padding: 8px 16px;'
+		}, [
+			E('span', {}, [
+				E('strong', { 'style': 'color: #333;' }, _('Communication Port: ')),
+				E('span', { 'style': 'color: #0366d6; font-weight: bold; font-family: monospace; font-size: 13px;' }, activePortLabel)
+			]),
+			E('span', { 'style': 'color: #666; font-size: 12px;' }, _('Bound to configured primary AT control port'))
 		]);
-		container.appendChild(selectorNode);
+		container.appendChild(portStatusBar);
 
 		// Favorites and Presets Section
 		const presetsSection = E('fieldset', { 'class': 'cbi-section' }, [
@@ -537,14 +516,14 @@ return view.extend({
 						'type': 'button',
 						'class': 'btn cbi-button cbi-button-action',
 						'style': 'margin-right: 6px; margin-bottom: 6px; font-family: monospace; font-size: 12px;',
-						'value': 'AT+COPS=? (' + _('Scan Networks') + ')',
+						'value': 'AT+COPS=? - ' + _('Scan Networks'),
 						'click': function() { self.executeCommand('AT+COPS=?'); }
 					}),
 					E('input', {
 						'type': 'button',
 						'class': 'btn cbi-button cbi-button-action',
 						'style': 'margin-right: 6px; margin-bottom: 6px; font-family: monospace; font-size: 12px;',
-						'value': 'AT+CGDCONT? (' + _('Query APN') + ')',
+						'value': 'AT+CGDCONT? - ' + _('Query APN'),
 						'click': function() { self.executeCommand('AT+CGDCONT?'); }
 					})
 				])
@@ -552,7 +531,64 @@ return view.extend({
 		]);
 		container.appendChild(presetsSection);
 
-		// Terminal Output Box
+		// Autocomplete Dropdown Box
+		const autocompleteBox = E('div', {
+			'id': 'terminal_autocomplete_box',
+			'style': 'display: none; position: absolute; background: #fff; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; max-height: 200px; overflow-y: auto; width: 550px;'
+		});
+
+		// Command Input Bar (Positioned ABOVE Output Box)
+		const inputSection = E('fieldset', { 'class': 'cbi-section', 'style': 'margin-bottom: 15px; position: relative;' }, [
+			E('legend', {}, _('Command Execution')),
+			E('div', { 'class': 'cbi-section-node', 'style': 'padding: 10px;' }, [
+				E('div', { 'style': 'display: flex; gap: 10px; align-items: center;' }, [
+					E('input', {
+						'type': 'text',
+						'id': 'terminal_input',
+						'class': 'cbi-input-text',
+						'style': 'flex: 1; font-family: monospace; font-size: 14px; padding: 6px 10px;',
+						'placeholder': _('Enter AT command (e.g. AT+CSQ)... Chinese punctuation auto-converted'),
+						'input': function(ev) {
+							self.showAutocomplete(ev.target.value);
+						},
+						'keydown': function(ev) {
+							if (ev.key === 'Enter') {
+								ev.preventDefault();
+								self.executeCommand();
+							} else if (ev.key === 'Escape') {
+								self.hideAutocomplete();
+							} else if (ev.key === 'ArrowUp') {
+								if (self.cmdHistory.length > 0 && self.historyIndex > 0) {
+									self.historyIndex--;
+									ev.target.value = self.cmdHistory[self.historyIndex];
+								}
+							} else if (ev.key === 'ArrowDown') {
+								if (self.historyIndex < self.cmdHistory.length - 1) {
+									self.historyIndex++;
+									ev.target.value = self.cmdHistory[self.historyIndex];
+								} else {
+									self.historyIndex = self.cmdHistory.length;
+									ev.target.value = '';
+								}
+							}
+						}
+					}),
+					E('input', {
+						'type': 'button',
+						'id': 'terminal_send_btn',
+						'class': 'btn cbi-button cbi-button-action',
+						'value': _('Send Command'),
+						'click': function() {
+							self.executeCommand();
+						}
+					})
+				]),
+				autocompleteBox
+			])
+		]);
+		container.appendChild(inputSection);
+
+		// Terminal Output Box (Positioned BELOW Input Bar)
 		const outputSection = E('fieldset', { 'class': 'cbi-section' }, [
 			E('legend', { 'style': 'display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;' }, [
 				E('span', {}, _('Interactive Console Output')),
@@ -591,66 +627,12 @@ return view.extend({
 			]),
 			E('div', {
 				'id': 'terminal_output',
-				'style': 'background: #2b2b2b; color: #a9b7c6; font-family: monospace; font-size: 13px; min-height: 280px; max-height: 480px; overflow-y: auto; padding: 12px; border-radius: 4px; box-sizing: border-box;'
+				'style': 'background: #2b2b2b; color: #a9b7c6; font-family: monospace; font-size: 13px; min-height: 280px; max-height: 480px; overflow-y: auto; padding: 12px; border-radius: 4px; box-sizing: border-box; white-space: pre-wrap;'
 			}, [
 				E('div', { 'style': 'color: #808080;' }, _('System ready. Full-width punctuation will be automatically converted to standard ASCII.'))
 			])
 		]);
 		container.appendChild(outputSection);
-
-		// Autocomplete Dropdown Box
-		const autocompleteBox = E('div', {
-			'id': 'terminal_autocomplete_box',
-			'style': 'display: none; position: absolute; background: #fff; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; max-height: 200px; overflow-y: auto; width: 550px;'
-		});
-
-		// Command Input Bar
-		const inputSection = E('div', { 'style': 'margin-top: 15px; position: relative;' }, [
-			E('div', { 'style': 'display: flex; gap: 10px; align-items: center;' }, [
-				E('input', {
-					'type': 'text',
-					'id': 'terminal_input',
-					'class': 'cbi-input-text',
-					'style': 'flex: 1; font-family: monospace; font-size: 14px; padding: 6px 10px;',
-					'placeholder': _('Enter AT command (e.g. AT+CSQ)... Chinese punctuation auto-converted'),
-					'input': function(ev) {
-						self.showAutocomplete(ev.target.value);
-					},
-					'keydown': function(ev) {
-						if (ev.key === 'Enter') {
-							ev.preventDefault();
-							self.executeCommand();
-						} else if (ev.key === 'Escape') {
-							self.hideAutocomplete();
-						} else if (ev.key === 'ArrowUp') {
-							if (self.cmdHistory.length > 0 && self.historyIndex > 0) {
-								self.historyIndex--;
-								ev.target.value = self.cmdHistory[self.historyIndex];
-							}
-						} else if (ev.key === 'ArrowDown') {
-							if (self.historyIndex < self.cmdHistory.length - 1) {
-								self.historyIndex++;
-								ev.target.value = self.cmdHistory[self.historyIndex];
-							} else {
-								self.historyIndex = self.cmdHistory.length;
-								ev.target.value = '';
-							}
-						}
-					}
-				}),
-				E('input', {
-					'type': 'button',
-					'id': 'terminal_send_btn',
-					'class': 'btn cbi-button cbi-button-action',
-					'value': _('Send Command'),
-					'click': function() {
-						self.executeCommand();
-					}
-				})
-			]),
-			autocompleteBox
-		]);
-		container.appendChild(inputSection);
 
 		setTimeout(function() {
 			self.refreshFavoritesUI();
