@@ -241,20 +241,14 @@ msgstr "MBIM模式"
 msgid "NCM Mode"
 msgstr "NCM模式"
 
-msgid "QMI Mode"
-msgstr "QMI模式"
+msgid "NCM Mode (Recommended)"
+msgstr "推荐NCM模式"
 
 msgid "ECM Mode"
 msgstr "ECM模式"
 
-msgid "RNDIS Mode"
-msgstr "RNDIS模式"
-
-msgid "Switching the operation mode requires restarting the modem to take effect."
-msgstr "切换工作模式后需要重新复位模组方能使新驱动生效。"
-
-msgid "Switching the operation mode requires restarting the modem to take effect. Note that in MBIM mode, cellular management may have limited AT command support depending on the modem hardware."
-msgstr "切换工作模式需要重启模组生效。请注意在MBIM模式下，受模组硬件限制可能仅支持部分AT指令或控制端口发生变更。"
+msgid "Switching the operation mode requires restarting the modem to take effect. NCM provides high-speed throughput with low CPU overhead, while ECM provides standard compatibility."
+msgstr "切换工作模式需要重启模组生效。NCM模式具备低CPU负载的高速聚合吞吐，ECM模式提供通用以太网兼容性。"
 
 msgid "Switching Operation Mode"
 msgstr "切换工作模式"

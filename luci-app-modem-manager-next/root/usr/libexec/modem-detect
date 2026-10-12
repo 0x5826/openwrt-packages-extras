@@ -121,7 +121,7 @@ detect_all() {
 			if [ -e "/sys/class/net/$net_iface/device/driver" ]; then
 				local drv_target=$(basename "$(readlink -f "/sys/class/net/$net_iface/device/driver" 2>/dev/null)")
 				case "$drv_target" in
-					cdc_mbim|cdc_ncm|qmi_wwan|cdc_ether|rndis_host)
+					cdc_ncm|cdc_ether|cdc_mbim|qmi_wwan)
 						DRIVER="$drv_target"
 						break
 						;;
@@ -130,23 +130,18 @@ detect_all() {
 		done
 
 		local PRIMARY_TTY=""
-		if [ "$DRIVER" = "cdc_mbim" ]; then
-			for wdm in /dev/cdc-wdm*; do
-				[ -c "$wdm" ] && /sbin/umbim -d "$wdm" radio 1 >/dev/null 2>&1 &
-			done
-			for t in $TTYS; do
-				case "$t" in
-					*ttyUSB3)
-						PRIMARY_TTY="$t"
-						break
-						;;
-				esac
-			done
-		fi
+		for t in $TTYS; do
+			case "$t" in
+				*ttyUSB2|*ttyACM0)
+					PRIMARY_TTY="$t"
+					break
+					;;
+			esac
+		done
 		if [ -z "$PRIMARY_TTY" ]; then
 			for t in $TTYS; do
 				case "$t" in
-					*ttyUSB2|*ttyACM0)
+					*ttyUSB3)
 						PRIMARY_TTY="$t"
 						break
 						;;
@@ -171,6 +166,8 @@ detect_all() {
 			NET_JSON="$NET_JSON\"$n\""
 		done
 
+		local MODES_JSON="\"ncm\", \"ecm\""
+
 		cat <<EOF
     {
       "id": "$DEVNAME",
@@ -182,6 +179,7 @@ detect_all() {
       "driver": "$DRIVER",
       "primary_port": "$PRIMARY_TTY",
       "primary_net": "$PRIMARY_NET",
+      "supported_modes": [ $MODES_JSON ],
       "ports": [ $TTY_JSON ],
       "nets": [ $NET_JSON ]
     }

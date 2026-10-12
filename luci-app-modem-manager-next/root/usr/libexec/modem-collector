@@ -46,7 +46,7 @@ collect_single() {
 
 	if (target_port) {
 		let status = plugin.collect_raw_status.call({ args: { port: target_port, primary_net: dev?.primary_net || "usb0" } });
-		if (status) {
+		if (status && status.success) {
 			let tmp = "/tmp/run/modem-manager/status.json.tmp";
 			fs.writefile(tmp, sprintf("%J\n", status));
 			fs.rename(tmp, "/tmp/run/modem-manager/status.json");

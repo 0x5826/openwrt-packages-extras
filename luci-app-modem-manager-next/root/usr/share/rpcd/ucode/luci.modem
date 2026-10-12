@@ -30,25 +30,15 @@ function touch_terminal_active() {
 	fs.writefile(TERMINAL_LOCK, 'active\n');
 }
 
-function safe_exec_at(port, cmd, timeout) {
-	if (!port || !match(port, /^\/dev\/tty(USB|ACM)[0-9]+$/))
-		return { success: false, output: 'Invalid port parameter' };
-
-	if (!cmd)
-		return { success: false, output: 'Empty command' };
-
-	let to = (timeout && timeout > 0 && timeout <= 30) ? int(timeout) : 3;
-	let clean_cmd = replace(cmd, /'/g, "'\\''");
-	let p = fs.popen(`${EXECUTOR_BIN} -d '${port}' -c '${clean_cmd}' -t ${to} 2>&1`, 'r');
-	if (!p)
-		return { success: false, output: 'Failed to execute command helper' };
-
-	let output = p.read('all') || '';
-	let rc = p.close();
-
-	let success = (rc === 0 && match(output, /ERROR/) == null);
-	if (!success && match(output, /\bOK\b/) != null) success = true;
-	return { success: success, output: trim(output) };
+function is_terminal_active() {
+	let st = fs.stat(TERMINAL_LOCK);
+	if (st && st.mtime) {
+		let now = time();
+		if ((now - st.mtime) <= 15) {
+			return true;
+		}
+	}
+	return false;
 }
 
 function get_effective_port(specified_port) {
@@ -56,12 +46,6 @@ function get_effective_port(specified_port) {
 	let data = dev_content ? json(dev_content) : null;
 	let dev = (data?.devices && length(data.devices) > 0) ? data.devices[0] : null;
 
-	// In cdc_mbim mode, port mapping is strictly dictated by the driver architecture.
-	// Always enforce the auto-detected primary_port (e.g. /dev/ttyUSB3).
-	if (dev && dev.driver === 'cdc_mbim' && dev.primary_port)
-		return dev.primary_port;
-
-	// If specified_port is provided, only accept it if it is valid and present in current active ports
 	if (specified_port && match(specified_port, /^\/dev\/tty(USB|ACM)[0-9]+$/)) {
 		if (!dev || !dev.ports || index(dev.ports, specified_port) >= 0)
 			return specified_port;
@@ -80,7 +64,29 @@ function get_effective_port(specified_port) {
 	if (dev && dev.primary_port)
 		return dev.primary_port;
 
-	return specified_port || null;
+	return specified_port || '/dev/ttyUSB2';
+}
+
+function safe_exec_at(port, cmd, timeout) {
+	if (!cmd)
+		return { success: false, output: 'Empty command' };
+
+	let effective_port = get_effective_port(port);
+	if (!effective_port || !match(effective_port, /^\/dev\/tty(USB|ACM)[0-9]+$/))
+		return { success: false, output: 'Invalid port parameter' };
+
+	let to = (timeout && timeout > 0 && timeout <= 30) ? int(timeout) : 3;
+	let clean_cmd = replace(cmd, /'/g, "'\\''");
+	let p = fs.popen(`${EXECUTOR_BIN} -d '${effective_port}' -c '${clean_cmd}' -t ${to} 2>&1`, 'r');
+	if (!p)
+		return { success: false, output: 'Failed to execute command helper' };
+
+	let output = p.read('all') || '';
+	let rc = p.close();
+
+	let success = (rc === 0 && match(output, /ERROR/) == null);
+	if (!success && match(output, /\bOK\b/) != null) success = true;
+	return { success: success, output: trim(output) };
 }
 
 function decode_ucs2_if_needed(text) {
@@ -219,11 +225,24 @@ function parse_serving_cell(raw_output) {
 }
 
 function do_collect_status(port, net_dev) {
+	let get_fallback_or_yield = function() {
+		let cached = fs.readfile(CACHE_STATUS);
+		return cached ? json(cached) : { success: false, yielded: true };
+	};
+
+	if (is_terminal_active())
+		return get_fallback_or_yield();
+
 	let info_res = safe_exec_at(port, 'ATI', 2);
+	if (is_terminal_active()) return get_fallback_or_yield();
 	let cpin_res = safe_exec_at(port, 'AT+CPIN?', 2);
+	if (is_terminal_active()) return get_fallback_or_yield();
 	let csq_res = safe_exec_at(port, 'AT+CSQ', 2);
+	if (is_terminal_active()) return get_fallback_or_yield();
 	let cops_res = safe_exec_at(port, 'AT+COPS?', 2);
+	if (is_terminal_active()) return get_fallback_or_yield();
 	let qeng_res = safe_exec_at(port, 'AT+QENG="servingcell"', 3);
+	if (is_terminal_active()) return get_fallback_or_yield();
 	let temp_res = safe_exec_at(port, 'AT+QTEMP', 2);
 
 	let csq_data = parse_csq(csq_res.output);
@@ -401,7 +420,7 @@ function do_collect_status(port, net_dev) {
 		temperature: temp,
 		network: net_info,
 		raw_info: info_res.output,
-		updated_at: fs.popen("date +%s", 'r')?.read('all')?.trim() || 0
+		updated_at: time()
 	};
 }
 
@@ -505,8 +524,10 @@ const methods = {
 
 			// Cold start fallback: synchronously collect once and write cache
 			let status = do_collect_status(port, net_dev);
-			fs.mkdir(RUN_DIR);
-			fs.writefile(CACHE_STATUS, sprintf("%J\n", status));
+			if (status && status.success) {
+				fs.mkdir(RUN_DIR);
+				fs.writefile(CACHE_STATUS, sprintf("%J\n", status));
+			}
 			return status;
 		}
 	},
@@ -517,8 +538,10 @@ const methods = {
 			let port = get_effective_port(req.args?.port);
 			let net_dev = req.args?.primary_net || 'usb0';
 			let status = do_collect_status(port, net_dev);
-			fs.mkdir(RUN_DIR);
-			fs.writefile(CACHE_STATUS, sprintf("%J\n", status));
+			if (status && status.success) {
+				fs.mkdir(RUN_DIR);
+				fs.writefile(CACHE_STATUS, sprintf("%J\n", status));
+			}
 			return status;
 		}
 	},
@@ -537,10 +560,10 @@ const methods = {
 			touch_terminal_active();
 
 			log_message(`[AT] >>> ${cmd}`);
-			let t0 = fs.popen("date +%s%3N 2>/dev/null || date +%s", 'r')?.read('all')?.trim() || 0;
+			let t0 = time();
 			let res = safe_exec_at(port, cmd, timeout);
-			let t1 = fs.popen("date +%s%3N 2>/dev/null || date +%s", 'r')?.read('all')?.trim() || 0;
-			let duration_ms = (t1 > 0 && t0 > 0 && t1 >= t0) ? (int(t1) - int(t0)) : 0;
+			let t1 = time();
+			let duration_ms = (t1 >= t0) ? ((t1 - t0) * 1000) : 0;
 			log_message(`[AT] <<< ${res.output}`);
 
 			return {
@@ -573,11 +596,8 @@ const methods = {
 			touch_terminal_active();
 
 			let mode_map = {
-				'qmi': '0',
-				'ecm': '1',
-				'mbim': '2',
-				'rndis': '3',
-				'ncm': '5'
+				'ncm': '5',
+				'ecm': '1'
 			};
 			let val = mode_map[mode] || '5';
 			let cmd = `AT+QCFG="usbnet",${val}`;

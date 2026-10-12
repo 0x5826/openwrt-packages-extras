@@ -346,29 +346,37 @@ return view.extend({
 		else if (dev.driver === 'cdc_ncm') currentDriverMode = 'ncm';
 		self.currentDriverMode = currentDriverMode;
 
+		const supportedModes = ['ncm', 'ecm'];
+
+		const modeLabels = {
+			'ncm': _('NCM Mode (Recommended)'),
+			'ecm': _('ECM Mode')
+		};
+
+		const modeRadioNodes = [];
+		supportedModes.forEach(function(m) {
+			const isChecked = (currentDriverMode === m);
+			modeRadioNodes.push(E('label', { 'style': 'margin-right: 25px; font-weight: ' + (m === 'ncm' ? 'bold' : 'normal') + ';' }, [
+				E('input', {
+					'type': 'radio',
+					'name': 'modem_mode',
+					'value': m,
+					'checked': isChecked ? 'checked' : null
+				}), ' ',
+				modeLabels[m] || m.toUpperCase()
+			]));
+		});
+
 		const modeSection = E('fieldset', { 'class': 'cbi-section' }, [
 			E('legend', {}, _('Driver Protocol and Operation Mode')),
 			E('div', { 'class': 'cbi-section-node' }, [
 				E('div', { 'class': 'cbi-value' }, [
 					E('label', { 'class': 'cbi-value-title' }, _('Driver Mode')),
 					E('div', { 'class': 'cbi-value-field' }, [
-						E('label', { 'style': 'margin-right: 20px;' }, [
-							E('input', { 'type': 'radio', 'name': 'modem_mode', 'value': 'ncm', 'checked': (currentDriverMode === 'ncm' ? 'checked' : null) }), ' ',
-							_('NCM Mode')
-						]),
-						E('label', { 'style': 'margin-right: 20px;' }, [
-							E('input', { 'type': 'radio', 'name': 'modem_mode', 'value': 'mbim', 'checked': (currentDriverMode === 'mbim' ? 'checked' : null) }), ' ',
-							_('MBIM Mode')
-						]),
-						E('label', { 'style': 'margin-right: 20px;' }, [
-							E('input', { 'type': 'radio', 'name': 'modem_mode', 'value': 'qmi', 'checked': (currentDriverMode === 'qmi' ? 'checked' : null) }), ' ',
-							_('QMI Mode')
-						]),
-						E('label', {}, [
-							E('input', { 'type': 'radio', 'name': 'modem_mode', 'value': 'ecm', 'checked': (currentDriverMode === 'ecm' ? 'checked' : null) }), ' ',
-							_('ECM Mode')
-						]),
-						E('div', { 'class': 'cbi-value-description' }, _('Switching the operation mode requires restarting the modem to take effect. Note that in MBIM mode, cellular management may have limited AT command support depending on the modem hardware.'))
+						E('div', { 'style': 'display: flex; flex-wrap: wrap; gap: 15px; align-items: center;' }, modeRadioNodes),
+						E('div', { 'class': 'cbi-value-description', 'style': 'margin-top: 8px;' },
+							_('Switching the operation mode requires restarting the modem to take effect. NCM provides high-speed throughput with low CPU overhead, while ECM provides standard compatibility.')
+						)
 					])
 				])
 			])
