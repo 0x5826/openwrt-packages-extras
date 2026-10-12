@@ -58,18 +58,25 @@ return view.extend({
 		const self = this;
 		if (!self.selectedPort) {
 			ui.addNotification(null, E('p', {}, _('Please select a valid modem port first.')), 'error');
-			return;
+			return Promise.resolve();
 		}
 
 		ui.showModal(_('Executing Action'), [
 			E('p', { 'class': 'spinning' }, _('Sending action to cellular module, please wait...'))
 		]);
 
-		callDeviceAction(self.selectedPort, action).then(function(res) {
+		return callDeviceAction(self.selectedPort, action).then(function(res) {
 			ui.hideModal();
 			if (res && res.success) {
-				ui.addNotification(null, E('p', {}, _('Action executed successfully.')), 'info');
-				self.forceRefresh();
+				if (action === 'reboot') {
+					ui.addNotification(null, E('p', {}, _('Modem reboot signal sent successfully. The module is rebooting, cellular network will reinitialize in 15-30 seconds.')), 'info');
+					window.setTimeout(function() {
+						self.forceRefresh();
+					}, 20000);
+				} else {
+					ui.addNotification(null, E('p', {}, _('Action executed successfully.')), 'info');
+					self.forceRefresh();
+				}
 			} else {
 				ui.addNotification(null, E('p', {}, _('Action failed: ') + (res ? res.output : _('Unknown error'))), 'error');
 			}

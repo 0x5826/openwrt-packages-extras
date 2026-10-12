@@ -193,6 +193,9 @@ msgstr "正在向模组发送操作指令，请稍候..."
 msgid "Action executed successfully."
 msgstr "动作执行成功。"
 
+msgid "Modem reboot signal sent successfully. The module is rebooting, cellular network will reinitialize in 15-30 seconds."
+msgstr "模组重启指令已成功下发。模组正在重启，蜂窝网络将在 15-30 秒内重新初始化。"
+
 msgid "Action failed: "
 msgstr "动作执行失败: "
 
@@ -489,6 +492,9 @@ msgstr "停用功能"
 
 msgid "SIM Card Storage Capacity: "
 msgstr "SIM卡存储容量: "
+
+msgid "SIM Card Storage Capacity"
+msgstr "SIM卡存储容量"
 
 msgid "Messages"
 msgstr "条短信"

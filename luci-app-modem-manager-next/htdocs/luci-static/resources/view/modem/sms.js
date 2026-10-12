@@ -156,7 +156,7 @@ return view.extend({
 		}, [
 			E('div', { 'style': 'display: flex; align-items: center; gap: 20px;' }, [
 				E('div', {}, [
-					E('span', { 'style': 'color: #333; font-size: 13px;' }, _('SIM Card Storage Capacity: ')),
+					E('span', { 'style': 'color: #333; font-size: 13px;' }, _('SIM Card Storage Capacity') + ': '),
 					E('strong', { 'style': 'color: #333; font-size: 14px;' },
 						self.smsCapacity.total > 0 ? (self.smsCapacity.used + ' / ' + self.smsCapacity.total + ' ' + _('Messages')) : (self.smsList.length + ' ' + _('Messages')))
 				]),

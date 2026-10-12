@@ -760,8 +760,10 @@ const methods = {
 			touch_terminal_active();
 
 			let cmd = 'AT';
+			let timeout = 5;
 			if (action === 'reboot') {
 				cmd = 'AT+CFUN=1,1';
+				timeout = 10;
 			} else if (action === 'airplane_on') {
 				cmd = 'AT+CFUN=4';
 			} else if (action === 'airplane_off') {
@@ -772,7 +774,14 @@ const methods = {
 			}
 
 			log_message(`[ACTION] Executing ${action} via ${cmd}`);
-			let res = safe_exec_at(port, cmd, 5);
+			let res = safe_exec_at(port, cmd, timeout);
+
+			if (action === 'reboot') {
+				let is_err = (res.output && match(res.output, /\bERROR\b|\+CME ERROR|\+CMS ERROR/i) != null);
+				if (!is_err) {
+					return { success: true, output: res.output || 'OK' };
+				}
+			}
 
 			return { success: res.success, output: res.output };
 		}

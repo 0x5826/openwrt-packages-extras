@@ -13,7 +13,7 @@ PKG_DESCRIPTION:=Provides a modern LuCI Web management interface for 4G/5G cellu
 LUCI_DEPENDS:=+ucode +ucode-mod-fs +ucode-mod-ubus +ucode-mod-uci \
 	+kmod-usb-net +kmod-usb-serial +kmod-usb-serial-option \
 	+kmod-usb-net-cdc-ncm +kmod-usb-net-cdc-mbim +kmod-usb-net-cdc-ether +kmod-usb-net-qmi-wwan \
-	+umbim +uqmi +sms-tool
+	+umbim +uqmi +luci-proto-mbim +luci-proto-qmi +sms-tool
 LUCI_PKGARCH:=all
 
 include $(TOPDIR)/feeds/luci/luci.mk

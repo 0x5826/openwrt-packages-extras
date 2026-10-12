@@ -100,6 +100,14 @@ if command -v sms_tool >/dev/null 2>&1; then
 		fi
 		exit 0
 	else
+		case "$COMMAND" in
+			*CFUN=1,1*|*CFUN=16*|*QPOWD*)
+				if ! echo "$CLEAN_OUT" | grep -qE "ERROR|\+CME ERROR|\+CMS ERROR"; then
+					[ -z "$CLEAN_OUT" ] && echo "OK" || echo "$CLEAN_OUT"
+					exit 0
+				fi
+				;;
+		esac
 		echo "$CLEAN_OUT"
 		exit ${RC:-1}
 	fi
