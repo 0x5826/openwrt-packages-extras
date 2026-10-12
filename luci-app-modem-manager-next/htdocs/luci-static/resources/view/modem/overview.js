@@ -234,34 +234,6 @@ return view.extend({
 		const netIp6 = document.getElementById('modem_net_ip6');
 		if (netIp6) dom.content(netIp6, (net.ip6 && net.ip6.length > 0) ? net.ip6.join(', ') : '-');
 
-		const netSpeed = document.getElementById('modem_net_speed');
-		if (netSpeed) {
-			const now = Date.now();
-			let rxSpeedStr = '0 B/s';
-			let txSpeedStr = '0 B/s';
-
-			if (self.lastTraffic && self.lastTraffic.time && net.connected) {
-				const dt = (now - self.lastTraffic.time) / 1000;
-				if (dt > 0.5) {
-					const deltaRx = Math.max(0, (net.rx_bytes || 0) - (self.lastTraffic.rx_bytes || 0));
-					const deltaTx = Math.max(0, (net.tx_bytes || 0) - (self.lastTraffic.tx_bytes || 0));
-					rxSpeedStr = self.formatSpeed(deltaRx / dt);
-					txSpeedStr = self.formatSpeed(deltaTx / dt);
-				}
-			}
-
-			self.lastTraffic = {
-				rx_bytes: net.rx_bytes || 0,
-				tx_bytes: net.tx_bytes || 0,
-				time: now
-			};
-
-			dom.content(netSpeed, [
-				E('span', { 'style': 'color: #2bc1a4; font-weight: bold; margin-right: 15px;' }, '↓ ' + rxSpeedStr),
-				E('span', { 'style': 'color: #4895ef; font-weight: bold;' }, '↑ ' + txSpeedStr)
-			]);
-		}
-
 		const netTraffic = document.getElementById('modem_net_traffic');
 		if (netTraffic) {
 			const rxFormatted = self.formatBytes(net.rx_bytes || 0);
@@ -271,17 +243,19 @@ return view.extend({
 			const txPackets = net.tx_packets || 0;
 
 			dom.content(netTraffic, [
-				E('span', { 'style': 'margin-right: 15px;' }, [
-					E('strong', {}, _('Downlink: ')),
-					rxFormatted + (rxPackets > 0 ? ' / ' + rxPackets + ' ' + _('Packets') : '')
-				]),
-				E('span', { 'style': 'margin-right: 15px;' }, [
-					E('strong', {}, _('Uplink: ')),
-					txFormatted + (txPackets > 0 ? ' / ' + txPackets + ' ' + _('Packets') : '')
-				]),
-				E('span', { 'style': 'color: #666;' }, [
-					E('strong', {}, _('Total: ')),
-					totalFormatted
+				E('div', { 'style': 'display: flex; gap: 24px; align-items: center; white-space: nowrap;' }, [
+					E('span', {}, [
+						E('strong', {}, _('Download: ')),
+						rxFormatted + (rxPackets > 0 ? ' / ' + rxPackets + ' ' + _('Packets') : '')
+					]),
+					E('span', {}, [
+						E('strong', {}, _('Upload: ')),
+						txFormatted + (txPackets > 0 ? ' / ' + txPackets + ' ' + _('Packets') : '')
+					]),
+					E('span', { 'style': 'color: #333;' }, [
+						E('strong', {}, _('Total Traffic: ')),
+						totalFormatted
+					])
 				])
 			]);
 		}
@@ -395,10 +369,10 @@ return view.extend({
 					E('td', { 'class': 'td left', 'width': '16%' }, _('Physical & Logical Interface')),
 					E('td', { 'class': 'td left', 'width': '34%' }, [
 						E('div', {}, [
-							E('span', { 'style': 'color: #888; margin-right: 4px;' }, _('Physical:')),
+							E('span', { 'style': 'color: #333; font-weight: bold; margin-right: 4px;' }, _('Physical:')),
 							E('span', { 'id': 'modem_net_phys' }, '-'),
-							E('span', { 'style': 'color: #ccc; margin: 0 8px;' }, '|'),
-							E('span', { 'style': 'color: #888; margin-right: 4px;' }, _('Logical:')),
+							E('span', { 'style': 'color: #888; margin: 0 8px;' }, '|'),
+							E('span', { 'style': 'color: #333; font-weight: bold; margin-right: 4px;' }, _('Logical:')),
 							E('span', { 'id': 'modem_net_iface' }, '-')
 						])
 					])
@@ -406,14 +380,12 @@ return view.extend({
 				E('tr', { 'class': 'tr' }, [
 					E('td', { 'class': 'td left' }, _('Modem IPv4 Address')),
 					E('td', { 'class': 'td left', 'id': 'modem_net_ip4' }, '-'),
-					E('td', { 'class': 'td left' }, _('Real-time Rate')),
-					E('td', { 'class': 'td left', 'id': 'modem_net_speed' }, '-')
+					E('td', { 'class': 'td left' }, _('Modem IPv6 Address')),
+					E('td', { 'class': 'td left', 'id': 'modem_net_ip6' }, '-')
 				]),
 				E('tr', { 'class': 'tr' }, [
-					E('td', { 'class': 'td left' }, _('Modem IPv6 Address')),
-					E('td', { 'class': 'td left', 'id': 'modem_net_ip6' }, '-'),
 					E('td', { 'class': 'td left' }, _('Traffic Statistics')),
-					E('td', { 'class': 'td left', 'id': 'modem_net_traffic' }, '-')
+					E('td', { 'class': 'td left', 'colspan': '3', 'id': 'modem_net_traffic' }, '-')
 				])
 			]),
 			E('div', { 'style': 'margin-top: 15px; display: flex; gap: 10px;' }, [

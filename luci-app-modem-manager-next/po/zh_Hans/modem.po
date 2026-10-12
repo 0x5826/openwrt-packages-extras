@@ -166,11 +166,14 @@ msgstr "已分配IPv4地址"
 msgid "Traffic Statistics"
 msgstr "流量统计"
 
-msgid "Downlink: "
-msgstr "下行: "
+msgid "Download: "
+msgstr "下载: "
 
-msgid " / Uplink: "
-msgstr " / 上行: "
+msgid "Upload: "
+msgstr "上传: "
+
+msgid "Total Traffic: "
+msgstr "上下行累计: "
 
 msgid "Restart Modem"
 msgstr "重启模组"
@@ -484,8 +487,8 @@ msgstr "停用短信功能"
 msgid "Disable Feature"
 msgstr "停用功能"
 
-msgid "Storage Capacity: "
-msgstr "存储容量: "
+msgid "SIM Card Storage Capacity: "
+msgstr "SIM卡存储容量: "
 
 msgid "Messages"
 msgstr "条短信"
