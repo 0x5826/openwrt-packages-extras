@@ -326,8 +326,8 @@ return view.extend({
 		const recipientInput = E('input', {
 			'type': 'text',
 			'class': 'cbi-input-text',
-			'style': 'width: 100%; font-family: monospace;',
-			'placeholder': _('Target phone number (e.g. 10086 or +8613800000000)'),
+			'style': 'width: 100%; box-sizing: border-box; padding: 7px 10px; font-family: monospace;',
+			'placeholder': _('Target phone number, e.g. 10086 or +8613800000000'),
 			'value': prefillRecipient || ''
 		});
 
@@ -335,28 +335,36 @@ return view.extend({
 
 		const messageInput = E('textarea', {
 			'class': 'cbi-input-textarea',
-			'style': 'width: 100%; height: 120px; margin-top: 8px; font-family: sans-serif;',
+			'style': 'width: 100%; height: 130px; box-sizing: border-box; padding: 8px 10px; font-family: sans-serif; resize: vertical;',
 			'placeholder': _('Enter SMS message content...'),
 			'input': function(ev) {
 				charCountEl.textContent = ev.target.value.length + ' ' + _('characters');
 			}
 		});
 
-		ui.showModal(_('Compose Message'), [
-			E('div', { 'class': 'cbi-map' }, [
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title', 'style': 'width: 100px;' }, _('Recipient:')),
-					E('div', { 'class': 'cbi-value-field' }, [ recipientInput ])
-				]),
-				E('div', { 'class': 'cbi-value' }, [
-					E('label', { 'class': 'cbi-value-title', 'style': 'width: 100px;' }, _('Message:')),
-					E('div', { 'class': 'cbi-value-field' }, [
-						messageInput,
-						E('div', { 'style': 'display: flex; justify-content: flex-end; margin-top: 4px;' }, [ charCountEl ])
-					])
-				])
+		const formContainer = E('div', {
+			'style': 'min-width: 520px; max-width: 100%; box-sizing: border-box; padding: 4px 0;'
+		}, [
+			E('div', { 'style': 'margin-bottom: 16px;' }, [
+				E('label', {
+					'style': 'display: block; font-weight: bold; margin-bottom: 6px; color: #333; font-size: 13px;'
+				}, _('Recipient Phone Number')),
+				recipientInput
 			]),
-			E('div', { 'class': 'cbi-page-actions' }, [
+			E('div', { 'style': 'margin-bottom: 16px;' }, [
+				E('div', {
+					'style': 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;'
+				}, [
+					E('label', {
+						'style': 'display: block; font-weight: bold; color: #333; font-size: 13px;'
+					}, _('Message Content')),
+					charCountEl
+				]),
+				messageInput
+			]),
+			E('div', {
+				'style': 'display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 15px; border-top: 1px solid #e1e4e8;'
+			}, [
 				E('button', {
 					'class': 'btn cbi-button cbi-button-neutral',
 					'click': ui.hideModal
@@ -395,6 +403,8 @@ return view.extend({
 				}, _('Send'))
 			])
 		]);
+
+		ui.showModal(_('Compose Message'), [ formContainer ]);
 	},
 
 	handleDeleteSingle: function(index) {

@@ -553,8 +553,14 @@ msgstr "短信列表已成功刷新。"
 msgid "Failed to refresh SMS list: "
 msgstr "刷新短信列表失败: "
 
-msgid "Target phone number (e.g. 10086 or +8613800000000)"
-msgstr "接收方手机号 (例如 10086 或 +8613800000000)"
+msgid "Target phone number, e.g. 10086 or +8613800000000"
+msgstr "接收方手机号码，例如 10086 或 +8613800000000"
+
+msgid "Recipient Phone Number"
+msgstr "接收方手机号码"
+
+msgid "Message Content"
+msgstr "短信内容"
 
 msgid "characters"
 msgstr "字符"
@@ -991,3 +997,18 @@ msgstr "IMEI"
 
 msgid "e.g. ctnet, cmiot, uninet"
 msgstr "例如 ctnet, cmiot, uninet"
+
+msgid "Physical & Logical Interface"
+msgstr "物理与逻辑接口"
+
+msgid "Physical:"
+msgstr "物理:"
+
+msgid "Logical:"
+msgstr "逻辑:"
+
+msgid "Modem IPv4 Address"
+msgstr "模块IPv4地址"
+
+msgid "Modem IPv6 Address"
+msgstr "模块IPv6地址"

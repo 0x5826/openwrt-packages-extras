@@ -392,24 +392,28 @@ return view.extend({
 				E('tr', { 'class': 'tr' }, [
 					E('td', { 'class': 'td left', 'width': '16%' }, _('Connection State')),
 					E('td', { 'class': 'td left', 'width': '34%', 'id': 'modem_net_status' }, '-'),
-					E('td', { 'class': 'td left', 'width': '16%' }, _('Physical Device')),
-					E('td', { 'class': 'td left', 'width': '34%', 'id': 'modem_net_phys' }, '-')
+					E('td', { 'class': 'td left', 'width': '16%' }, _('Physical & Logical Interface')),
+					E('td', { 'class': 'td left', 'width': '34%' }, [
+						E('div', {}, [
+							E('span', { 'style': 'color: #888; margin-right: 4px;' }, _('Physical:')),
+							E('span', { 'id': 'modem_net_phys' }, '-'),
+							E('span', { 'style': 'color: #ccc; margin: 0 8px;' }, '|'),
+							E('span', { 'style': 'color: #888; margin-right: 4px;' }, _('Logical:')),
+							E('span', { 'id': 'modem_net_iface' }, '-')
+						])
+					])
 				]),
 				E('tr', { 'class': 'tr' }, [
-					E('td', { 'class': 'td left' }, _('Logical Interface')),
-					E('td', { 'class': 'td left', 'id': 'modem_net_iface' }, '-'),
+					E('td', { 'class': 'td left' }, _('Modem IPv4 Address')),
+					E('td', { 'class': 'td left', 'id': 'modem_net_ip4' }, '-'),
 					E('td', { 'class': 'td left' }, _('Real-time Rate')),
 					E('td', { 'class': 'td left', 'id': 'modem_net_speed' }, '-')
 				]),
 				E('tr', { 'class': 'tr' }, [
-					E('td', { 'class': 'td left' }, _('Assigned IPv4')),
-					E('td', { 'class': 'td left', 'id': 'modem_net_ip4' }, '-'),
-					E('td', { 'class': 'td left' }, _('Assigned IPv6')),
-					E('td', { 'class': 'td left', 'id': 'modem_net_ip6' }, '-')
-				]),
-				E('tr', { 'class': 'tr' }, [
+					E('td', { 'class': 'td left' }, _('Modem IPv6 Address')),
+					E('td', { 'class': 'td left', 'id': 'modem_net_ip6' }, '-'),
 					E('td', { 'class': 'td left' }, _('Traffic Statistics')),
-					E('td', { 'class': 'td left', 'colspan': '3', 'id': 'modem_net_traffic' }, '-')
+					E('td', { 'class': 'td left', 'id': 'modem_net_traffic' }, '-')
 				])
 			]),
 			E('div', { 'style': 'margin-top: 15px; display: flex; gap: 10px;' }, [
