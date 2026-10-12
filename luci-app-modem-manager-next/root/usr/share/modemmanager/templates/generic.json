@@ -1,0 +1,29 @@
+{
+  "id": "generic-3gpp",
+  "name": "标准 3GPP 通用模组",
+  "vendor": "Generic",
+  "vid": "*",
+  "default_baud": 115200,
+  "commands": {
+    "info": "ATI",
+    "cpin": "AT+CPIN?",
+    "csq": "AT+CSQ",
+    "operator": "AT+COPS?",
+    "network_reg": "AT+CREG?;+CEREG?",
+    "reboot": "AT+CFUN=1,1",
+    "airplane_on": "AT+CFUN=4",
+    "airplane_off": "AT+CFUN=1"
+  },
+  "mode_switch": {
+    "cmd": "",
+    "modes": {}
+  },
+  "rat_preference": {
+    "cmd": "",
+    "options": {}
+  },
+  "supported_bands": {
+    "lte": [ "B1", "B3", "B5", "B8", "B38", "B39", "B40", "B41" ],
+    "nr5g": []
+  }
+}

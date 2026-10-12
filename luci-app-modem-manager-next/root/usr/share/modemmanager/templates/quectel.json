@@ -1,0 +1,43 @@
+{
+  "id": "quectel-5g",
+  "name": "移远通信 4G/5G 全系模组",
+  "vendor": "Quectel",
+  "vid": "2c7c",
+  "default_baud": 115200,
+  "commands": {
+    "info": "ATI",
+    "cpin": "AT+CPIN?",
+    "csq": "AT+CSQ",
+    "operator": "AT+COPS?",
+    "network_reg": "AT+CEREG=2;+CEREG?;+C5GREG=2;+C5GREG?",
+    "serving_cell": "AT+QENG=\"servingcell\"",
+    "ca_info": "AT+QCAINFO",
+    "temp": "AT+QTEMP",
+    "reboot": "AT+CFUN=1,1",
+    "airplane_on": "AT+CFUN=4",
+    "airplane_off": "AT+CFUN=1"
+  },
+  "mode_switch": {
+    "cmd": "AT+QCFG=\"usbnet\",{mode}",
+    "modes": {
+      "qmi": "0",
+      "ecm": "1",
+      "mbim": "2",
+      "rndis": "3",
+      "ncm": "5"
+    }
+  },
+  "rat_preference": {
+    "cmd": "AT+QNWPREFCFG=\"mode_pref\",{rat}",
+    "options": {
+      "AUTO": "AUTO",
+      "NR5G_ONLY": "NR5G",
+      "LTE_ONLY": "LTE",
+      "NR5G_LTE": "NR5G:LTE"
+    }
+  },
+  "supported_bands": {
+    "lte": [ "B1", "B3", "B5", "B8", "B34", "B38", "B39", "B40", "B41" ],
+    "nr5g": [ "N1", "N28", "N41", "N77", "N78", "N79" ]
+  }
+}

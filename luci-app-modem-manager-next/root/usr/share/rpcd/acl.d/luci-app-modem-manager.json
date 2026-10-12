@@ -1,0 +1,48 @@
+{
+	"luci-app-modem-manager": {
+		"description": "Grant access to modem manager RPC methods",
+		"read": {
+			"ubus": {
+				"luci.modem": [
+					"get_devices",
+					"get_status",
+					"get_templates",
+					"get_config",
+					"get_log"
+				]
+			},
+			"uci": [
+				"modemmanager",
+				"network"
+			],
+			"file": {
+				"/tmp/run/modemmanager/devices.json": [ "read" ],
+				"/tmp/run/modemmanager/status.json": [ "read" ]
+			}
+		},
+		"write": {
+			"ubus": {
+				"luci.modem": [
+					"send_at",
+					"set_mode",
+					"set_preferences",
+					"set_apn",
+					"device_action",
+					"refresh_status",
+					"save_template",
+					"save_config",
+					"clear_log"
+				]
+			},
+			"uci": [
+				"modemmanager",
+				"network"
+			],
+			"file": {
+				"/etc/config/modemmanager": [ "read", "write" ],
+				"/var/log/modemmanager.log": [ "read", "write" ],
+				"/tmp/run/modemmanager/*": [ "read", "write" ]
+			}
+		}
+	}
+}

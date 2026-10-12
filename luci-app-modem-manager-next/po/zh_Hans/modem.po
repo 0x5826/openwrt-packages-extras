@@ -1,0 +1,389 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Modem Manager"
+msgstr "蜂窝网络管理器"
+
+msgid "Cellular Modem Manager"
+msgstr "蜂窝网络管理器"
+
+msgid "Overview"
+msgstr "总览"
+
+msgid "Settings"
+msgstr "设置"
+
+msgid "Templates"
+msgstr "配置模版"
+
+msgid "Configuration Templates"
+msgstr "配置模版"
+
+msgid "AT Terminal"
+msgstr "AT终端"
+
+msgid "AT Command Terminal"
+msgstr "AT终端控制台"
+
+msgid "Log"
+msgstr "运行日志"
+
+msgid "System Log"
+msgstr "运行日志"
+
+msgid "Modem Manager Logs"
+msgstr "蜂窝网络管理器日志"
+
+msgid "Active Modem Selection"
+msgstr "活动模组选择"
+
+msgid "Target Modem Selection"
+msgstr "目标模组选择"
+
+msgid "Current Device:"
+msgstr "当前设备:"
+
+msgid "Active Device:"
+msgstr "活动设备:"
+
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "No cellular modems detected on USB bus."
+msgstr "未在USB总线上探测到蜂窝模组。"
+
+msgid "No cellular modems detected."
+msgstr "未探测到蜂窝模组。"
+
+msgid "No serial communication ports detected."
+msgstr "未探测到串口通讯端口。"
+
+msgid "Hardware Information"
+msgstr "硬件信息"
+
+msgid "Manufacturer"
+msgstr "生产厂商"
+
+msgid "Model"
+msgstr "硬件型号"
+
+msgid "USB Identifiers"
+msgstr "USB识别码"
+
+msgid "Core Temperature"
+msgstr "核心温度"
+
+msgid "Driver Binding"
+msgstr "驱动绑定"
+
+msgid "Option Driver"
+msgstr "串口驱动"
+
+msgid "SIM Status"
+msgstr "SIM卡状态"
+
+msgid "Querying..."
+msgstr "查询中..."
+
+msgid "Not Supported"
+msgstr "不支持"
+
+msgid "Normal"
+msgstr "正常识别"
+
+msgid "PIN Locked"
+msgstr "PIN码锁定"
+
+msgid "PUK Locked"
+msgstr "PUK码锁定"
+
+msgid "Not Detected"
+msgstr "未检测到卡"
+
+msgid "Cellular Network and Signal Metrics"
+msgstr "蜂窝网络与信号指标"
+
+msgid "Operator"
+msgstr "营运商"
+
+msgid "Access Technology"
+msgstr "网络制式"
+
+msgid "Active Band"
+msgstr "工作频段"
+
+msgid "Physical Cell ID"
+msgstr "物理小区识别码"
+
+msgid "Cell ID"
+msgstr "小区识别码"
+
+msgid "Tracking Area Code"
+msgstr "跟踪区编码"
+
+msgid "Carrier Channel"
+msgstr "信道频点"
+
+msgid "Signal Strength (CSQ)"
+msgstr "信号强度"
+
+msgid "Signal Power (RSRP)"
+msgstr "信号功率"
+
+msgid "Signal Quality (SINR)"
+msgstr "信噪比"
+
+msgid "Excellent"
+msgstr "优秀"
+
+msgid "Good"
+msgstr "良好"
+
+msgid "Weak"
+msgstr "较弱"
+
+msgid "Searching"
+msgstr "搜索中"
+
+msgid "Calculating"
+msgstr "计算中"
+
+msgid "Network Interface Connection"
+msgstr "网络接口连接状态"
+
+msgid "Connection State"
+msgstr "连接状态"
+
+msgid "Connected"
+msgstr "已连接"
+
+msgid "Disconnected"
+msgstr "未连接"
+
+msgid "Assigned IPv4"
+msgstr "已分配IPv4地址"
+
+msgid "Traffic Statistics"
+msgstr "流量统计"
+
+msgid "Downlink: "
+msgstr "下行: "
+
+msgid " / Uplink: "
+msgstr " / 上行: "
+
+msgid "Restart Modem"
+msgstr "重启模组"
+
+msgid "Toggle Airplane Mode"
+msgstr "开关飞行模式"
+
+msgid "Reset RF Radio"
+msgstr "复位射频网络"
+
+msgid "Executing Action"
+msgstr "执行动作"
+
+msgid "Sending action to cellular module, please wait..."
+msgstr "正在向模组发送操作指令，请稍候..."
+
+msgid "Action executed successfully."
+msgstr "动作执行成功。"
+
+msgid "Action failed: "
+msgstr "动作执行失败: "
+
+msgid "Driver Protocol and Operation Mode"
+msgstr "驱动协议与工作模式"
+
+msgid "Driver Mode"
+msgstr "驱动模式"
+
+msgid "MBIM Mode"
+msgstr "MBIM模式"
+
+msgid "NCM Mode"
+msgstr "NCM模式"
+
+msgid "QMI Mode"
+msgstr "QMI模式"
+
+msgid "ECM Mode"
+msgstr "ECM模式"
+
+msgid "RNDIS Mode"
+msgstr "RNDIS模式"
+
+msgid "Switching the operation mode requires restarting the modem to take effect."
+msgstr "切换工作模式后需要重新复位模组方能使新驱动生效。"
+
+msgid "Sync OpenWrt Network"
+msgstr "同步网络配置"
+
+msgid "Automatically update or create corresponding logical network interface in OpenWrt"
+msgstr "自动在网络配置中同步创建并绑定该协议对应的逻辑接口"
+
+msgid "Interface Name"
+msgstr "接口名称"
+
+msgid "The OpenWrt logical interface name to associate with this modem."
+msgstr "关联该模组的OpenWrt逻辑接口名称。"
+
+msgid "Network Access Technology and Band Locking"
+msgstr "网络制式与频段锁定"
+
+msgid "Access Technology Preference"
+msgstr "网络接入首选制式"
+
+msgid "Automatic Mode"
+msgstr "自动搜索模式"
+
+msgid "5G Standalone Only"
+msgstr "仅限5G独立组网"
+
+msgid "5G and 4G Hybrid"
+msgstr "5G与4G混合"
+
+msgid "4G LTE Only"
+msgstr "仅限4G网络"
+
+msgid "Select priority radio access technology for network registration."
+msgstr "选择模组在搜索驻留网络时的制式优先级策略。"
+
+msgid "4G LTE Bands"
+msgstr "4G工作频段"
+
+msgid "5G NR Bands"
+msgstr "5G工作频段"
+
+msgid "Access Point Name (APN) Settings"
+msgstr "接入点配置"
+
+msgid "APN Name"
+msgstr "接入点名称"
+
+msgid "Cellular carrier APN profile name (e.g. cmiot, cbnet, uninet)."
+msgstr "运营商接入点参数名称。"
+
+msgid "PDP Protocol Type"
+msgstr "协议版本"
+
+msgid "Dual Stack IPv4 and IPv6"
+msgstr "双栈IPv4与IPv6混合模式"
+
+msgid "IPv4 Only"
+msgstr "仅限IPv4"
+
+msgid "IPv6 Only"
+msgstr "仅限IPv6"
+
+msgid "Save and Apply"
+msgstr "保存并应用"
+
+msgid "Applying Configuration"
+msgstr "应用配置"
+
+msgid "Sending configuration commands to modem, please wait..."
+msgstr "正在向模组发送配置指令，请稍候..."
+
+msgid "Modem settings successfully applied."
+msgstr "模组配置已成功应用。"
+
+msgid "Failed to apply settings: "
+msgstr "应用配置失败: "
+
+msgid "Preset Template Library"
+msgstr "预置模版列表"
+
+msgid "Template Name"
+msgstr "模版名称"
+
+msgid "Vendor"
+msgstr "适用厂商"
+
+msgid "Vendor ID"
+msgstr "设备特征码"
+
+msgid "Mode Switching Command"
+msgstr "模式切换指令"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "View Details"
+msgstr "查看详情"
+
+msgid "Template Detail"
+msgstr "模版详情"
+
+msgid "Template ID"
+msgstr "模版标识"
+
+msgid "Target Vendor"
+msgstr "适用厂商"
+
+msgid "USB VID"
+msgstr "设备特征码"
+
+msgid "Mode Switch Command"
+msgstr "模式切换指令格式"
+
+msgid "Raw Configuration"
+msgstr "原始参数配置"
+
+msgid "Close"
+msgstr "关闭"
+
+msgid "Serial Port Selection"
+msgstr "串口端口选择"
+
+msgid "Communication Port:"
+msgstr "通讯端口:"
+
+msgid "Baudrate: 115200 (Auto Locked)"
+msgstr "波特率: 115200 (排他锁定)"
+
+msgid "Quick AT Command Presets"
+msgstr "常用快捷指令面板"
+
+msgid "General Info:"
+msgstr "基础信息:"
+
+msgid "Network State:"
+msgstr "网络状态:"
+
+msgid "Quectel Extra:"
+msgstr "移远专区:"
+
+msgid "Fibocom Extra:"
+msgstr "广和通专区:"
+
+msgid "Interactive Console Output"
+msgstr "交互终端输出"
+
+msgid "Clear Output"
+msgstr "清屏"
+
+msgid "Copy All"
+msgstr "复制全部"
+
+msgid "Terminal output copied to clipboard."
+msgstr "终端输出已成功复制到剪贴板。"
+
+msgid "System ready. Enter an AT command and press Enter or Send to execute."
+msgstr "系统已就绪。输入AT指令后按回车或点击发送即可执行。"
+
+msgid "Enter AT command (e.g. AT+CSQ)..."
+msgstr "输入AT指令 (例如 AT+CSQ)..."
+
+msgid "Send Command"
+msgstr "发送指令"
+
+msgid "Clear Log"
+msgstr "清理日志"
+
+msgid "Log buffer cleared successfully."
+msgstr "日志记录已成功清空。"
+
+msgid "No log entries recorded yet."
+msgstr "暂无日志记录。"

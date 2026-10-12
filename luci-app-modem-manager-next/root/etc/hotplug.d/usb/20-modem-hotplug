@@ -1,0 +1,18 @@
+#!/bin/sh
+# USB Hotplug Event Handler for Cellular Modems
+# Dante <dante@seckv.com>
+
+[ "$DEVTYPE" = "usb_device" ] || exit 0
+
+case "$ACTION" in
+	bind|remove)
+		# Delay slightly to allow sysfs device tree and tty nodes to settle
+		(
+			sleep 1
+			/usr/libexec/modem-detect --cache >/dev/null 2>&1
+			which ubus >/dev/null 2>&1 && ubus send modem.device.change "{\"action\":\"$ACTION\",\"dev\":\"$DEVICENAME\"}" 2>/dev/null || true
+		) &
+		;;
+esac
+
+exit 0

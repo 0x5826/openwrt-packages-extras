@@ -1,0 +1,52 @@
+#!/bin/sh
+# Background Status Collector with Active Terminal Yielding
+# Dante <dante@seckv.com>
+
+RUN_DIR="/tmp/run/modemmanager"
+CACHE_DEVICES="$RUN_DIR/devices.json"
+CACHE_STATUS="$RUN_DIR/status.json"
+TERMINAL_LOCK="/var/lock/modem_terminal_active.lock"
+YIELD_WINDOW=10
+
+mkdir -p "$RUN_DIR" /var/lock
+
+is_terminal_active() {
+	if [ -f "$TERMINAL_LOCK" ]; then
+		local lock_mtime=$(date -r "$TERMINAL_LOCK" +%s 2>/dev/null || echo 0)
+		local now=$(date +%s)
+		local diff=$((now - lock_mtime))
+		if [ "$diff" -ge 0 ] && [ "$diff" -le "$YIELD_WINDOW" ]; then
+			return 0
+		fi
+	fi
+	return 1
+}
+
+collect_single() {
+	if is_terminal_active; then
+		return 0
+	fi
+
+	[ -f "$CACHE_DEVICES" ] || /usr/libexec/modem-detect --cache >/dev/null 2>&1
+
+	ucode -e '
+	import * as fs from "fs";
+	let m = loadfile("/usr/share/rpcd/ucode/luci.modem")();
+	let plugin = m["luci.modem"];
+	let devs_data = plugin.get_devices.call();
+	let dev = (devs_data?.devices && length(devs_data.devices) > 0) ? devs_data.devices[0] : null;
+	if (dev && dev.primary_port) {
+		let status = plugin.collect_raw_status.call({ args: { port: dev.primary_port, primary_net: dev.primary_net || "usb0" } });
+		if (status) {
+			let tmp = "/tmp/run/modemmanager/status.json.tmp";
+			fs.writefile(tmp, sprintf("%J\n", status));
+			fs.rename(tmp, "/tmp/run/modemmanager/status.json");
+		}
+	}
+	' 2>/dev/null || true
+}
+
+while true; do
+	collect_single
+	sleep 5
+done

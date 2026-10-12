@@ -1,0 +1,35 @@
+{
+  "id": "zte-generic",
+  "name": "中兴微 4G/5G 模组",
+  "vendor": "ZTE",
+  "vid": "19d2",
+  "default_baud": 115200,
+  "commands": {
+    "info": "ATI",
+    "cpin": "AT+CPIN?",
+    "csq": "AT+CSQ",
+    "operator": "AT+COPS?",
+    "network_reg": "AT+CEREG?",
+    "reboot": "AT+CFUN=1,1",
+    "airplane_on": "AT+CFUN=4",
+    "airplane_off": "AT+CFUN=1"
+  },
+  "mode_switch": {
+    "cmd": "AT+ZMODE={mode}",
+    "modes": {
+      "ncm": "1",
+      "rndis": "2"
+    }
+  },
+  "rat_preference": {
+    "cmd": "AT+ZSNT={rat}",
+    "options": {
+      "AUTO": "0,0,0",
+      "LTE_ONLY": "6,0,0"
+    }
+  },
+  "supported_bands": {
+    "lte": [ "B1", "B3", "B5", "B8", "B34", "B38", "B39", "B40", "B41" ],
+    "nr5g": [ "N1", "N28", "N41", "N78" ]
+  }
+}

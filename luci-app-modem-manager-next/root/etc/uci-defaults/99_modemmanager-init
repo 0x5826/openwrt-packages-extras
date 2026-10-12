@@ -1,0 +1,6 @@
+#!/bin/sh
+
+chmod 0755 /usr/libexec/modem-at-executor /usr/libexec/modem-detect /usr/libexec/modem-collector 2>/dev/null || true
+chmod 0755 /etc/init.d/modemmanager /etc/hotplug.d/usb/20-modem-hotplug 2>/dev/null || true
+
+exit 0

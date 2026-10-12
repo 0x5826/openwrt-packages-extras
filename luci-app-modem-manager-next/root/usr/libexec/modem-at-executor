@@ -1,0 +1,92 @@
+#!/bin/sh
+# Modem AT Command Safe Executor (Zero-dependency, BusyBox compatible)
+# Dante <dante@seckv.com>
+
+DEVICE=""
+COMMAND=""
+TIMEOUT=3
+BAUDRATE=115200
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-d) DEVICE="$2"; shift 2 ;;
+		-c) COMMAND="$2"; shift 2 ;;
+		-t) TIMEOUT="$2"; shift 2 ;;
+		-b) BAUDRATE="$2"; shift 2 ;;
+		*) shift ;;
+	esac
+done
+
+if [ -z "$DEVICE" ] || [ -z "$COMMAND" ]; then
+	echo "Usage: $0 -d <device> -c <command> [-t <timeout_sec>]" >&2
+	exit 1
+fi
+
+case "$DEVICE" in
+	/dev/ttyUSB*|/dev/ttyACM*) ;;
+	*)
+		echo "ERROR: Invalid device path $DEVICE" >&2
+		exit 2
+		;;
+esac
+
+if [ ! -c "$DEVICE" ]; then
+	echo "ERROR: Device $DEVICE not found" >&2
+	exit 3
+fi
+
+LOCKFILE="/var/lock/modem_$(basename "$DEVICE").lock"
+mkdir -p /var/lock
+
+# Acquire exclusive file lock compatible with Busybox flock (-n -x FD)
+exec 9>"$LOCKFILE"
+locked=0
+waited=0
+while [ $waited -le "$TIMEOUT" ]; do
+	if flock -n -x 9 2>/dev/null; then
+		locked=1
+		break
+	fi
+	sleep 1
+	waited=$((waited + 1))
+done
+
+if [ $locked -eq 0 ]; then
+	echo "ERROR: Device $DEVICE busy, lock timed out" >&2
+	exit 4
+fi
+
+# Configure serial terminal if stty exists
+command -v stty >/dev/null 2>&1 && stty -F "$DEVICE" "$BAUDRATE" raw -echo -echoe -echok min 0 time 2 2>/dev/null || true
+
+OUT_FILE="/tmp/at_out_$$.tmp"
+rm -f "$OUT_FILE"
+
+# Send command and read output safely
+(
+	exec 3<>"$DEVICE"
+	echo -e "${COMMAND}\r" >&3
+	cat <&3 > "$OUT_FILE" &
+	CAT_PID=$!
+	
+	elapsed=0
+	while [ $elapsed -lt "$TIMEOUT" ]; do
+		sleep 1
+		elapsed=$((elapsed + 1))
+		if [ -f "$OUT_FILE" ] && grep -qE "OK|ERROR|\+CME ERROR|\+CMS ERROR" "$OUT_FILE" 2>/dev/null; then
+			break
+		fi
+	done
+	
+	kill -9 "$CAT_PID" 2>/dev/null || true
+	exec 3>&-
+)
+
+flock -u 9 2>/dev/null || true
+
+if [ -f "$OUT_FILE" ]; then
+	cat "$OUT_FILE" | tr -d "\r"
+	rm -f "$OUT_FILE"
+fi
+
+exit 0

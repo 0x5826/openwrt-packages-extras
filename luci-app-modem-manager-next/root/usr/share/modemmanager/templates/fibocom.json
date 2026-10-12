@@ -1,0 +1,40 @@
+{
+  "id": "fibocom-5g",
+  "name": "广和通 4G/5G 全系模组",
+  "vendor": "Fibocom",
+  "vid": "2cb7",
+  "default_baud": 115200,
+  "commands": {
+    "info": "ATI",
+    "cpin": "AT+CPIN?",
+    "csq": "AT+CSQ",
+    "operator": "AT+COPS?",
+    "network_reg": "AT+CEREG?;+C5GREG?",
+    "serving_cell": "AT+GTCCINFO?",
+    "ca_info": "AT+GTCAINFO?",
+    "reboot": "AT+CFUN=1,1",
+    "airplane_on": "AT+CFUN=4",
+    "airplane_off": "AT+CFUN=1"
+  },
+  "mode_switch": {
+    "cmd": "AT+GTUSBMODE={mode}",
+    "modes": {
+      "mbim": "1",
+      "ncm": "2",
+      "ecm": "3",
+      "rndis": "4"
+    }
+  },
+  "rat_preference": {
+    "cmd": "AT+GTRAT={rat}",
+    "options": {
+      "AUTO": "0",
+      "LTE_ONLY": "2",
+      "NR5G_ONLY": "3"
+    }
+  },
+  "supported_bands": {
+    "lte": [ "B1", "B3", "B5", "B8", "B34", "B38", "B39", "B40", "B41" ],
+    "nr5g": [ "N1", "N28", "N41", "N78", "N79" ]
+  }
+}

@@ -1,0 +1,10 @@
+config global 'global'
+	option enabled '1'
+	option check_interval '15'
+	option auto_reconnect '1'
+	option target_host '223.5.5.5'
+	option default_interface 'modem_wan'
+	option log_level 'info'
+
+config template_custom
+	option enabled '0'

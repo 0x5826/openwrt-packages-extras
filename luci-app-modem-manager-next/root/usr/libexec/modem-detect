@@ -1,0 +1,156 @@
+#!/bin/sh
+# Cellular Modem Auto-Detector for OpenWrt
+# Outputs discovered modems in JSON format and updates /tmp/run/modemmanager/devices.json
+
+RUN_DIR="/tmp/run/modemmanager"
+CACHE_FILE="$RUN_DIR/devices.json"
+KNOWN_VENDORS="2c7c 2cb7 1e0e 12d1 19d2 1bbb 05c6 413c 0bdb 1199"
+
+get_sys_attr() {
+	local path="$1"
+	if [ -f "$path" ]; then
+		tr -d '\r\n' < "$path" 2>/dev/null
+	fi
+}
+
+detect_all() {
+	echo "{"
+	echo '  "devices": ['
+
+	local FIRST=1
+
+	for dev in /sys/bus/usb/devices/*; do
+		[ -d "$dev" ] || continue
+		[ -f "$dev/idVendor" ] || continue
+		[ -f "$dev/idProduct" ] || continue
+
+		local VID=$(get_sys_attr "$dev/idVendor")
+		local PID=$(get_sys_attr "$dev/idProduct")
+		local DEVCLASS=$(get_sys_attr "$dev/bDeviceClass")
+
+		case "$VID" in
+			1d6b|2109|1d50) continue ;;
+		esac
+		[ "$DEVCLASS" = "09" ] && continue
+
+		local IS_MODEM=0
+		for kv in $KNOWN_VENDORS; do
+			if [ "$VID" = "$kv" ]; then
+				IS_MODEM=1
+				break
+			fi
+		done
+
+		local DEV_CANON=$(readlink -f "$dev" 2>/dev/null)
+		local DEVNAME=$(basename "$dev")
+
+		local TTYS=""
+		for t in /sys/class/tty/ttyUSB* /sys/class/tty/ttyACM*; do
+			[ -e "$t" ] || continue
+			local t_canon=$(readlink -f "$t" 2>/dev/null)
+			case "$t_canon" in
+				*"$DEV_CANON"*|*"$DEVNAME"*)
+					local b=$(basename "$t")
+					[ -e "/dev/$b" ] && TTYS="$TTYS /dev/$b"
+					;;
+			esac
+		done
+		TTYS=$(echo "$TTYS" | sed 's/^ *//')
+
+		local NETS=""
+		for n in /sys/class/net/*; do
+			[ -d "$n" ] || continue
+			local n_canon=$(readlink -f "$n" 2>/dev/null)
+			case "$n_canon" in
+				*"$DEV_CANON"*|*"$DEVNAME"*)
+					local b=$(basename "$n")
+					case "$b" in
+						lo|br-*|eth*|lan*|wan*|sfp*) ;;
+						*) NETS="$NETS $b" ;;
+					esac
+					;;
+			esac
+		done
+		NETS=$(echo "$NETS" | sed 's/^ *//')
+
+		if [ -n "$TTYS" ] || [ -n "$NETS" ] || [ $IS_MODEM -eq 1 ]; then
+			IS_MODEM=1
+		fi
+
+		[ $IS_MODEM -eq 1 ] || continue
+
+		local MFG=$(get_sys_attr "$dev/manufacturer")
+		local PROD=$(get_sys_attr "$dev/product")
+		local SER=$(get_sys_attr "$dev/serial")
+
+		local PRIMARY_TTY=""
+		for t in $TTYS; do
+			case "$t" in
+				*ttyUSB2|*ttyACM0)
+					PRIMARY_TTY="$t"
+					break
+					;;
+			esac
+		done
+		[ -z "$PRIMARY_TTY" ] && PRIMARY_TTY=$(echo "$TTYS" | awk '{print $1}')
+		local PRIMARY_NET=$(echo "$NETS" | awk '{print $1}')
+
+		local DRIVER="option"
+		for drv in $(find "$dev" -name "driver" 2>/dev/null); do
+			local drv_target=$(basename "$(readlink -f "$drv" 2>/dev/null)")
+			case "$drv_target" in
+				cdc_mbim|cdc_ncm|qmi_wwan|cdc_ether|rndis_host)
+					DRIVER="$drv_target"
+					break
+					;;
+			esac
+		done
+
+		[ $FIRST -eq 1 ] || echo ","
+		FIRST=0
+
+		local TTY_JSON=""
+		for t in $TTYS; do
+			[ -n "$TTY_JSON" ] && TTY_JSON="$TTY_JSON, "
+			TTY_JSON="$TTY_JSON\"$t\""
+		done
+
+		local NET_JSON=""
+		for n in $NETS; do
+			[ -n "$NET_JSON" ] && NET_JSON="$NET_JSON, "
+			NET_JSON="$NET_JSON\"$n\""
+		done
+
+		cat <<EOF
+    {
+      "id": "$DEVNAME",
+      "vid": "$VID",
+      "pid": "$PID",
+      "vendor": "${MFG:-Generic}",
+      "model": "${PROD:-Modem}",
+      "serial": "${SER}",
+      "driver": "$DRIVER",
+      "primary_port": "$PRIMARY_TTY",
+      "primary_net": "$PRIMARY_NET",
+      "ports": [ $TTY_JSON ],
+      "nets": [ $NET_JSON ]
+    }
+EOF
+	done
+
+	echo "  ]"
+	echo "}"
+}
+
+mkdir -p "$RUN_DIR"
+OUTPUT=$(detect_all)
+
+# Atomic update cache
+echo "$OUTPUT" > "${CACHE_FILE}.tmp" && mv -f "${CACHE_FILE}.tmp" "$CACHE_FILE"
+
+# Output to stdout if not purely --cache mode
+if [ "$1" != "--cache" ]; then
+	echo "$OUTPUT"
+fi
+
+exit 0

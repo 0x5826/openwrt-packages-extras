@@ -1,0 +1,52 @@
+{
+	"admin/network/modem": {
+		"title": "Modem Manager",
+		"order": 65,
+		"action": {
+			"type": "firstchild"
+		},
+		"depends": {
+			"acl": [ "luci-app-modem-manager" ]
+		}
+	},
+	"admin/network/modem/overview": {
+		"title": "Overview",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "modem/overview"
+		}
+	},
+	"admin/network/modem/settings": {
+		"title": "Settings",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "modem/settings"
+		}
+	},
+	"admin/network/modem/templates": {
+		"title": "Templates",
+		"order": 30,
+		"action": {
+			"type": "view",
+			"path": "modem/templates"
+		}
+	},
+	"admin/network/modem/terminal": {
+		"title": "AT Terminal",
+		"order": 40,
+		"action": {
+			"type": "view",
+			"path": "modem/terminal"
+		}
+	},
+	"admin/network/modem/log": {
+		"title": "Log",
+		"order": 50,
+		"action": {
+			"type": "view",
+			"path": "modem/log"
+		}
+	}
+}
