@@ -880,3 +880,15 @@ msgstr "运行时间："
 
 msgid "days"
 msgstr "天"
+
+msgid "Target Modem"
+msgstr "目标模组"
+
+msgid "Communication Port"
+msgstr "通信端口"
+
+msgid "Select the active cellular module to configure."
+msgstr "选择当前需要配置的目标蜂窝通信模组。"
+
+msgid "Select the active cellular module to manage SMS messages."
+msgstr "选择当前需要管理短信的目标蜂窝通信模组。"

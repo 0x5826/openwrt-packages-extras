@@ -304,40 +304,6 @@ return view.extend({
 		self.selectedPort = self.devicesList[0].primary_port;
 		self.selectedNet = self.devicesList[0].primary_net;
 
-		const deviceOptions = [];
-		self.devicesList.forEach(function(dev, idx) {
-			let label = dev.vendor + ' ' + dev.model + ' [' + (dev.primary_port || _('No Port')) + ' / ' + (dev.primary_net || _('No Net')) + ']';
-			const optAttrs = { value: dev.primary_port, 'data-net': dev.primary_net };
-			if (idx === 0) optAttrs.selected = '';
-			deviceOptions.push(E('option', optAttrs, label));
-		});
-
-		const selectorNode = E('fieldset', { 'class': 'cbi-section' }, [
-			E('legend', {}, _('Active Modem Selection')),
-			E('div', { 'class': 'cbi-section-node' }, [
-				E('div', { 'style': 'display: flex; align-items: center; gap: 15px; padding: 10px 0;' }, [
-					E('label', { 'style': 'font-weight: bold;' }, _('Current Device:')),
-					E('select', {
-						'class': 'cbi-input-select',
-						'style': 'min-width: 320px;',
-						'change': function(ev) {
-							self.selectedPort = ev.target.value;
-							let opt = ev.target.options[ev.target.selectedIndex];
-							self.selectedNet = opt.getAttribute('data-net');
-							self.forceRefresh();
-						}
-					}, deviceOptions),
-					E('input', {
-						'type': 'button',
-						'class': 'btn cbi-button cbi-button-reload',
-						'value': _('Refresh'),
-						'click': ui.createHandlerFn(self, 'forceRefresh')
-					})
-				])
-			])
-		]);
-		container.appendChild(selectorNode);
-
 		const firstDev = self.devicesList[0] || {};
 		const hwSection = E('fieldset', { 'class': 'cbi-section' }, [
 			E('legend', {}, _('Hardware Information')),
@@ -424,6 +390,12 @@ return view.extend({
 				])
 			]),
 			E('div', { 'style': 'margin-top: 15px; display: flex; gap: 10px;' }, [
+				E('input', {
+					'type': 'button',
+					'class': 'btn cbi-button cbi-button-reload',
+					'value': _('Refresh'),
+					'click': ui.createHandlerFn(self, 'forceRefresh')
+				}),
 				E('input', {
 					'type': 'button',
 					'class': 'btn cbi-button cbi-button-reset',

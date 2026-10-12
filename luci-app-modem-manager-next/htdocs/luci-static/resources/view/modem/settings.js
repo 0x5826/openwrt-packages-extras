@@ -18,7 +18,7 @@ const callGetConfig = rpc.declare({
 const callSaveConfig = rpc.declare({
 	object: 'luci.modem',
 	method: 'save_config',
-	params: [ 'port', 'baud' ]
+	params: [ 'port', 'baud', 'ifname' ]
 });
 
 const callSetMode = rpc.declare({
@@ -81,6 +81,11 @@ return view.extend({
 		const ratEl = document.getElementById('modem_rat_select');
 		const ratVal = ratEl ? ratEl.value : 'AUTO';
 
+		const apnEl = document.getElementById('modem_apn');
+		const apnVal = apnEl ? apnEl.value.trim() : 'cmiot';
+		const pdpEl = document.getElementById('modem_pdp');
+		const pdpVal = pdpEl ? pdpEl.value : 'IPV4V6';
+
 		const lteEls = document.querySelectorAll('.modem-band-lte:checked');
 		const nrEls = document.querySelectorAll('.modem-band-nr:checked');
 		const bandsLte = [];
@@ -93,7 +98,7 @@ return view.extend({
 		]);
 
 		Promise.all([
-			callSaveConfig(targetPort, baudVal),
+			callSaveConfig(targetPort, baudVal, ifname),
 			callSetMode(targetPort, modeVal, 'quectel-5g', syncNet, ifname, self.selectedNet),
 			callSetPreferences(targetPort, ratVal, bandsLte, bandsNr),
 			callSetApn(targetPort, apnVal, pdpVal)
@@ -138,21 +143,25 @@ return view.extend({
 			]));
 		}
 
-		// Device Selector
+		// Target Modem Selector
 		const selectorNode = E('fieldset', { 'class': 'cbi-section' }, [
 			E('legend', {}, _('Target Modem Selection')),
 			E('div', { 'class': 'cbi-section-node' }, [
-				E('div', { 'style': 'display: flex; align-items: center; gap: 15px; padding: 10px 0;' }, [
-					E('label', { 'style': 'font-weight: bold;' }, _('Active Device:')),
-					deviceOptions.length > 0 ? E('select', {
-						'class': 'cbi-input-select',
-						'style': 'min-width: 320px;',
-						'change': function(ev) {
-							self.selectedPort = ev.target.value;
-							let opt = ev.target.options[ev.target.selectedIndex];
-							self.selectedNet = opt.getAttribute('data-net');
-						}
-					}, deviceOptions) : E('span', { 'style': 'color: red;' }, _('No cellular modems detected.')),
+				E('div', { 'class': 'cbi-value' }, [
+					E('label', { 'class': 'cbi-value-title' }, _('Target Modem')),
+					E('div', { 'class': 'cbi-value-field' }, [
+						deviceOptions.length > 0 ? E('select', {
+							'id': 'modem_device_select',
+							'class': 'cbi-input-select',
+							'style': 'min-width: 320px;',
+							'change': function(ev) {
+								self.selectedPort = ev.target.value;
+								let opt = ev.target.options[ev.target.selectedIndex];
+								self.selectedNet = opt ? opt.getAttribute('data-net') : null;
+							}
+						}, deviceOptions) : E('span', { 'style': 'color: red;' }, _('No cellular modems detected.')),
+						E('div', { 'class': 'cbi-value-description' }, _('Select the active cellular module to configure.'))
+					])
 				])
 			])
 		]);
@@ -267,7 +276,12 @@ return view.extend({
 				E('div', { 'class': 'cbi-value' }, [
 					E('label', { 'class': 'cbi-value-title' }, _('Interface Name')),
 					E('div', { 'class': 'cbi-value-field' }, [
-						E('input', { 'type': 'text', 'id': 'modem_ifname', 'class': 'cbi-input-text', 'value': 'modem_wan' }),
+						E('input', {
+							'type': 'text',
+							'id': 'modem_ifname',
+							'class': 'cbi-input-text',
+							'value': (self.configData && self.configData.default_interface) ? self.configData.default_interface : 'modem_wan'
+						}),
 						E('div', { 'class': 'cbi-value-description' }, _('The OpenWrt logical interface name to associate with this modem.'))
 					])
 				])

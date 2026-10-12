@@ -250,26 +250,49 @@ function do_collect_status(port, net_dev) {
 				let is_match = (net_dev && (iface.l3_device === net_dev || iface.device === net_dev)) ||
 				               (!net_dev && (iface.interface === 'wwan' || iface.proto === 'qmi' || iface.proto === 'modemmanager'));
 				if (is_match) {
-					net_info.interface = iface.interface || '';
+					if (!net_info.interface || net_info.interface === '') {
+						net_info.interface = iface.interface || '';
+					} else if (iface.interface && match(net_info.interface, iface.interface) == null) {
+						net_info.interface += ', ' + iface.interface;
+					}
 					net_info.device = iface.l3_device || iface.device || net_dev;
-					net_info.connected = iface.up ? true : false;
-					net_info.uptime = iface.uptime || 0;
-					net_info.proto = iface.proto || '';
+					if (iface.up) net_info.connected = true;
+					if (iface.uptime && iface.uptime > net_info.uptime) net_info.uptime = iface.uptime;
+					if (!net_info.proto || net_info.proto === '') {
+						net_info.proto = iface.proto || '';
+					} else if (iface.proto && match(net_info.proto, iface.proto) == null) {
+						net_info.proto += '/' + iface.proto;
+					}
 					if (iface['ipv4-address']) {
 						for (let j = 0; j < length(iface['ipv4-address']); j++) {
 							let addr = iface['ipv4-address'][j];
-							push(net_info.ip4, addr.address + '/' + addr.mask);
+							let ip_str = addr.address + '/' + addr.mask;
+							let exists = false;
+							for (let x = 0; x < length(net_info.ip4); x++) {
+								if (net_info.ip4[x] === ip_str) { exists = true; break; }
+							}
+							if (!exists) push(net_info.ip4, ip_str);
 						}
 					}
 					if (iface['ipv6-address']) {
 						for (let k = 0; k < length(iface['ipv6-address']); k++) {
 							let addr = iface['ipv6-address'][k];
-							push(net_info.ip6, addr.address + '/' + addr.mask);
+							let ip_str = addr.address + '/' + addr.mask;
+							let exists = false;
+							for (let x = 0; x < length(net_info.ip6); x++) {
+								if (net_info.ip6[x] === ip_str) { exists = true; break; }
+							}
+							if (!exists) push(net_info.ip6, ip_str);
 						}
 					}
 					if (iface['dns-server']) {
 						for (let d = 0; d < length(iface['dns-server']); d++) {
-							push(net_info.dns, iface['dns-server'][d]);
+							let dns_item = iface['dns-server'][d];
+							let exists = false;
+							for (let x = 0; x < length(net_info.dns); x++) {
+								if (net_info.dns[x] === dns_item) { exists = true; break; }
+							}
+							if (!exists) push(net_info.dns, dns_item);
 						}
 					}
 					if (iface.route) {
@@ -280,7 +303,7 @@ function do_collect_status(port, net_dev) {
 							}
 						}
 					}
-					break;
+					// Do not break: continue to aggregate companion dual-stack interfaces (e.g. wwan and wwan6)
 				}
 			}
 		}
@@ -303,6 +326,20 @@ function do_collect_status(port, net_dev) {
 			let carrier = trim(fs.readfile(`/sys/class/net/${target_dev}/carrier`) || '');
 			if (oper === 'up' || carrier === '1') {
 				net_info.connected = true;
+			}
+		}
+		if (length(net_info.ip6) === 0) {
+			let p_ip6 = fs.popen(`ip -6 -o addr show dev '${target_dev}' scope global 2>/dev/null`, 'r');
+			if (p_ip6) {
+				let out_ip6 = p_ip6.read('all') || '';
+				p_ip6.close();
+				let lines_ip6 = split(trim(out_ip6), '\n');
+				for (let li = 0; li < length(lines_ip6); li++) {
+					let m_ip6 = match(lines_ip6[li], /inet6\s+([0-9a-fA-F:]+\/[0-9]+)\s+scope global/);
+					if (m_ip6) {
+						push(net_info.ip6, m_ip6[1]);
+					}
+				}
 			}
 		}
 	}
@@ -520,9 +557,21 @@ const methods = {
 					} else {
 						c.set('network', ifname, 'proto', 'dhcp');
 						c.set('network', ifname, 'device', dev_net);
+						c.set('network', ifname, 'accept_ra', '2');
+
+						let ifname6 = ifname + '6';
+						if (!c.get('network', ifname6)) {
+							c.set('network', ifname6, 'interface');
+						}
+						c.set('network', ifname6, 'proto', 'dhcpv6');
+						c.set('network', ifname6, 'device', dev_net);
+						c.set('network', ifname6, 'reqaddress', 'try');
+						c.set('network', ifname6, 'reqprefix', 'auto');
+						c.set('network', ifname6, 'norelease', '1');
 					}
 
 					c.commit('network');
+					system("/sbin/reload_config >/dev/null 2>&1 || ubus call network reload >/dev/null 2>&1 &");
 					log_message(`[NETWORK] Synchronized OpenWrt network interface ${ifname} with proto ${mode}`);
 				}
 			}
@@ -641,16 +690,17 @@ const methods = {
 	get_config: {
 		call: function() {
 			let c = cursor();
-			if (!c) return { port: '', baud: '115200' };
+			if (!c) return { port: '', baud: '115200', default_interface: 'modem_wan' };
 			c.load('modem-manager');
 			let port = c.get('modem-manager', 'global', 'port') || '';
 			let baud = c.get('modem-manager', 'global', 'baud') || '115200';
-			return { port: port, baud: baud };
+			let ifname = c.get('modem-manager', 'global', 'default_interface') || 'modem_wan';
+			return { port: port, baud: baud, default_interface: ifname };
 		}
 	},
 
 	save_config: {
-		args: { port: '', baud: '' },
+		args: { port: '', baud: '', ifname: '' },
 		call: function(req) {
 			let c = cursor();
 			if (!c) return { success: false, error: 'Cannot open UCI cursor' };
@@ -663,6 +713,9 @@ const methods = {
 			}
 			if (req.args?.baud != null) {
 				c.set('modem-manager', 'global', 'baud', req.args.baud);
+			}
+			if (req.args?.ifname != null && req.args.ifname != '') {
+				c.set('modem-manager', 'global', 'default_interface', req.args.ifname);
 			}
 			c.commit('modem-manager');
 			system("/etc/init.d/modem-manager restart >/dev/null 2>&1 &");

@@ -494,17 +494,19 @@ return view.extend({
 		const selectorNode = E('fieldset', { 'class': 'cbi-section' }, [
 			E('legend', {}, _('Serial Port Selection')),
 			E('div', { 'class': 'cbi-section-node' }, [
-				E('div', { 'style': 'display: flex; align-items: center; gap: 15px; padding: 10px 0;' }, [
-					E('label', { 'style': 'font-weight: bold;' }, _('Communication Port:')),
-					portOptions.length > 0 ? E('select', {
-						'id': 'modem_terminal_port_select',
-						'class': 'cbi-input-select',
-						'style': 'min-width: 320px;',
-						'change': function(ev) {
-							self.selectedPort = ev.target.value;
-						}
-					}, portOptions) : E('span', { 'style': 'color: red;' }, _('No serial communication ports detected.')),
-					E('label', { 'style': 'margin-left: 20px;' }, _('Baudrate: 115200 (Auto Locked)'))
+				E('div', { 'class': 'cbi-value' }, [
+					E('label', { 'class': 'cbi-value-title' }, _('Communication Port')),
+					E('div', { 'class': 'cbi-value-field', 'style': 'display: flex; align-items: center; gap: 15px;' }, [
+						portOptions.length > 0 ? E('select', {
+							'id': 'modem_terminal_port_select',
+							'class': 'cbi-input-select',
+							'style': 'min-width: 320px;',
+							'change': function(ev) {
+								self.selectedPort = ev.target.value;
+							}
+						}, portOptions) : E('span', { 'style': 'color: red;' }, _('No serial communication ports detected.')),
+						E('span', { 'style': 'color: #666; font-size: 12px;' }, _('Baudrate: 115200 (Auto Locked)'))
+					])
 				])
 			])
 		]);

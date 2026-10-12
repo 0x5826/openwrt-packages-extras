@@ -465,14 +465,6 @@ return view.extend({
 
 	render: function() {
 		const self = this;
-		const deviceOptions = [];
-		self.devicesList.forEach(function(dev, idx) {
-			let label = dev.vendor + ' ' + dev.model + ' (' + (dev.primary_port || _('No Port')) + ')';
-			let isSelected = (dev.primary_port === self.selectedPort) || (idx === 0 && !self.selectedPort);
-			const optAttrs = { value: dev.primary_port };
-			if (isSelected) optAttrs.selected = '';
-			deviceOptions.push(E('option', optAttrs, label));
-		});
 
 		const container = E('div', { 'class': 'cbi-map' }, [
 			E('h2', {}, _('Cellular Modem Manager') + ' - ' + _('SMS Management')),
@@ -486,25 +478,6 @@ return view.extend({
 			]));
 			return container;
 		}
-
-		// Device Selector
-		const selectorNode = E('fieldset', { 'class': 'cbi-section' }, [
-			E('legend', {}, _('Active Modem Selection')),
-			E('div', { 'class': 'cbi-section-node' }, [
-				E('div', { 'style': 'display: flex; align-items: center; gap: 15px; padding: 10px 0;' }, [
-					E('label', { 'style': 'font-weight: bold;' }, _('Active Device:')),
-					E('select', {
-						'class': 'cbi-input-select',
-						'style': 'min-width: 320px;',
-						'change': function(ev) {
-							self.selectedPort = ev.target.value;
-							self.handleRefreshList();
-						}
-					}, deviceOptions)
-				])
-			])
-		]);
-		container.appendChild(selectorNode);
 
 		// Dynamic SMS content container
 		const mainArea = E('div', { 'id': 'sms_main_content' });
