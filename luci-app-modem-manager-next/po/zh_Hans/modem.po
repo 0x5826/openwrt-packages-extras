@@ -859,3 +859,24 @@ msgstr "查看后台 AT 指令追踪轨迹、硬件热插拔探测事件与自�
 
 msgid "Signal CSQ"
 msgstr "CSQ 信号强度"
+
+msgid "Network Interface"
+msgstr "网络接口"
+
+msgid "Assigned IPv6"
+msgstr "已分配 IPv6"
+
+msgid "Real-time Rate"
+msgstr "实时速率"
+
+msgid "Packets"
+msgstr "数据包"
+
+msgid "Total: "
+msgstr "总计："
+
+msgid "Uptime: "
+msgstr "运行时间："
+
+msgid "days"
+msgstr "天"

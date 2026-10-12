@@ -18,36 +18,31 @@ const callGetConfig = rpc.declare({
 const callGetSmsStatus = rpc.declare({
 	object: 'luci.modem',
 	method: 'get_sms_status',
-	params: [ 'port' ],
-	expect: { enabled: false, used: 0, total: 0 }
+	params: [ 'port' ]
 });
 
 const callSetSmsEnable = rpc.declare({
 	object: 'luci.modem',
 	method: 'set_sms_enable',
-	params: [ 'enabled', 'port' ],
-	expect: { success: false, enabled: false }
+	params: [ 'enabled', 'port' ]
 });
 
 const callGetSmsList = rpc.declare({
 	object: 'luci.modem',
 	method: 'get_sms_list',
-	params: [ 'port' ],
-	expect: { enabled: false, messages: [], count: 0 }
+	params: [ 'port' ]
 });
 
 const callSendSms = rpc.declare({
 	object: 'luci.modem',
 	method: 'send_sms',
-	params: [ 'port', 'recipient', 'message' ],
-	expect: { success: false, output: '' }
+	params: [ 'port', 'recipient', 'message' ]
 });
 
 const callDeleteSms = rpc.declare({
 	object: 'luci.modem',
 	method: 'delete_sms',
-	params: [ 'port', 'index' ],
-	expect: { success: false, output: '' }
+	params: [ 'port', 'index' ]
 });
 
 return view.extend({
@@ -269,8 +264,8 @@ return view.extend({
 						ui.showModal(actionTitle, [
 							E('p', { 'class': 'spinning' }, _('Updating configuration, please wait...'))
 						]);
-						callSetSmsEnable(enable ? '1' : '0', self.selectedPort).then(function(res) {
-							self.smsEnabled = !!(res && res.enabled);
+						callSetSmsEnable(!!enable, self.selectedPort).then(function(res) {
+							self.smsEnabled = !!(res && (res.enabled || res.success));
 							if (self.smsEnabled) {
 								return Promise.all([
 									callGetSmsStatus(self.selectedPort),
@@ -279,7 +274,7 @@ return view.extend({
 									const st = datas[0] || {};
 									const ls = datas[1] || {};
 									self.smsCapacity = { used: st.used || 0, total: st.total || 0 };
-									self.smsList = ls.messages || [];
+									self.smsList = (ls && Array.isArray(ls.messages)) ? ls.messages : [];
 									ui.hideModal();
 									self.renderSmsState();
 								});
@@ -316,7 +311,7 @@ return view.extend({
 			const st = results[0] || {};
 			const ls = results[1] || {};
 			self.smsCapacity = { used: st.used || 0, total: st.total || 0 };
-			self.smsList = ls.messages || [];
+			self.smsList = (ls && Array.isArray(ls.messages)) ? ls.messages : [];
 			ui.hideModal();
 			self.renderSmsState();
 			ui.addNotification(null, E('p', {}, _('SMS list refreshed successfully.')), 'info');
@@ -474,7 +469,9 @@ return view.extend({
 		self.devicesList.forEach(function(dev, idx) {
 			let label = dev.vendor + ' ' + dev.model + ' (' + (dev.primary_port || _('No Port')) + ')';
 			let isSelected = (dev.primary_port === self.selectedPort) || (idx === 0 && !self.selectedPort);
-			deviceOptions.push(E('option', { value: dev.primary_port, selected: isSelected }, label));
+			const optAttrs = { value: dev.primary_port };
+			if (isSelected) optAttrs.selected = '';
+			deviceOptions.push(E('option', optAttrs, label));
 		});
 
 		const container = E('div', { 'class': 'cbi-map' }, [

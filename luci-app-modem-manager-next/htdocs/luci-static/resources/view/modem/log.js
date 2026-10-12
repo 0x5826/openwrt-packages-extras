@@ -56,14 +56,14 @@ return view.extend({
 		]);
 
 		const logSection = E('fieldset', { 'class': 'cbi-section' }, [
-			E('legend', {}, [
-				_('Modem Manager Logs'),
-				E('span', { 'style': 'float: right;' }, [
+			E('legend', { 'style': 'display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;' }, [
+				E('span', {}, _('Modem Manager Logs')),
+				E('span', { 'style': 'display: inline-flex; gap: 8px; align-items: center; margin-left: auto;' }, [
 					E('input', {
 						'type': 'button',
 						'class': 'btn cbi-button cbi-button-reload',
 						'value': _('Refresh'),
-						'style': 'margin-right: 8px; font-size: 11px;',
+						'style': 'font-size: 11px;',
 						'click': ui.createHandlerFn(self, 'updateLog')
 					}),
 					E('input', {

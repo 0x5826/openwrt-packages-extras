@@ -463,14 +463,19 @@ return view.extend({
 		self.devicesList.forEach(function(dev) {
 			if (dev.ports && dev.ports.length > 0) {
 				dev.ports.forEach(function(p) {
-					let label = p + ' (' + dev.vendor + ' ' + dev.model + ')';
-					portOptions.push(E('option', { value: p, selected: p === dev.primary_port }, label));
+					const isPrimary = (p === dev.primary_port);
+					let label = p + ' (' + dev.vendor + ' ' + dev.model + ')' + (isPrimary ? ' [' + _('Primary AT Port') + ']' : '');
+					const optAttrs = { value: p };
+					if (isPrimary) {
+						optAttrs.selected = '';
+					}
+					portOptions.push(E('option', optAttrs, label));
 				});
 			}
 		});
 
 		if (portOptions.length > 0) {
-			self.selectedPort = self.devicesList[0].primary_port;
+			self.selectedPort = self.devicesList[0].primary_port || (self.devicesList[0].ports ? self.devicesList[0].ports[0] : null);
 		}
 
 		const container = E('div', { 'class': 'cbi-map' }, [
@@ -492,8 +497,9 @@ return view.extend({
 				E('div', { 'style': 'display: flex; align-items: center; gap: 15px; padding: 10px 0;' }, [
 					E('label', { 'style': 'font-weight: bold;' }, _('Communication Port:')),
 					portOptions.length > 0 ? E('select', {
+						'id': 'modem_terminal_port_select',
 						'class': 'cbi-input-select',
-						'style': 'min-width: 300px;',
+						'style': 'min-width: 320px;',
 						'change': function(ev) {
 							self.selectedPort = ev.target.value;
 						}
@@ -506,9 +512,9 @@ return view.extend({
 
 		// Favorites and Presets Section
 		const presetsSection = E('fieldset', { 'class': 'cbi-section' }, [
-			E('legend', {}, [
-				_('Command Presets and Favorites'),
-				E('span', { 'style': 'float: right;' }, [
+			E('legend', { 'style': 'display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;' }, [
+				E('span', {}, _('Command Presets and Favorites')),
+				E('span', { 'style': 'display: inline-flex; gap: 8px; align-items: center; margin-left: auto;' }, [
 					E('input', {
 						'type': 'button',
 						'class': 'btn cbi-button',
@@ -546,14 +552,14 @@ return view.extend({
 
 		// Terminal Output Box
 		const outputSection = E('fieldset', { 'class': 'cbi-section' }, [
-			E('legend', {}, [
-				_('Interactive Console Output'),
-				E('span', { 'style': 'float: right;' }, [
+			E('legend', { 'style': 'display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;' }, [
+				E('span', {}, _('Interactive Console Output')),
+				E('span', { 'style': 'display: inline-flex; gap: 8px; align-items: center; margin-left: auto;' }, [
 					E('input', {
 						'type': 'button',
 						'class': 'btn cbi-button',
 						'value': _('Clear Output'),
-						'style': 'margin-right: 8px; font-size: 11px;',
+						'style': 'font-size: 11px;',
 						'click': function() {
 							const out = document.getElementById('terminal_output');
 							if (out) out.innerHTML = '';
@@ -563,7 +569,7 @@ return view.extend({
 						'type': 'button',
 						'class': 'btn cbi-button',
 						'value': _('Export Log'),
-						'style': 'margin-right: 8px; font-size: 11px;',
+						'style': 'font-size: 11px;',
 						'click': ui.createHandlerFn(self, 'exportLogFile')
 					}),
 					E('input', {

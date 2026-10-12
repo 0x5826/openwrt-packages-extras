@@ -226,17 +226,35 @@ function do_collect_status(port, net_dev) {
 		if (m_temp2) temp = int(m_temp2[1]);
 	}
 
-	let net_info = { connected: false, ip4: [], ip6: [], rx_bytes: 0, tx_bytes: 0 };
+	let net_info = {
+		connected: false,
+		device: net_dev || '',
+		interface: '',
+		proto: '',
+		uptime: 0,
+		ip4: [],
+		ip6: [],
+		dns: [],
+		gateway: '',
+		rx_bytes: 0,
+		tx_bytes: 0,
+		rx_packets: 0,
+		tx_packets: 0
+	};
 	let u = connect();
 	if (u) {
 		let net_status = u.call('network.interface', 'dump');
 		if (net_status?.interface) {
 			for (let i = 0; i < length(net_status.interface); i++) {
 				let iface = net_status.interface[i];
-				if (iface.l3_device === net_dev || iface.device === net_dev) {
-					net_info.interface = iface.interface;
-					net_info.connected = iface.up;
-					net_info.uptime = iface.uptime;
+				let is_match = (net_dev && (iface.l3_device === net_dev || iface.device === net_dev)) ||
+				               (!net_dev && (iface.interface === 'wwan' || iface.proto === 'qmi' || iface.proto === 'modemmanager'));
+				if (is_match) {
+					net_info.interface = iface.interface || '';
+					net_info.device = iface.l3_device || iface.device || net_dev;
+					net_info.connected = iface.up ? true : false;
+					net_info.uptime = iface.uptime || 0;
+					net_info.proto = iface.proto || '';
 					if (iface['ipv4-address']) {
 						for (let j = 0; j < length(iface['ipv4-address']); j++) {
 							let addr = iface['ipv4-address'][j];
@@ -249,12 +267,42 @@ function do_collect_status(port, net_dev) {
 							push(net_info.ip6, addr.address + '/' + addr.mask);
 						}
 					}
-					if (iface.data) {
-						net_info.rx_bytes = iface.data.rx_bytes || 0;
-						net_info.tx_bytes = iface.data.tx_bytes || 0;
+					if (iface['dns-server']) {
+						for (let d = 0; d < length(iface['dns-server']); d++) {
+							push(net_info.dns, iface['dns-server'][d]);
+						}
+					}
+					if (iface.route) {
+						for (let r = 0; r < length(iface.route); r++) {
+							if (iface.route[r].target === '0.0.0.0' && iface.route[r].nexthop) {
+								net_info.gateway = iface.route[r].nexthop;
+								break;
+							}
+						}
 					}
 					break;
 				}
+			}
+		}
+	}
+
+	let target_dev = net_info.device || net_dev;
+	if (target_dev) {
+		let stat_rx = `/sys/class/net/${target_dev}/statistics/rx_bytes`;
+		let stat_tx = `/sys/class/net/${target_dev}/statistics/tx_bytes`;
+		let stat_rx_pkt = `/sys/class/net/${target_dev}/statistics/rx_packets`;
+		let stat_tx_pkt = `/sys/class/net/${target_dev}/statistics/tx_packets`;
+		if (fs.access(stat_rx)) {
+			net_info.rx_bytes = int(trim(fs.readfile(stat_rx))) || 0;
+			net_info.tx_bytes = int(trim(fs.readfile(stat_tx))) || 0;
+			net_info.rx_packets = int(trim(fs.readfile(stat_rx_pkt))) || 0;
+			net_info.tx_packets = int(trim(fs.readfile(stat_tx_pkt))) || 0;
+		}
+		if (!net_info.connected) {
+			let oper = trim(fs.readfile(`/sys/class/net/${target_dev}/operstate`) || '');
+			let carrier = trim(fs.readfile(`/sys/class/net/${target_dev}/carrier`) || '');
+			if (oper === 'up' || carrier === '1') {
+				net_info.connected = true;
 			}
 		}
 	}
@@ -674,7 +722,7 @@ const methods = {
 	},
 
 	set_sms_enable: {
-		args: { enabled: false, port: '' },
+		args: { enabled: true, port: '' },
 		call: function(req) {
 			let is_enable = (req.args?.enabled === true || req.args?.enabled === '1' || req.args?.enabled === 1) ? '1' : '0';
 			let c = cursor();

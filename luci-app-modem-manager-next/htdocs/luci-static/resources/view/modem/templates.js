@@ -88,18 +88,19 @@ return view.extend({
 			]));
 		}
 
+		const tableRows = [
+			E('tr', { 'class': 'tr table-titles' }, [
+				E('th', { 'class': 'th left' }, _('Template Name')),
+				E('th', { 'class': 'th left' }, _('Vendor')),
+				E('th', { 'class': 'th left' }, _('Vendor ID')),
+				E('th', { 'class': 'th left' }, _('Mode Switching Command')),
+				E('th', { 'class': 'th right' }, _('Actions'))
+			])
+		].concat(rows);
+
 		const listSection = E('fieldset', { 'class': 'cbi-section' }, [
 			E('legend', {}, _('Preset Template Library')),
-			E('table', { 'class': 'table cbi-section-table' }, [
-				E('tr', { 'class': 'tr table-titles' }, [
-					E('th', { 'class': 'th left' }, _('Template Name')),
-					E('th', { 'class': 'th left' }, _('Vendor')),
-					E('th', { 'class': 'th left' }, _('Vendor ID')),
-					E('th', { 'class': 'th left' }, _('Mode Switching Command')),
-					E('th', { 'class': 'th right' }, _('Actions'))
-				]),
-				rows
-			])
+			E('table', { 'class': 'table cbi-section-table' }, tableRows)
 		]);
 		container.appendChild(listSection);
 

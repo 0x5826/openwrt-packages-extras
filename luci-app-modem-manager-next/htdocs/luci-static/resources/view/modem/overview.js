@@ -97,6 +97,32 @@ return view.extend({
 		}).catch(function(e) {});
 	},
 
+	formatBytes: function(bytes) {
+		if (bytes === null || bytes === undefined || isNaN(bytes) || bytes < 0) return '0 B';
+		if (bytes === 0) return '0 B';
+		const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+		const k = 1024;
+		const i = Math.floor(Math.log(bytes) / Math.log(k));
+		const val = (bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 2);
+		return val + ' ' + units[i];
+	},
+
+	formatSpeed: function(bytesPerSec) {
+		if (bytesPerSec === null || bytesPerSec === undefined || isNaN(bytesPerSec) || bytesPerSec < 0) return '0 B/s';
+		return this.formatBytes(bytesPerSec) + '/s';
+	},
+
+	formatUptime: function(sec) {
+		if (!sec || sec <= 0) return '-';
+		const d = Math.floor(sec / 86400);
+		const h = Math.floor((sec % 86400) / 3600);
+		const m = Math.floor((sec % 3600) / 60);
+		const s = Math.floor(sec % 60);
+		let str = (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+		if (d > 0) return d + ' ' + _('days') + ' ' + str;
+		return str;
+	},
+
 	applyStatusDOM: function(status) {
 		const self = this;
 		if (!status) return;
@@ -165,19 +191,86 @@ return view.extend({
 
 		const netStatus = document.getElementById('modem_net_status');
 		if (netStatus) {
-			let netText = net.connected ? _('Connected') : _('Disconnected');
-			let netColor = net.connected ? 'green' : 'red';
-			dom.content(netStatus, E('span', { 'style': 'color:' + netColor + '; font-weight: bold;' }, netText));
+			let isConn = !!net.connected;
+			let netText = isConn ? _('Connected') : _('Disconnected');
+			let netColor = isConn ? '#4caf50' : '#f44336';
+			let uptimeStr = (isConn && net.uptime) ? self.formatUptime(net.uptime) : '';
+			dom.content(netStatus, [
+				E('span', {
+					'style': 'background-color: ' + netColor + '; color: #fff; padding: 2px 8px; border-radius: 3px; font-weight: bold; font-size: 11px; margin-right: 8px;'
+				}, netText),
+				uptimeStr ? E('span', { 'style': 'color: #555; font-size: 12px;' }, _('Uptime: ') + uptimeStr) : ''
+			]);
+		}
+
+		const netIface = document.getElementById('modem_net_iface');
+		if (netIface) {
+			let ifaceName = net.interface || '';
+			let devName = net.device || self.selectedNet || '';
+			let protoStr = net.proto ? ' [' + net.proto.toUpperCase() + ']' : '';
+			let disp = ifaceName;
+			if (devName && devName !== ifaceName) {
+				disp = disp ? (disp + ' / ' + devName) : devName;
+			}
+			dom.content(netIface, (disp || '-') + protoStr);
 		}
 
 		const netIp4 = document.getElementById('modem_net_ip4');
 		if (netIp4) dom.content(netIp4, (net.ip4 && net.ip4.length > 0) ? net.ip4.join(', ') : '-');
 
+		const netIp6 = document.getElementById('modem_net_ip6');
+		if (netIp6) dom.content(netIp6, (net.ip6 && net.ip6.length > 0) ? net.ip6.join(', ') : '-');
+
+		const netSpeed = document.getElementById('modem_net_speed');
+		if (netSpeed) {
+			const now = Date.now();
+			let rxSpeedStr = '0 B/s';
+			let txSpeedStr = '0 B/s';
+
+			if (self.lastTraffic && self.lastTraffic.time && net.connected) {
+				const dt = (now - self.lastTraffic.time) / 1000;
+				if (dt > 0.5) {
+					const deltaRx = Math.max(0, (net.rx_bytes || 0) - (self.lastTraffic.rx_bytes || 0));
+					const deltaTx = Math.max(0, (net.tx_bytes || 0) - (self.lastTraffic.tx_bytes || 0));
+					rxSpeedStr = self.formatSpeed(deltaRx / dt);
+					txSpeedStr = self.formatSpeed(deltaTx / dt);
+				}
+			}
+
+			self.lastTraffic = {
+				rx_bytes: net.rx_bytes || 0,
+				tx_bytes: net.tx_bytes || 0,
+				time: now
+			};
+
+			dom.content(netSpeed, [
+				E('span', { 'style': 'color: #2bc1a4; font-weight: bold; margin-right: 15px;' }, '↓ ' + rxSpeedStr),
+				E('span', { 'style': 'color: #4895ef; font-weight: bold;' }, '↑ ' + txSpeedStr)
+			]);
+		}
+
 		const netTraffic = document.getElementById('modem_net_traffic');
 		if (netTraffic) {
-			let rxMb = (net.rx_bytes ? (net.rx_bytes / (1024 * 1024)).toFixed(2) : '0') + ' MB';
-			let txMb = (net.tx_bytes ? (net.tx_bytes / (1024 * 1024)).toFixed(2) : '0') + ' MB';
-			dom.content(netTraffic, _('Downlink: ') + rxMb + ' / ' + _('Uplink: ') + txMb);
+			const rxFormatted = self.formatBytes(net.rx_bytes || 0);
+			const txFormatted = self.formatBytes(net.tx_bytes || 0);
+			const totalFormatted = self.formatBytes((net.rx_bytes || 0) + (net.tx_bytes || 0));
+			const rxPackets = net.rx_packets || 0;
+			const txPackets = net.tx_packets || 0;
+
+			dom.content(netTraffic, [
+				E('span', { 'style': 'margin-right: 15px;' }, [
+					E('strong', {}, _('Downlink: ')),
+					rxFormatted + (rxPackets > 0 ? ' (' + rxPackets + ' ' + _('Packets') + ')' : '')
+				]),
+				E('span', { 'style': 'margin-right: 15px;' }, [
+					E('strong', {}, _('Uplink: ')),
+					txFormatted + (txPackets > 0 ? ' (' + txPackets + ' ' + _('Packets') + ')' : '')
+				]),
+				E('span', { 'style': 'color: #666;' }, [
+					E('strong', {}, _('Total: ')),
+					totalFormatted
+				])
+			]);
 		}
 	},
 
@@ -214,7 +307,9 @@ return view.extend({
 		const deviceOptions = [];
 		self.devicesList.forEach(function(dev, idx) {
 			let label = dev.vendor + ' ' + dev.model + ' [' + (dev.primary_port || _('No Port')) + ' / ' + (dev.primary_net || _('No Net')) + ']';
-			deviceOptions.push(E('option', { value: dev.primary_port, 'data-net': dev.primary_net, selected: idx === 0 }, label));
+			const optAttrs = { value: dev.primary_port, 'data-net': dev.primary_net };
+			if (idx === 0) optAttrs.selected = '';
+			deviceOptions.push(E('option', optAttrs, label));
 		});
 
 		const selectorNode = E('fieldset', { 'class': 'cbi-section' }, [
@@ -312,12 +407,20 @@ return view.extend({
 				E('tr', { 'class': 'tr' }, [
 					E('td', { 'class': 'td left', 'width': '16%' }, _('Connection State')),
 					E('td', { 'class': 'td left', 'width': '34%', 'id': 'modem_net_status' }, '-'),
-					E('td', { 'class': 'td left', 'width': '16%' }, _('Assigned IPv4')),
-					E('td', { 'class': 'td left', 'width': '34%', 'id': 'modem_net_ip4' }, '-')
+					E('td', { 'class': 'td left', 'width': '16%' }, _('Network Interface')),
+					E('td', { 'class': 'td left', 'width': '34%', 'id': 'modem_net_iface' }, '-')
 				]),
 				E('tr', { 'class': 'tr' }, [
+					E('td', { 'class': 'td left' }, _('Assigned IPv4')),
+					E('td', { 'class': 'td left', 'id': 'modem_net_ip4' }, '-'),
+					E('td', { 'class': 'td left' }, _('Assigned IPv6')),
+					E('td', { 'class': 'td left', 'id': 'modem_net_ip6' }, '-')
+				]),
+				E('tr', { 'class': 'tr' }, [
+					E('td', { 'class': 'td left' }, _('Real-time Rate')),
+					E('td', { 'class': 'td left', 'id': 'modem_net_speed' }, '-'),
 					E('td', { 'class': 'td left' }, _('Traffic Statistics')),
-					E('td', { 'class': 'td left', 'colspan': '3', 'id': 'modem_net_traffic' }, '-')
+					E('td', { 'class': 'td left', 'id': 'modem_net_traffic' }, '-')
 				])
 			]),
 			E('div', { 'style': 'margin-top: 15px; display: flex; gap: 10px;' }, [

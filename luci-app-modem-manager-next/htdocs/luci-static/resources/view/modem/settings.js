@@ -81,8 +81,12 @@ return view.extend({
 		const ratEl = document.getElementById('modem_rat_select');
 		const ratVal = ratEl ? ratEl.value : 'AUTO';
 
-		const apnVal = document.getElementById('modem_apn').value || 'cmiot';
-		const pdpVal = document.getElementById('modem_pdp').value || 'IPV4V6';
+		const lteEls = document.querySelectorAll('.modem-band-lte:checked');
+		const nrEls = document.querySelectorAll('.modem-band-nr:checked');
+		const bandsLte = [];
+		const bandsNr = [];
+		for (let i = 0; i < lteEls.length; i++) bandsLte.push(lteEls[i].value);
+		for (let i = 0; i < nrEls.length; i++) bandsNr.push(nrEls[i].value);
 
 		ui.showModal(_('Applying Configuration'), [
 			E('p', { 'class': 'spinning' }, _('Saving port settings and sending configuration commands, please wait...'))
@@ -91,7 +95,7 @@ return view.extend({
 		Promise.all([
 			callSaveConfig(targetPort, baudVal),
 			callSetMode(targetPort, modeVal, 'quectel-5g', syncNet, ifname, self.selectedNet),
-			callSetPreferences(targetPort, ratVal, [], []),
+			callSetPreferences(targetPort, ratVal, bandsLte, bandsNr),
 			callSetApn(targetPort, apnVal, pdpVal)
 		]).then(function(results) {
 			ui.hideModal();
@@ -117,7 +121,9 @@ return view.extend({
 		const deviceOptions = [];
 		self.devicesList.forEach(function(dev, idx) {
 			let label = dev.vendor + ' ' + dev.model + ' (' + (dev.primary_port || _('No Port')) + ')';
-			deviceOptions.push(E('option', { value: dev.primary_port, 'data-net': dev.primary_net, selected: idx === 0 }, label));
+			const optAttrs = { value: dev.primary_port, 'data-net': dev.primary_net };
+			if (idx === 0) optAttrs.selected = '';
+			deviceOptions.push(E('option', optAttrs, label));
 		});
 
 		const container = E('div', { 'class': 'cbi-map' }, [
@@ -165,10 +171,14 @@ return view.extend({
 			if (isSelected) matchedInList = true;
 			let isAuto = (p === dev.primary_port);
 			let optLabel = p + (isAuto ? ' [' + _('Auto Recommended') + ']' : '');
-			portSelectOptions.push(E('option', { value: p, selected: isSelected }, optLabel));
+			const optAttrs = { value: p };
+			if (isSelected) optAttrs.selected = '';
+			portSelectOptions.push(E('option', optAttrs, optLabel));
 		});
 
-		portSelectOptions.push(E('option', { value: 'custom', selected: (!matchedInList && activeConfigPort !== '') }, _('Manual Custom Path')));
+		const customOptAttrs = { value: 'custom' };
+		if (!matchedInList && activeConfigPort !== '') customOptAttrs.selected = '';
+		portSelectOptions.push(E('option', customOptAttrs, _('Manual Custom Path')));
 
 		const portSection = E('fieldset', { 'class': 'cbi-section' }, [
 			E('legend', {}, _('Serial Port and Communication Configuration')),
@@ -207,11 +217,13 @@ return view.extend({
 				E('div', { 'class': 'cbi-value' }, [
 					E('label', { 'class': 'cbi-value-title' }, _('Serial Baudrate')),
 					E('div', { 'class': 'cbi-value-field' }, [
-						E('select', { 'id': 'modem_baud_select', 'class': 'cbi-input-select', 'style': 'min-width: 150px;' }, [
+						E('select', { 'id': 'modem_baud_select', 'class': 'cbi-input-select', 'style': 'min-width: 150px;' },
 							['9600', '38400', '57600', '115200', '230400', '460800', '921600'].map(function(b) {
-								return E('option', { value: b, selected: (b === (self.configData.baud || '115200')) }, b);
+								const opt = { value: b };
+								if (b === (self.configData.baud || '115200')) opt.selected = '';
+								return E('option', opt, b);
 							})
-						]),
+						),
 						E('div', { 'class': 'cbi-value-description' }, _('Standard cellular modem AT serial baudrate (Default: 115200).'))
 					])
 				])
@@ -282,23 +294,31 @@ return view.extend({
 				E('div', { 'class': 'cbi-value' }, [
 					E('label', { 'class': 'cbi-value-title' }, _('4G LTE Bands')),
 					E('div', { 'class': 'cbi-value-field' }, [
-						['B1', 'B3', 'B5', 'B8', 'B34', 'B38', 'B39', 'B40', 'B41'].map(function(band) {
-							return E('label', { 'style': 'display: inline-block; width: 65px; margin-bottom: 5px;' }, [
-								E('input', { 'type': 'checkbox', 'class': 'modem-band-lte', 'value': band, 'checked': 'checked' }), ' ',
-								band
-							]);
-						})
+						E('div', { 'style': 'display: flex; flex-wrap: wrap; gap: 10px; padding-top: 5px;' },
+							['B1', 'B3', 'B5', 'B8', 'B34', 'B38', 'B39', 'B40', 'B41'].map(function(band) {
+								return E('label', {
+									'style': 'display: inline-flex; align-items: center; gap: 4px; cursor: pointer; min-width: 60px;'
+								}, [
+									E('input', { 'type': 'checkbox', 'class': 'cbi-input-checkbox modem-band-lte', 'value': band, 'checked': 'checked' }),
+									E('span', {}, band)
+								]);
+							})
+						)
 					])
 				]),
 				E('div', { 'class': 'cbi-value' }, [
 					E('label', { 'class': 'cbi-value-title' }, _('5G NR Bands')),
 					E('div', { 'class': 'cbi-value-field' }, [
-						['N1', 'N28', 'N41', 'N77', 'N78', 'N79'].map(function(band) {
-							return E('label', { 'style': 'display: inline-block; width: 65px; margin-bottom: 5px;' }, [
-								E('input', { 'type': 'checkbox', 'class': 'modem-band-nr', 'value': band, 'checked': 'checked' }), ' ',
-								band
-							]);
-						})
+						E('div', { 'style': 'display: flex; flex-wrap: wrap; gap: 10px; padding-top: 5px;' },
+							['N1', 'N28', 'N41', 'N77', 'N78', 'N79'].map(function(band) {
+								return E('label', {
+									'style': 'display: inline-flex; align-items: center; gap: 4px; cursor: pointer; min-width: 60px;'
+								}, [
+									E('input', { 'type': 'checkbox', 'class': 'cbi-input-checkbox modem-band-nr', 'value': band, 'checked': 'checked' }),
+									E('span', {}, band)
+								]);
+							})
+						)
 					])
 				])
 			])
