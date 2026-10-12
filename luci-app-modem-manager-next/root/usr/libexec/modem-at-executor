@@ -7,18 +7,28 @@ COMMAND=""
 TIMEOUT=3
 BAUDRATE=115200
 
+SMS_TO=""
+SMS_MSG=""
+
 while [ $# -gt 0 ]; do
 	case "$1" in
 		-d) DEVICE="$2"; shift 2 ;;
 		-c) COMMAND="$2"; shift 2 ;;
 		-t) TIMEOUT="$2"; shift 2 ;;
 		-b) BAUDRATE="$2"; shift 2 ;;
+		--sms-to) SMS_TO="$2"; shift 2 ;;
+		--sms-msg) SMS_MSG="$2"; shift 2 ;;
 		*) shift ;;
 	esac
 done
 
-if [ -z "$DEVICE" ] || [ -z "$COMMAND" ]; then
-	echo "Usage: $0 -d <device> -c <command> [-t <timeout_sec>]" >&2
+if [ -z "$DEVICE" ]; then
+	echo "Usage: $0 -d <device> [-c <command>] [--sms-to <number> --sms-msg <text>]" >&2
+	exit 1
+fi
+
+if [ -z "$COMMAND" ] && [ -z "$SMS_TO" ]; then
+	echo "Usage: Either -c <command> or --sms-to <number> must be specified" >&2
 	exit 1
 fi
 
@@ -36,11 +46,15 @@ if [ ! -c "$DEVICE" ]; then
 fi
 
 # Dynamic Timeout auto-detection: long-running commands like AT+COPS=? or scan
-case "$COMMAND" in
-	*COPS=\?*|*COPS\?*|*QSCAN*|*GTCCINFO*|*SCAN*)
-		[ "$TIMEOUT" -lt 60 ] && TIMEOUT=60
-		;;
-esac
+if [ -n "$SMS_TO" ]; then
+	[ "$TIMEOUT" -lt 15 ] && TIMEOUT=15
+else
+	case "$COMMAND" in
+		*COPS=\?*|*COPS\?*|*QSCAN*|*GTCCINFO*|*SCAN*)
+			[ "$TIMEOUT" -lt 60 ] && TIMEOUT=60
+			;;
+	esac
+fi
 
 LOCKFILE="/var/lock/modem_$(basename "$DEVICE").lock"
 mkdir -p /var/lock
@@ -70,19 +84,42 @@ rm -f "$OUT_FILE"
 
 (
 	exec 3<>"$DEVICE"
-	echo -e "${COMMAND}\r" >&3
 	cat <&3 > "$OUT_FILE" &
 	CAT_PID=$!
-	
-	elapsed=0
-	while [ $elapsed -lt "$TIMEOUT" ]; do
+
+	if [ -n "$SMS_TO" ]; then
+		# Text mode SMS sending
+		printf "AT+CMGF=1\r" >&3
 		sleep 1
-		elapsed=$((elapsed + 1))
-		if [ -f "$OUT_FILE" ] && grep -qE "OK|ERROR|\+CME ERROR|\+CMS ERROR" "$OUT_FILE" 2>/dev/null; then
-			break
-		fi
-	done
-	
+		printf "AT+CMGS=\"%s\"\r" "$SMS_TO" >&3
+		sleep 1
+		printf "%s\x1A" "$SMS_MSG" >&3
+
+		elapsed=0
+		while [ $elapsed -lt "$TIMEOUT" ]; do
+			sleep 1
+			elapsed=$((elapsed + 1))
+			if [ -f "$OUT_FILE" ]; then
+				if grep -q "\+CMGS:" "$OUT_FILE" 2>/dev/null && grep -q "OK" "$OUT_FILE" 2>/dev/null; then
+					break
+				elif grep -qE "\+CMS ERROR|\+CME ERROR|ERROR" "$OUT_FILE" 2>/dev/null; then
+					break
+				fi
+			fi
+		done
+	else
+		echo -e "${COMMAND}\r" >&3
+
+		elapsed=0
+		while [ $elapsed -lt "$TIMEOUT" ]; do
+			sleep 1
+			elapsed=$((elapsed + 1))
+			if [ -f "$OUT_FILE" ] && grep -qE "OK|ERROR|\+CME ERROR|\+CMS ERROR" "$OUT_FILE" 2>/dev/null; then
+				break
+			fi
+		done
+	fi
+
 	kill -9 "$CAT_PID" 2>/dev/null || true
 	exec 3>&-
 )

@@ -459,3 +459,178 @@ msgstr "日志记录已成功清空。"
 
 msgid "No log entries recorded yet."
 msgstr "暂无日志记录。"
+
+msgid "SMS"
+msgstr "短信"
+
+msgid "SMS Management"
+msgstr "短信管理"
+
+msgid "Read, compose, and manage cellular SMS messages stored on the SIM card."
+msgstr "读取、发送及管理存储于SIM卡中的蜂窝网络短信。"
+
+msgid "SMS Feature is Currently Disabled"
+msgstr "短信功能已停用"
+
+msgid "To prevent IoT SIM cards, enterprise telemetry cards, or data-only SIM cards from unexpected billing, network carrier account suspensions, or serial AT buffer deadlocks, the SMS module is disabled by default. In this mode, no background polling or SMS commands will ever touch the cellular modem."
+msgstr "为防止物联网卡、企业遥测卡或纯数据流量卡产生异常扣费、运营商风控锁卡或串口缓冲区死锁，短信功能默认处于完全关闭状态。在此模式下，系统绝不向蜂窝模组发送任何短信读取或配置指令。"
+
+msgid "Enable SMS Feature"
+msgstr "启用短信功能"
+
+msgid "Disable SMS Feature"
+msgstr "停用短信功能"
+
+msgid "Disable Feature"
+msgstr "停用功能"
+
+msgid "Storage Capacity: "
+msgstr "存储容量: "
+
+msgid "Messages"
+msgstr "条短信"
+
+msgid "Module Active"
+msgstr "功能已激活"
+
+msgid "Compose Message"
+msgstr "写新短信"
+
+msgid "Refresh List"
+msgstr "刷新列表"
+
+msgid "Clear All"
+msgstr "清空全部"
+
+msgid "Inbox is empty. No messages stored on SIM card."
+msgstr "收件箱为空，SIM卡内暂无短信。"
+
+msgid "Unknown Sender"
+msgstr "未知发件人"
+
+msgid "Unread"
+msgstr "未读"
+
+msgid "Read"
+msgstr "已读"
+
+msgid "[Empty Message Body]"
+msgstr "[无正文内容]"
+
+msgid "Reply"
+msgstr "回复"
+
+msgid "Delete"
+msgstr "删除"
+
+msgid "Enabling SMS allows sending, receiving, and reading messages. Ensure your SIM card plan supports SMS traffic."
+msgstr "启用短信功能后将允许收发与查看短信。请确保您的SIM卡资费套餐支持短信业务。"
+
+msgid "Disabling SMS stops all SMS-related interactions and returns the cellular modem to pure data safety mode."
+msgstr "停用短信功能将停止所有短信交互，使蜂窝模组回归纯数据安全模式。"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Confirm"
+msgstr "确认"
+
+msgid "Updating configuration, please wait..."
+msgstr "正在更新配置，请稍候..."
+
+msgid "Failed to toggle SMS state: "
+msgstr "切换短信功能状态失败: "
+
+msgid "Refreshing Messages"
+msgstr "正在刷新短信"
+
+msgid "Reading SMS inbox from SIM card, please wait..."
+msgstr "正在从SIM卡读取短信收件箱，请稍候..."
+
+msgid "SMS list refreshed successfully."
+msgstr "短信列表已成功刷新。"
+
+msgid "Failed to refresh SMS list: "
+msgstr "刷新短信列表失败: "
+
+msgid "Target phone number (e.g. 10086 or +8613800000000)"
+msgstr "接收方手机号 (例如 10086 或 +8613800000000)"
+
+msgid "characters"
+msgstr "字符"
+
+msgid "Enter SMS message content..."
+msgstr "请输入短信正文内容..."
+
+msgid "Recipient:"
+msgstr "接收人:"
+
+msgid "Message:"
+msgstr "正文:"
+
+msgid "Please specify a valid recipient phone number."
+msgstr "请指定有效的接收方手机号码。"
+
+msgid "Message content cannot be empty."
+msgstr "短信正文内容不能为空。"
+
+msgid "Sending Message"
+msgstr "发送短信"
+
+msgid "Transmitting SMS message over cellular radio, please wait..."
+msgstr "正在通过蜂窝网络发送短信，请稍候..."
+
+msgid "Message transmitted successfully."
+msgstr "短信已成功发送。"
+
+msgid "Failed to transmit message: "
+msgstr "发送短信失败: "
+
+msgid "Unknown cellular error"
+msgstr "未知蜂窝网络错误"
+
+msgid "Send"
+msgstr "发送"
+
+msgid "Delete Message"
+msgstr "删除短信"
+
+msgid "Are you sure you want to delete message #"
+msgstr "确定要删除短信 #"
+
+msgid "Deleting Message"
+msgstr "正在删除短信"
+
+msgid "Deleting message, please wait..."
+msgstr "正在删除短信，请稍候..."
+
+msgid "Message deleted successfully."
+msgstr "短信已成功删除。"
+
+msgid "Failed to delete message: "
+msgstr "删除短信失败: "
+
+msgid "Unknown error"
+msgstr "未知错误"
+
+msgid "Clear All Messages"
+msgstr "清空所有短信"
+
+msgid "Are you sure you want to clear all SMS messages stored on the SIM card? This action cannot be undone."
+msgstr "确定要清空SIM卡中存储的全部短信吗？此操作无法撤销。"
+
+msgid "Clearing Messages"
+msgstr "正在清空短信"
+
+msgid "Clearing all SMS messages, please wait..."
+msgstr "正在清空所有短信，请稍候..."
+
+msgid "All SMS messages cleared successfully."
+msgstr "所有短信已成功清空。"
+
+msgid "Failed to clear messages: "
+msgstr "清空短信失败: "
+
+msgid "Confirm Clear"
+msgstr "确认清空"
+

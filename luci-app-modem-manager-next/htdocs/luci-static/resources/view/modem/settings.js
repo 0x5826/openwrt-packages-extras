@@ -220,24 +220,20 @@ return view.extend({
 					E('label', { 'class': 'cbi-value-title' }, _('Driver Mode')),
 					E('div', { 'class': 'cbi-value-field' }, [
 						E('label', { 'style': 'margin-right: 20px;' }, [
-							E('input', { 'type': 'radio', 'name': 'modem_mode', 'value': 'mbim' }), ' ',
-							_('MBIM Mode')
-						]),
-						E('label', { 'style': 'margin-right: 20px;' }, [
 							E('input', { 'type': 'radio', 'name': 'modem_mode', 'value': 'ncm', 'checked': 'checked' }), ' ',
 							_('NCM Mode')
+						]),
+						E('label', { 'style': 'margin-right: 20px;' }, [
+							E('input', { 'type': 'radio', 'name': 'modem_mode', 'value': 'mbim' }), ' ',
+							_('MBIM Mode')
 						]),
 						E('label', { 'style': 'margin-right: 20px;' }, [
 							E('input', { 'type': 'radio', 'name': 'modem_mode', 'value': 'qmi' }), ' ',
 							_('QMI Mode')
 						]),
-						E('label', { 'style': 'margin-right: 20px;' }, [
+						E('label', {}, [
 							E('input', { 'type': 'radio', 'name': 'modem_mode', 'value': 'ecm' }), ' ',
 							_('ECM Mode')
-						]),
-						E('label', {}, [
-							E('input', { 'type': 'radio', 'name': 'modem_mode', 'value': 'rndis' }), ' ',
-							_('RNDIS Mode')
 						]),
 						E('div', { 'class': 'cbi-value-description' }, _('Switching the operation mode requires restarting the modem to take effect.'))
 					])

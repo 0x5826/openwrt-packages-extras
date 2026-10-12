@@ -5,6 +5,7 @@ config global 'global'
 	option target_host '223.5.5.5'
 	option default_interface 'modem_wan'
 	option log_level 'info'
+	option sms_enable '0'
 
 config template_custom
 	option enabled '0'

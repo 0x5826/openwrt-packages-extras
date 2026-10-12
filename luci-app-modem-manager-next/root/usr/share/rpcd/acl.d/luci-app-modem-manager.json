@@ -8,7 +8,9 @@
 					"get_status",
 					"get_templates",
 					"get_config",
-					"get_log"
+					"get_log",
+					"get_sms_status",
+					"get_sms_list"
 				]
 			},
 			"uci": [
@@ -31,7 +33,10 @@
 					"refresh_status",
 					"save_template",
 					"save_config",
-					"clear_log"
+					"clear_log",
+					"set_sms_enable",
+					"send_sms",
+					"delete_sms"
 				]
 			},
 			"uci": [

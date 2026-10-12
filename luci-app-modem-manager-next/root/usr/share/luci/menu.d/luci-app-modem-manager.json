@@ -25,9 +25,17 @@
 			"path": "modem/settings"
 		}
 	},
+	"admin/network/modem/sms": {
+		"title": "SMS",
+		"order": 30,
+		"action": {
+			"type": "view",
+			"path": "modem/sms"
+		}
+	},
 	"admin/network/modem/templates": {
 		"title": "Templates",
-		"order": 30,
+		"order": 35,
 		"action": {
 			"type": "view",
 			"path": "modem/templates"

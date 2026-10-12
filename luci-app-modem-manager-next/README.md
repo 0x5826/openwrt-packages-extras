@@ -89,6 +89,11 @@
 - **候选端口与自定义路径**：下拉列表枚举该模组暴露的所有物理串口，默认选中国际推荐口（标有 `[自动推荐]`），并支持选择 `[自定义设备路径]` 手动输入专用软链接（如 `/dev/modem_at` 或 `/dev/ttyACM0`）；
 - **配置与运行态全链路接管**：保存后写入 UCI `/etc/config/modemmanager` 的 `global.port`，后台采集器 `modem-collector`、前台总览页 `Overview` 与 RPC 接口均以用户指定端口作为最高优先级，彻底消除端口序号漂移和多串口设备误判风险。
 
+### 3.7 物联网卡零干扰熔断机制与安全短信模块 (Safe SMS with IoT Guard)
+- **默认全局熔断关闭**：考虑到部分物联网卡（IoT SIM）、企业遥测专用卡或定向纯流量卡对 SMS 业务存在特殊风控限制，若模组自动轮询或读取短信可能导致异常扣费、被运营商封卡或阻塞 AT 通道，系统在 UCI 中默认设置 `global.sms_enable=0`；
+- **零串口开销**：在短信模块处于关闭状态时，后台采集守护器和 RPC 接口绝对不向模组发送任何短信读取、容量查询或配置指令；
+- **显式激活与收发管理**：用户在【短信 (SMS)】页面可一键安全启用，支持 SIM 卡短信容量占用进度查看、收件箱列表阅读、UCS2/UTF-8 字符自适应解码、写信发送（带文本长度统计与手机号校验）及一键清空所有短信。
+
 ---
 
 ## 4. 目录与文件布局
@@ -99,13 +104,13 @@ luci-app-modem-manager-next/
 ├── README.md                                   # 项目架构与设计文档
 ├── root/
 │   ├── etc/
-│   │   ├── config/modemmanager                 # UCI 配置文件
+│   │   ├── config/modemmanager                 # UCI 配置文件 (含 sms_enable)
 │   │   ├── hotplug.d/usb/20-modem-hotplug      # USB 热插拔事件感知脚本
 │   │   ├── init.d/modemmanager                 # 系统守护服务脚本
 │   │   └── uci-defaults/99_modemmanager-init   # 初始化脚本
 │   └── usr/
 │       ├── libexec/
-│       │   ├── modem-at-executor               # 纯 POSIX 串口排他安全执行器
+│       │   ├── modem-at-executor               # 纯 POSIX 串口排他安全执行器 (含 SMS 发送)
 │       │   ├── modem-collector                 # 后台异步状态采集与避让守护器
 │       │   └── modem-detect                    # sysfs 设备枚举与关联扫描工具
 │       └── share/
@@ -115,13 +120,14 @@ luci-app-modem-manager-next/
 │           │   ├── zte.json                    # 中兴微模组规则
 │           │   └── generic.json                # 通用 3GPP 模组规则
 │           ├── luci/menu.d/
-│           │   └── luci-app-modem-manager.json # 菜单路由定义
+│           │   └── luci-app-modem-manager.json # 菜单路由定义 (含 SMS Tab)
 │           └── rpcd/
 │               ├── acl.d/luci-app-modem-manager.json # RPC 鉴权规则
-│               └── ucode/luci.modem            # ucode RPC 插件
+│               └── ucode/luci.modem            # ucode RPC 插件 (含 SMS 接口)
 ├── htdocs/luci-static/resources/view/modem/
 │   ├── overview.js                             # 【总览】：信号仪表盘、基站详情、SIM状态
 │   ├── settings.js                             # 【设置】：驱动协议切换、频段锁定、APN
+│   ├── sms.js                                  # 【短信】：物联网卡安全防护、短信收发展示
 │   ├── templates.js                            # 【模版】：厂商模版查看与参数管理
 │   ├── terminal.js                             # 【终端】：高级交互控制台与快捷预设指令
 │   └── log.js                                  # 【日志】：AT 交互与系统运行日志
