@@ -1,0 +1,614 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Modem Manager"
+msgstr ""
+
+msgid "Cellular Modem Manager"
+msgstr ""
+
+msgid "Overview"
+msgstr ""
+
+msgid "Settings"
+msgstr ""
+
+msgid "Templates"
+msgstr ""
+
+msgid "Configuration Templates"
+msgstr ""
+
+msgid "AT Terminal"
+msgstr ""
+
+msgid "AT Command Terminal"
+msgstr ""
+
+msgid "Log"
+msgstr ""
+
+msgid "System Log"
+msgstr ""
+
+msgid "Modem Manager Logs"
+msgstr ""
+
+msgid "Active Modem Selection"
+msgstr ""
+
+msgid "Target Modem Selection"
+msgstr ""
+
+msgid "Current Device:"
+msgstr ""
+
+msgid "Active Device:"
+msgstr ""
+
+msgid "Refresh"
+msgstr ""
+
+msgid "No cellular modems detected on USB bus."
+msgstr ""
+
+msgid "No cellular modems detected."
+msgstr ""
+
+msgid "No serial communication ports detected."
+msgstr ""
+
+msgid "Hardware Information"
+msgstr ""
+
+msgid "Manufacturer"
+msgstr ""
+
+msgid "Model"
+msgstr ""
+
+msgid "USB Identifiers"
+msgstr ""
+
+msgid "Core Temperature"
+msgstr ""
+
+msgid "Driver Binding"
+msgstr ""
+
+msgid "Option Driver"
+msgstr ""
+
+msgid "SIM Status"
+msgstr ""
+
+msgid "Querying..."
+msgstr ""
+
+msgid "Not Supported"
+msgstr ""
+
+msgid "Normal"
+msgstr ""
+
+msgid "PIN Locked"
+msgstr ""
+
+msgid "PUK Locked"
+msgstr ""
+
+msgid "Not Detected"
+msgstr ""
+
+msgid "Cellular Network and Signal Metrics"
+msgstr ""
+
+msgid "Operator"
+msgstr ""
+
+msgid "Access Technology"
+msgstr ""
+
+msgid "Active Band"
+msgstr ""
+
+msgid "Physical Cell ID"
+msgstr ""
+
+msgid "Cell ID"
+msgstr ""
+
+msgid "Tracking Area Code"
+msgstr ""
+
+msgid "Carrier Channel"
+msgstr ""
+
+msgid "Signal Strength (CSQ)"
+msgstr ""
+
+msgid "Signal Power (RSRP)"
+msgstr ""
+
+msgid "Signal Quality (SINR)"
+msgstr ""
+
+msgid "Excellent"
+msgstr ""
+
+msgid "Good"
+msgstr ""
+
+msgid "Weak"
+msgstr ""
+
+msgid "Searching"
+msgstr ""
+
+msgid "Calculating"
+msgstr ""
+
+msgid "Network Interface Connection"
+msgstr ""
+
+msgid "Connection State"
+msgstr ""
+
+msgid "Connected"
+msgstr ""
+
+msgid "Disconnected"
+msgstr ""
+
+msgid "Assigned IPv4"
+msgstr ""
+
+msgid "Traffic Statistics"
+msgstr ""
+
+msgid "Downlink: "
+msgstr ""
+
+msgid " / Uplink: "
+msgstr ""
+
+msgid "Restart Modem"
+msgstr ""
+
+msgid "Toggle Airplane Mode"
+msgstr ""
+
+msgid "Reset RF Radio"
+msgstr ""
+
+msgid "Executing Action"
+msgstr ""
+
+msgid "Sending action to cellular module, please wait..."
+msgstr ""
+
+msgid "Action executed successfully."
+msgstr ""
+
+msgid "Action failed: "
+msgstr ""
+
+msgid "Driver Protocol and Operation Mode"
+msgstr ""
+
+msgid "Driver Mode"
+msgstr ""
+
+msgid "MBIM Mode"
+msgstr ""
+
+msgid "NCM Mode"
+msgstr ""
+
+msgid "QMI Mode"
+msgstr ""
+
+msgid "ECM Mode"
+msgstr ""
+
+msgid "RNDIS Mode"
+msgstr ""
+
+msgid "Switching the operation mode requires restarting the modem to take effect."
+msgstr ""
+
+msgid "Sync OpenWrt Network"
+msgstr ""
+
+msgid "Automatically update or create corresponding logical network interface in OpenWrt"
+msgstr ""
+
+msgid "Interface Name"
+msgstr ""
+
+msgid "The OpenWrt logical interface name to associate with this modem."
+msgstr ""
+
+msgid "Network Access Technology and Band Locking"
+msgstr ""
+
+msgid "Access Technology Preference"
+msgstr ""
+
+msgid "Automatic Mode"
+msgstr ""
+
+msgid "5G Standalone Only"
+msgstr ""
+
+msgid "5G and 4G Hybrid"
+msgstr ""
+
+msgid "4G LTE Only"
+msgstr ""
+
+msgid "Select priority radio access technology for network registration."
+msgstr ""
+
+msgid "4G LTE Bands"
+msgstr ""
+
+msgid "5G NR Bands"
+msgstr ""
+
+msgid "Access Point Name (APN) Settings"
+msgstr ""
+
+msgid "APN Name"
+msgstr ""
+
+msgid "Cellular carrier APN profile name (e.g. cmiot, cbnet, uninet)."
+msgstr ""
+
+msgid "PDP Protocol Type"
+msgstr ""
+
+msgid "Dual Stack IPv4 and IPv6"
+msgstr ""
+
+msgid "IPv4 Only"
+msgstr ""
+
+msgid "IPv6 Only"
+msgstr ""
+
+msgid "Save and Apply"
+msgstr ""
+
+msgid "Applying Configuration"
+msgstr ""
+
+msgid "Sending configuration commands to modem, please wait..."
+msgstr ""
+
+msgid "Modem settings successfully applied."
+msgstr ""
+
+msgid "Failed to apply settings: "
+msgstr ""
+
+msgid "Preset Template Library"
+msgstr ""
+
+msgid "Template Name"
+msgstr ""
+
+msgid "Vendor"
+msgstr ""
+
+msgid "Vendor ID"
+msgstr ""
+
+msgid "Mode Switching Command"
+msgstr ""
+
+msgid "Actions"
+msgstr ""
+
+msgid "View Details"
+msgstr ""
+
+msgid "Template Detail"
+msgstr ""
+
+msgid "Template ID"
+msgstr ""
+
+msgid "Target Vendor"
+msgstr ""
+
+msgid "USB VID"
+msgstr ""
+
+msgid "Mode Switch Command"
+msgstr ""
+
+msgid "Raw Configuration"
+msgstr ""
+
+msgid "Close"
+msgstr ""
+
+msgid "Serial Port Selection"
+msgstr ""
+
+msgid "Communication Port:"
+msgstr ""
+
+msgid "Baudrate: 115200 (Auto Locked)"
+msgstr ""
+
+msgid "Quick AT Command Presets"
+msgstr ""
+
+msgid "General Info:"
+msgstr ""
+
+msgid "Network State:"
+msgstr ""
+
+msgid "Quectel Extra:"
+msgstr ""
+
+msgid "Fibocom Extra:"
+msgstr ""
+
+msgid "Interactive Console Output"
+msgstr ""
+
+msgid "Clear Output"
+msgstr ""
+
+msgid "Copy All"
+msgstr ""
+
+msgid "Terminal output copied to clipboard."
+msgstr ""
+
+msgid "System ready. Enter an AT command and press Enter or Send to execute."
+msgstr ""
+
+msgid "Enter AT command (e.g. AT+CSQ)..."
+msgstr ""
+
+msgid "Send Command"
+msgstr ""
+
+msgid "Clear Log"
+msgstr ""
+
+msgid "Log buffer cleared successfully."
+msgstr ""
+
+msgid "No log entries recorded yet."
+msgstr ""
+
+msgid "No Active Cellular Modem Detected"
+msgstr ""
+
+msgid "No active 4G or 5G cellular modem detected on the USB bus. Please verify hardware connection, power supply, or driver status."
+msgstr ""
+
+msgid "Rescan Devices"
+msgstr ""
+
+msgid "No Serial Ports Available"
+msgstr ""
+
+msgid "No ttyUSB or ttyACM serial communication ports detected. Please verify hardware connection and driver state."
+msgstr ""
+
+msgid "No Cellular Modem Detected"
+msgstr ""
+
+msgid "No active cellular modem detected. Unable to manage SMS messages. Please check physical connection."
+msgstr ""
+
+msgid "No active cellular modem detected. You can still pre-configure serial port path or refresh after connecting."
+msgstr ""
+
+msgid "Signal Strength CSQ"
+msgstr ""
+
+msgid "Signal Power RSRP"
+msgstr ""
+
+msgid "Signal Quality SINR"
+msgstr ""
+
+msgid "Configure PDP context 1 with APN"
+msgstr ""
+
+msgid "Configure driver protocols, lock preferred access technologies, customize APN credentials, and manage cellular network interfaces."
+msgstr ""
+
+msgid "Dial string too long"
+msgstr ""
+
+msgid "Direct interactive terminal for sending AT commands with intelligent auto-punctuation correction, fuzzy suggestions, error translation, and custom favorites."
+msgstr ""
+
+msgid "Enable full RF function (Turn off airplane mode)"
+msgstr ""
+
+msgid "Execution failed: "
+msgstr ""
+
+msgid "Fibocom: Query RNDIS network connection status"
+msgstr ""
+
+msgid "Fibocom: Query carrier aggregation info"
+msgstr ""
+
+msgid "Fibocom: Query current cell info and radio metrics"
+msgstr ""
+
+msgid "Incorrect PIN entered"
+msgstr ""
+
+msgid "Invalid characters in dial string"
+msgstr ""
+
+msgid "Invalid characters in text string"
+msgstr ""
+
+msgid "Invalid index or memory entry not found"
+msgstr ""
+
+msgid "Manage vendor preset command profiles, private AT mappings, band lock masks, and driver switching templates."
+msgstr ""
+
+msgid "Memory storage full"
+msgstr ""
+
+msgid "Network not allowed emergency calls only"
+msgstr ""
+
+msgid "Network timeout"
+msgstr ""
+
+msgid "No Net"
+msgstr ""
+
+msgid "No Port"
+msgstr ""
+
+msgid "No cellular network service available"
+msgstr ""
+
+msgid "No connection to phone"
+msgstr ""
+
+msgid "No templates installed."
+msgstr ""
+
+msgid "None"
+msgstr ""
+
+msgid "Not Defined"
+msgstr ""
+
+msgid "Not found"
+msgstr ""
+
+msgid "Operation not allowed"
+msgstr ""
+
+msgid "Operation not supported"
+msgstr ""
+
+msgid "PH-SIM PIN required"
+msgstr ""
+
+msgid "PIN2 required"
+msgstr ""
+
+msgid "PUK2 required"
+msgstr ""
+
+msgid "Phone failure"
+msgstr ""
+
+msgid "Phone-adaptor link reserved"
+msgstr ""
+
+msgid "Please select a communication port first."
+msgstr ""
+
+msgid "Please select a valid modem port first."
+msgstr ""
+
+msgid "Quectel: Query CPU and RF chip temperatures"
+msgstr ""
+
+msgid "Quectel: Query carrier aggregation (CA) state and secondary cells"
+msgstr ""
+
+msgid "Quectel: Query current network band and channel info"
+msgstr ""
+
+msgid "Quectel: Query current serving cell details (5G SA/LTE, PCI, TAC, Band, RSRP, SINR)"
+msgstr ""
+
+msgid "Query 2G/3G network registration status"
+msgstr ""
+
+msgid "Query 4G LTE network registration status"
+msgstr ""
+
+msgid "Query 5G NR network registration status"
+msgstr ""
+
+msgid "Query SIM card ICCID number"
+msgstr ""
+
+msgid "Query SIM card lock and ready status"
+msgstr ""
+
+msgid "Query configured PDP contexts and APN profiles"
+msgstr ""
+
+msgid "Query current RF radio state (0:Min, 1:Full, 4:Airplane)"
+msgstr ""
+
+msgid "Query module manufacturer, model, and firmware version"
+msgstr ""
+
+msgid "Query received signal strength and bit error rate"
+msgstr ""
+
+msgid "Query registered cellular operator and RAT"
+msgstr ""
+
+msgid "Real-time overview of cellular modem hardware, network registration, signal metrics, and data connection."
+msgstr ""
+
+msgid "Reboot module processor and RF reset"
+msgstr ""
+
+msgid "SIM PIN required (Please enter PIN to unlock)"
+msgstr ""
+
+msgid "SIM PUK required (Please enter PUK to unlock)"
+msgstr ""
+
+msgid "SIM card busy, please retry later"
+msgstr ""
+
+msgid "SIM card failure or communication defect"
+msgstr ""
+
+msgid "SIM card not inserted or not detected"
+msgstr ""
+
+msgid "SIM wrong password"
+msgstr ""
+
+msgid "Scan all available cellular networks in air (Long timeout)"
+msgstr ""
+
+msgid "Text string too long"
+msgstr ""
+
+msgid "Turn on airplane mode"
+msgstr ""
+
+msgid "Unknown"
+msgstr ""
+
+msgid "Unknown error or unsupported extended command"
+msgstr ""
+
+msgid "Uplink: "
+msgstr ""
+
+msgid "View background AT command traces, hardware detection events, and auto-reconnect activities."
+msgstr ""
+
+msgid "Signal CSQ"
+msgstr ""

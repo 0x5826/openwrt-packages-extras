@@ -39,7 +39,7 @@ return view.extend({
 	devicesList: [],
 
 	load: function() {
-		return callGetDevices();
+		return L.resolveDefault(callGetDevices(), []);
 	},
 
 	renderProgressBar: function(percent, label, color) {
@@ -90,11 +90,11 @@ return view.extend({
 	updateStatus: function() {
 		const self = this;
 		if (!self.selectedPort)
-			return;
+			return Promise.resolve();
 
 		return callGetStatus(self.selectedPort, self.selectedNet).then(function(res) {
 			self.applyStatusDOM(res);
-		});
+		}).catch(function(e) {});
 	},
 
 	applyStatusDOM: function(status) {
@@ -183,7 +183,7 @@ return view.extend({
 
 	render: function(devicesData) {
 		const self = this;
-		self.devicesList = (devicesData && devicesData.devices) ? devicesData.devices : [];
+		self.devicesList = Array.isArray(devicesData) ? devicesData : ((devicesData && Array.isArray(devicesData.devices)) ? devicesData.devices : []);
 
 		const container = E('div', { 'class': 'cbi-map' }, [
 			E('h2', {}, _('Cellular Modem Manager') + ' - ' + _('Overview')),

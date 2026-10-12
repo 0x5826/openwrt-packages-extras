@@ -420,3 +420,195 @@ msgstr ""
 
 msgid "Signal Quality SINR"
 msgstr ""
+
+msgid "Configure PDP context 1 with APN"
+msgstr ""
+
+msgid "Configure driver protocols, lock preferred access technologies, customize APN credentials, and manage cellular network interfaces."
+msgstr ""
+
+msgid "Dial string too long"
+msgstr ""
+
+msgid "Direct interactive terminal for sending AT commands with intelligent auto-punctuation correction, fuzzy suggestions, error translation, and custom favorites."
+msgstr ""
+
+msgid "Enable full RF function (Turn off airplane mode)"
+msgstr ""
+
+msgid "Execution failed: "
+msgstr ""
+
+msgid "Fibocom: Query RNDIS network connection status"
+msgstr ""
+
+msgid "Fibocom: Query carrier aggregation info"
+msgstr ""
+
+msgid "Fibocom: Query current cell info and radio metrics"
+msgstr ""
+
+msgid "Incorrect PIN entered"
+msgstr ""
+
+msgid "Invalid characters in dial string"
+msgstr ""
+
+msgid "Invalid characters in text string"
+msgstr ""
+
+msgid "Invalid index or memory entry not found"
+msgstr ""
+
+msgid "Manage vendor preset command profiles, private AT mappings, band lock masks, and driver switching templates."
+msgstr ""
+
+msgid "Memory storage full"
+msgstr ""
+
+msgid "Network not allowed emergency calls only"
+msgstr ""
+
+msgid "Network timeout"
+msgstr ""
+
+msgid "No Net"
+msgstr ""
+
+msgid "No Port"
+msgstr ""
+
+msgid "No cellular network service available"
+msgstr ""
+
+msgid "No connection to phone"
+msgstr ""
+
+msgid "No templates installed."
+msgstr ""
+
+msgid "None"
+msgstr ""
+
+msgid "Not Defined"
+msgstr ""
+
+msgid "Not found"
+msgstr ""
+
+msgid "Operation not allowed"
+msgstr ""
+
+msgid "Operation not supported"
+msgstr ""
+
+msgid "PH-SIM PIN required"
+msgstr ""
+
+msgid "PIN2 required"
+msgstr ""
+
+msgid "PUK2 required"
+msgstr ""
+
+msgid "Phone failure"
+msgstr ""
+
+msgid "Phone-adaptor link reserved"
+msgstr ""
+
+msgid "Please select a communication port first."
+msgstr ""
+
+msgid "Please select a valid modem port first."
+msgstr ""
+
+msgid "Quectel: Query CPU and RF chip temperatures"
+msgstr ""
+
+msgid "Quectel: Query carrier aggregation (CA) state and secondary cells"
+msgstr ""
+
+msgid "Quectel: Query current network band and channel info"
+msgstr ""
+
+msgid "Quectel: Query current serving cell details (5G SA/LTE, PCI, TAC, Band, RSRP, SINR)"
+msgstr ""
+
+msgid "Query 2G/3G network registration status"
+msgstr ""
+
+msgid "Query 4G LTE network registration status"
+msgstr ""
+
+msgid "Query 5G NR network registration status"
+msgstr ""
+
+msgid "Query SIM card ICCID number"
+msgstr ""
+
+msgid "Query SIM card lock and ready status"
+msgstr ""
+
+msgid "Query configured PDP contexts and APN profiles"
+msgstr ""
+
+msgid "Query current RF radio state (0:Min, 1:Full, 4:Airplane)"
+msgstr ""
+
+msgid "Query module manufacturer, model, and firmware version"
+msgstr ""
+
+msgid "Query received signal strength and bit error rate"
+msgstr ""
+
+msgid "Query registered cellular operator and RAT"
+msgstr ""
+
+msgid "Real-time overview of cellular modem hardware, network registration, signal metrics, and data connection."
+msgstr ""
+
+msgid "Reboot module processor and RF reset"
+msgstr ""
+
+msgid "SIM PIN required (Please enter PIN to unlock)"
+msgstr ""
+
+msgid "SIM PUK required (Please enter PUK to unlock)"
+msgstr ""
+
+msgid "SIM card busy, please retry later"
+msgstr ""
+
+msgid "SIM card failure or communication defect"
+msgstr ""
+
+msgid "SIM card not inserted or not detected"
+msgstr ""
+
+msgid "SIM wrong password"
+msgstr ""
+
+msgid "Scan all available cellular networks in air (Long timeout)"
+msgstr ""
+
+msgid "Text string too long"
+msgstr ""
+
+msgid "Turn on airplane mode"
+msgstr ""
+
+msgid "Unknown"
+msgstr ""
+
+msgid "Unknown error or unsupported extended command"
+msgstr ""
+
+msgid "Uplink: "
+msgstr ""
+
+msgid "View background AT command traces, hardware detection events, and auto-reconnect activities."
+msgstr ""
+
+msgid "Signal CSQ"
+msgstr ""

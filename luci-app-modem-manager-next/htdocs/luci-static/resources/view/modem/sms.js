@@ -64,15 +64,30 @@ return view.extend({
 	load: function() {
 		const self = this;
 		return Promise.all([
-			callGetDevices(),
-			callGetConfig()
+			L.resolveDefault(callGetDevices(), []),
+			L.resolveDefault(callGetConfig(), {})
 		]).then(function(results) {
 			const devicesData = results[0];
 			const configData = results[1] || {};
-			self.devicesList = (devicesData && devicesData.devices) ? devicesData.devices : [];
+			let list = [];
+			if (Array.isArray(devicesData)) {
+				list = devicesData;
+			} else if (devicesData && Array.isArray(devicesData.devices)) {
+				list = devicesData.devices;
+			}
+			self.devicesList = list;
 
 			if (self.devicesList.length > 0) {
 				self.selectedPort = configData.port || self.devicesList[0].primary_port;
+			} else {
+				self.selectedPort = null;
+			}
+
+			if (!self.selectedPort) {
+				self.smsEnabled = false;
+				self.smsCapacity = { used: 0, total: 0 };
+				self.smsList = [];
+				return Promise.resolve();
 			}
 
 			return callGetSmsStatus(self.selectedPort).then(function(statusRes) {
@@ -92,7 +107,19 @@ return view.extend({
 					self.smsList = [];
 					return Promise.resolve();
 				}
+			}).catch(function() {
+				self.smsEnabled = false;
+				self.smsCapacity = { used: 0, total: 0 };
+				self.smsList = [];
+				return Promise.resolve();
 			});
+		}).catch(function() {
+			self.devicesList = [];
+			self.selectedPort = null;
+			self.smsEnabled = false;
+			self.smsCapacity = { used: 0, total: 0 };
+			self.smsList = [];
+			return Promise.resolve();
 		});
 	},
 
@@ -274,6 +301,10 @@ return view.extend({
 
 	handleRefreshList: function() {
 		const self = this;
+		if (!self.selectedPort) {
+			self.renderSmsState();
+			return;
+		}
 		ui.showModal(_('Refreshing Messages'), [
 			E('p', { 'class': 'spinning' }, _('Reading SMS inbox from SIM card, please wait...'))
 		]);

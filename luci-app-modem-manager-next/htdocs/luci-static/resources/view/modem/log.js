@@ -22,7 +22,7 @@ return view.extend({
 	handleReset: null,
 
 	load: function() {
-		return callGetLog();
+		return L.resolveDefault(callGetLog(), '');
 	},
 
 	handleClearLog: function() {
@@ -37,16 +37,18 @@ return view.extend({
 	updateLog: function() {
 		return callGetLog().then(function(res) {
 			const logArea = document.getElementById('modem_log_content');
-			if (logArea && res) {
-				logArea.value = res.log || _('No log entries recorded yet.');
+			if (logArea) {
+				let logText = (typeof res === 'string') ? res : ((res && res.log) ? res.log : '');
+				logArea.value = logText || _('No log entries recorded yet.');
 				logArea.scrollTop = logArea.scrollHeight;
 			}
-		});
+		}).catch(function() {});
 	},
 
 	render: function(logData) {
 		const self = this;
-		const initialLog = (logData && logData.log) ? logData.log : _('No log entries recorded yet.');
+		let initialLog = (typeof logData === 'string') ? logData : ((logData && logData.log) ? logData.log : '');
+		if (!initialLog) initialLog = _('No log entries recorded yet.');
 
 		const container = E('div', { 'class': 'cbi-map' }, [
 			E('h2', {}, _('Cellular Modem Manager') + ' - ' + _('System Log')),

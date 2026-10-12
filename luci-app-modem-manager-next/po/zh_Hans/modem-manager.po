@@ -1,0 +1,861 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Modem Manager"
+msgstr "蜂窝网络管理器"
+
+msgid "Cellular Modem Manager"
+msgstr "蜂窝网络管理器"
+
+msgid "Overview"
+msgstr "总览"
+
+msgid "Settings"
+msgstr "设置"
+
+msgid "Templates"
+msgstr "配置模版"
+
+msgid "Configuration Templates"
+msgstr "配置模版"
+
+msgid "AT Terminal"
+msgstr "AT终端"
+
+msgid "AT Command Terminal"
+msgstr "AT终端控制台"
+
+msgid "Log"
+msgstr "运行日志"
+
+msgid "System Log"
+msgstr "运行日志"
+
+msgid "Modem Manager Logs"
+msgstr "蜂窝网络管理器日志"
+
+msgid "Active Modem Selection"
+msgstr "活动模组选择"
+
+msgid "Target Modem Selection"
+msgstr "目标模组选择"
+
+msgid "Current Device:"
+msgstr "当前设备:"
+
+msgid "Active Device:"
+msgstr "活动设备:"
+
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "No cellular modems detected on USB bus."
+msgstr "未在USB总线上探测到蜂窝模组。"
+
+msgid "No cellular modems detected."
+msgstr "未探测到蜂窝模组。"
+
+msgid "No serial communication ports detected."
+msgstr "未探测到串口通讯端口。"
+
+msgid "Hardware Information"
+msgstr "硬件信息"
+
+msgid "Manufacturer"
+msgstr "生产厂商"
+
+msgid "Model"
+msgstr "硬件型号"
+
+msgid "USB Identifiers"
+msgstr "USB识别码"
+
+msgid "Core Temperature"
+msgstr "核心温度"
+
+msgid "Driver Binding"
+msgstr "驱动绑定"
+
+msgid "Option Driver"
+msgstr "串口驱动"
+
+msgid "SIM Status"
+msgstr "SIM卡状态"
+
+msgid "Querying..."
+msgstr "查询中..."
+
+msgid "Not Supported"
+msgstr "不支持"
+
+msgid "Normal"
+msgstr "正常识别"
+
+msgid "PIN Locked"
+msgstr "PIN码锁定"
+
+msgid "PUK Locked"
+msgstr "PUK码锁定"
+
+msgid "Not Detected"
+msgstr "未检测到卡"
+
+msgid "Cellular Network and Signal Metrics"
+msgstr "蜂窝网络与信号指标"
+
+msgid "Operator"
+msgstr "营运商"
+
+msgid "Access Technology"
+msgstr "网络制式"
+
+msgid "Active Band"
+msgstr "工作频段"
+
+msgid "Physical Cell ID"
+msgstr "物理小区识别码"
+
+msgid "Cell ID"
+msgstr "小区识别码"
+
+msgid "Tracking Area Code"
+msgstr "跟踪区编码"
+
+msgid "Carrier Channel"
+msgstr "信道频点"
+
+msgid "Signal Strength (CSQ)"
+msgstr "信号强度"
+
+msgid "Signal Power (RSRP)"
+msgstr "信号功率"
+
+msgid "Signal Quality (SINR)"
+msgstr "信噪比"
+
+msgid "Excellent"
+msgstr "优秀"
+
+msgid "Good"
+msgstr "良好"
+
+msgid "Weak"
+msgstr "较弱"
+
+msgid "Searching"
+msgstr "搜索中"
+
+msgid "Calculating"
+msgstr "计算中"
+
+msgid "Network Interface Connection"
+msgstr "网络接口连接状态"
+
+msgid "Connection State"
+msgstr "连接状态"
+
+msgid "Connected"
+msgstr "已连接"
+
+msgid "Disconnected"
+msgstr "未连接"
+
+msgid "Assigned IPv4"
+msgstr "已分配IPv4地址"
+
+msgid "Traffic Statistics"
+msgstr "流量统计"
+
+msgid "Downlink: "
+msgstr "下行: "
+
+msgid " / Uplink: "
+msgstr " / 上行: "
+
+msgid "Restart Modem"
+msgstr "重启模组"
+
+msgid "Toggle Airplane Mode"
+msgstr "开关飞行模式"
+
+msgid "Reset RF Radio"
+msgstr "复位射频网络"
+
+msgid "Executing Action"
+msgstr "执行动作"
+
+msgid "Sending action to cellular module, please wait..."
+msgstr "正在向模组发送操作指令，请稍候..."
+
+msgid "Action executed successfully."
+msgstr "动作执行成功。"
+
+msgid "Action failed: "
+msgstr "动作执行失败: "
+
+msgid "Serial Port and Communication Configuration"
+msgstr "串口与通信参数配置"
+
+msgid "Primary AT Port"
+msgstr "主控制串口"
+
+msgid "Auto Recommended"
+msgstr "自动推荐"
+
+msgid "Manual Custom Path"
+msgstr "自定义设备路径"
+
+msgid "Specify custom node path"
+msgstr "输入自定义串口节点路径"
+
+msgid "Select or enter the dedicated AT control port for background status polling and control commands."
+msgstr "选择或输入专用于后台状态轮询和控制指令下发的主AT控制串口。"
+
+msgid "Serial Baudrate"
+msgstr "串口波特率"
+
+msgid "Standard cellular modem AT serial baudrate (Default: 115200)."
+msgstr "蜂窝模组标准AT串口通信波特率 (默认: 115200)。"
+
+msgid "Please specify or select an active AT communication port."
+msgstr "请指定或选择一个活动的AT通信端口。"
+
+msgid "Saving port settings and sending configuration commands, please wait..."
+msgstr "正在保存串口配置并下发模组参数，请稍候..."
+
+msgid "Driver Protocol and Operation Mode"
+msgstr "驱动协议与工作模式"
+
+msgid "Driver Mode"
+msgstr "驱动模式"
+
+msgid "MBIM Mode"
+msgstr "MBIM模式"
+
+msgid "NCM Mode"
+msgstr "NCM模式"
+
+msgid "QMI Mode"
+msgstr "QMI模式"
+
+msgid "ECM Mode"
+msgstr "ECM模式"
+
+msgid "RNDIS Mode"
+msgstr "RNDIS模式"
+
+msgid "Switching the operation mode requires restarting the modem to take effect."
+msgstr "切换工作模式后需要重新复位模组方能使新驱动生效。"
+
+msgid "Sync OpenWrt Network"
+msgstr "同步网络配置"
+
+msgid "Automatically update or create corresponding logical network interface in OpenWrt"
+msgstr "自动在网络配置中同步创建并绑定该协议对应的逻辑接口"
+
+msgid "Interface Name"
+msgstr "接口名称"
+
+msgid "The OpenWrt logical interface name to associate with this modem."
+msgstr "关联该模组的OpenWrt逻辑接口名称。"
+
+msgid "Network Access Technology and Band Locking"
+msgstr "网络制式与频段锁定"
+
+msgid "Access Technology Preference"
+msgstr "网络接入首选制式"
+
+msgid "Automatic Mode"
+msgstr "自动搜索模式"
+
+msgid "5G Standalone Only"
+msgstr "仅限5G独立组网"
+
+msgid "5G and 4G Hybrid"
+msgstr "5G与4G混合"
+
+msgid "4G LTE Only"
+msgstr "仅限4G网络"
+
+msgid "Select priority radio access technology for network registration."
+msgstr "选择模组在搜索驻留网络时的制式优先级策略。"
+
+msgid "4G LTE Bands"
+msgstr "4G工作频段"
+
+msgid "5G NR Bands"
+msgstr "5G工作频段"
+
+msgid "Access Point Name (APN) Settings"
+msgstr "接入点配置"
+
+msgid "APN Name"
+msgstr "接入点名称"
+
+msgid "Cellular carrier APN profile name (e.g. cmiot, cbnet, uninet)."
+msgstr "运营商接入点参数名称。"
+
+msgid "PDP Protocol Type"
+msgstr "协议版本"
+
+msgid "Dual Stack IPv4 and IPv6"
+msgstr "双栈IPv4与IPv6混合模式"
+
+msgid "IPv4 Only"
+msgstr "仅限IPv4"
+
+msgid "IPv6 Only"
+msgstr "仅限IPv6"
+
+msgid "Save and Apply"
+msgstr "保存并应用"
+
+msgid "Applying Configuration"
+msgstr "应用配置"
+
+msgid "Sending configuration commands to modem, please wait..."
+msgstr "正在向模组发送配置指令，请稍候..."
+
+msgid "Modem settings successfully applied."
+msgstr "模组配置已成功应用。"
+
+msgid "Failed to apply settings: "
+msgstr "应用配置失败: "
+
+msgid "Preset Template Library"
+msgstr "预置模版列表"
+
+msgid "Template Name"
+msgstr "模版名称"
+
+msgid "Vendor"
+msgstr "适用厂商"
+
+msgid "Vendor ID"
+msgstr "设备特征码"
+
+msgid "Mode Switching Command"
+msgstr "模式切换指令"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "View Details"
+msgstr "查看详情"
+
+msgid "Template Detail"
+msgstr "模版详情"
+
+msgid "Template ID"
+msgstr "模版标识"
+
+msgid "Target Vendor"
+msgstr "适用厂商"
+
+msgid "USB VID"
+msgstr "设备特征码"
+
+msgid "Mode Switch Command"
+msgstr "模式切换指令格式"
+
+msgid "Raw Configuration"
+msgstr "原始参数配置"
+
+msgid "Close"
+msgstr "关闭"
+
+msgid "Serial Port Selection"
+msgstr "串口端口选择"
+
+msgid "Communication Port:"
+msgstr "通讯端口:"
+
+msgid "Baudrate: 115200 (Auto Locked)"
+msgstr "波特率: 115200 (排他锁定)"
+
+msgid "Command Presets and Favorites"
+msgstr "常用指令与收藏夹"
+
+msgid "+ Add Current to Favorites"
+msgstr "+ 添加当前指令到收藏"
+
+msgid "Favorites:"
+msgstr "常用收藏:"
+
+msgid "Advanced:"
+msgstr "高级操作:"
+
+msgid "Scan Networks"
+msgstr "搜网扫描"
+
+msgid "Query APN"
+msgstr "查询接入点"
+
+msgid "Module Info"
+msgstr "模组信息"
+
+msgid "Signal (CSQ)"
+msgstr "信号强度"
+
+msgid "Serving Cell"
+msgstr "服务小区"
+
+msgid "Interactive Console Output"
+msgstr "交互终端输出"
+
+msgid "Clear Output"
+msgstr "清屏"
+
+msgid "Export Log"
+msgstr "导出日志"
+
+msgid "Copy All"
+msgstr "复制全部"
+
+msgid "Terminal output copied to clipboard."
+msgstr "终端输出已成功复制到剪贴板。"
+
+msgid "System ready. Full-width punctuation will be automatically converted to standard ASCII."
+msgstr "系统已就绪。输入的全角及中文标点符号将自动智能转换为标准ASCII符号。"
+
+msgid "Enter AT command (e.g. AT+CSQ)... Chinese punctuation auto-converted"
+msgstr "输入AT指令 (例如 AT+CSQ)... 支持中文标点自动转换"
+
+msgid "Send Command"
+msgstr "发送指令"
+
+msgid "Duration: "
+msgstr "耗时: "
+
+msgid "Error Explanation"
+msgstr "错误释义"
+
+msgid "Warning: This command may perform a factory reset on the cellular modem. Are you sure to execute?"
+msgstr "警告: 该指令可能会对蜂窝模组执行出厂重置操作。确定要执行吗?"
+
+msgid "No response from modem (Timeout or device busy)."
+msgstr "模组未响应 (通信超时或设备正忙)。"
+
+msgid "Did you mean: "
+msgstr "您是否想输入: "
+
+msgid "[Fill in]"
+msgstr "[填入]"
+
+msgid "Enter a friendly name for this shortcut:"
+msgstr "请为此快捷指令输入一个自定义名称:"
+
+msgid "Command added to favorites."
+msgstr "指令已成功添加到收藏夹。"
+
+msgid "Please enter a command to favorite."
+msgstr "请先输入一条指令再进行收藏。"
+
+msgid "Clear Log"
+msgstr "清理日志"
+
+msgid "Log buffer cleared successfully."
+msgstr "日志记录已成功清空。"
+
+msgid "No log entries recorded yet."
+msgstr "暂无日志记录。"
+
+msgid "SMS"
+msgstr "短信"
+
+msgid "SMS Management"
+msgstr "短信管理"
+
+msgid "Read, compose, and manage cellular SMS messages stored on the SIM card."
+msgstr "读取、发送及管理存储于SIM卡中的蜂窝网络短信。"
+
+msgid "SMS Feature is Currently Disabled"
+msgstr "短信功能已停用"
+
+msgid "To prevent IoT SIM cards, enterprise telemetry cards, or data-only SIM cards from unexpected billing, network carrier account suspensions, or serial AT buffer deadlocks, the SMS module is disabled by default. In this mode, no background polling or SMS commands will ever touch the cellular modem."
+msgstr "为防止物联网卡、企业遥测卡或纯数据流量卡产生异常扣费、运营商风控锁卡或串口缓冲区死锁，短信功能默认处于完全关闭状态。在此模式下，系统绝不向蜂窝模组发送任何短信读取或配置指令。"
+
+msgid "Enable SMS Feature"
+msgstr "启用短信功能"
+
+msgid "Disable SMS Feature"
+msgstr "停用短信功能"
+
+msgid "Disable Feature"
+msgstr "停用功能"
+
+msgid "Storage Capacity: "
+msgstr "存储容量: "
+
+msgid "Messages"
+msgstr "条短信"
+
+msgid "Module Active"
+msgstr "功能已激活"
+
+msgid "Compose Message"
+msgstr "写新短信"
+
+msgid "Refresh List"
+msgstr "刷新列表"
+
+msgid "Clear All"
+msgstr "清空全部"
+
+msgid "Inbox is empty. No messages stored on SIM card."
+msgstr "收件箱为空，SIM卡内暂无短信。"
+
+msgid "Unknown Sender"
+msgstr "未知发件人"
+
+msgid "Unread"
+msgstr "未读"
+
+msgid "Read"
+msgstr "已读"
+
+msgid "[Empty Message Body]"
+msgstr "[无正文内容]"
+
+msgid "Reply"
+msgstr "回复"
+
+msgid "Delete"
+msgstr "删除"
+
+msgid "Enabling SMS allows sending, receiving, and reading messages. Ensure your SIM card plan supports SMS traffic."
+msgstr "启用短信功能后将允许收发与查看短信。请确保您的SIM卡资费套餐支持短信业务。"
+
+msgid "Disabling SMS stops all SMS-related interactions and returns the cellular modem to pure data safety mode."
+msgstr "停用短信功能将停止所有短信交互，使蜂窝模组回归纯数据安全模式。"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Confirm"
+msgstr "确认"
+
+msgid "Updating configuration, please wait..."
+msgstr "正在更新配置，请稍候..."
+
+msgid "Failed to toggle SMS state: "
+msgstr "切换短信功能状态失败: "
+
+msgid "Refreshing Messages"
+msgstr "正在刷新短信"
+
+msgid "Reading SMS inbox from SIM card, please wait..."
+msgstr "正在从SIM卡读取短信收件箱，请稍候..."
+
+msgid "SMS list refreshed successfully."
+msgstr "短信列表已成功刷新。"
+
+msgid "Failed to refresh SMS list: "
+msgstr "刷新短信列表失败: "
+
+msgid "Target phone number (e.g. 10086 or +8613800000000)"
+msgstr "接收方手机号 (例如 10086 或 +8613800000000)"
+
+msgid "characters"
+msgstr "字符"
+
+msgid "Enter SMS message content..."
+msgstr "请输入短信正文内容..."
+
+msgid "Recipient:"
+msgstr "接收人:"
+
+msgid "Message:"
+msgstr "正文:"
+
+msgid "Please specify a valid recipient phone number."
+msgstr "请指定有效的接收方手机号码。"
+
+msgid "Message content cannot be empty."
+msgstr "短信正文内容不能为空。"
+
+msgid "Sending Message"
+msgstr "发送短信"
+
+msgid "Transmitting SMS message over cellular radio, please wait..."
+msgstr "正在通过蜂窝网络发送短信，请稍候..."
+
+msgid "Message transmitted successfully."
+msgstr "短信已成功发送。"
+
+msgid "Failed to transmit message: "
+msgstr "发送短信失败: "
+
+msgid "Unknown cellular error"
+msgstr "未知蜂窝网络错误"
+
+msgid "Send"
+msgstr "发送"
+
+msgid "Delete Message"
+msgstr "删除短信"
+
+msgid "Are you sure you want to delete message #"
+msgstr "确定要删除短信 #"
+
+msgid "Deleting Message"
+msgstr "正在删除短信"
+
+msgid "Deleting message, please wait..."
+msgstr "正在删除短信，请稍候..."
+
+msgid "Message deleted successfully."
+msgstr "短信已成功删除。"
+
+msgid "Failed to delete message: "
+msgstr "删除短信失败: "
+
+msgid "Unknown error"
+msgstr "未知错误"
+
+msgid "Clear All Messages"
+msgstr "清空所有短信"
+
+msgid "Are you sure you want to clear all SMS messages stored on the SIM card? This action cannot be undone."
+msgstr "确定要清空SIM卡中存储的全部短信吗？此操作无法撤销。"
+
+msgid "Clearing Messages"
+msgstr "正在清空短信"
+
+msgid "Clearing all SMS messages, please wait..."
+msgstr "正在清空所有短信，请稍候..."
+
+msgid "All SMS messages cleared successfully."
+msgstr "所有短信已成功清空。"
+
+msgid "Failed to clear messages: "
+msgstr "清空短信失败: "
+
+msgid "Confirm Clear"
+msgstr "确认清空"
+
+msgid "No Active Cellular Modem Detected"
+msgstr "未检测到活动的蜂窝模组"
+
+msgid "No active 4G or 5G cellular modem detected on the USB bus. Please verify hardware connection, power supply, or driver status."
+msgstr "当前 USB 总线上未发现活动的 4G 或 5G 蜂窝通信模组。请检查硬件连接、USB 供电或系统内核驱动加载状态。"
+
+msgid "Rescan Devices"
+msgstr "重新扫描设备"
+
+msgid "No Serial Ports Available"
+msgstr "未检测到可用串口"
+
+msgid "No ttyUSB or ttyACM serial communication ports detected. Please verify hardware connection and driver state."
+msgstr "当前未发现可供通信的 ttyUSB 或 ttyACM 串口设备。请检查蜂窝模组物理连接或驱动状态。"
+
+msgid "No Cellular Modem Detected"
+msgstr "未检测到蜂窝模组"
+
+msgid "No active cellular modem detected. Unable to manage SMS messages. Please check physical connection."
+msgstr "当前未发现活动的蜂窝模组设备，无法读取或发送短信。请检查模组物理连接。"
+
+msgid "No active cellular modem detected. You can still pre-configure serial port path or refresh after connecting."
+msgstr "当前未发现活动的蜂窝模组设备。您仍可预设串口路径或等待插入硬件后刷新页面。"
+
+msgid "Signal Strength CSQ"
+msgstr "信号强度 CSQ"
+
+msgid "Signal Power RSRP"
+msgstr "参考信号接收功率 RSRP"
+
+msgid "Signal Quality SINR"
+msgstr "信噪比 SINR"
+
+
+msgid "Configure PDP context 1 with APN"
+msgstr "配置 PDP 上下文 1 与 APN"
+
+msgid "Configure driver protocols, lock preferred access technologies, customize APN credentials, and manage cellular network interfaces."
+msgstr "配置驱动工作协议、锁定首选网络制式、自定义 APN 接入点及管理蜂窝网络接口。"
+
+msgid "Dial string too long"
+msgstr "拨号字符串过长"
+
+msgid "Direct interactive terminal for sending AT commands with intelligent auto-punctuation correction, fuzzy suggestions, error translation, and custom favorites."
+msgstr "交互式 AT 命令终端，支持标点符号自动纠正、模糊语法建议、错误码中文解析与自定义常用命令收藏。"
+
+msgid "Enable full RF function (Turn off airplane mode)"
+msgstr "开启完整射频功能并退出飞行模式"
+
+msgid "Execution failed: "
+msgstr "执行失败："
+
+msgid "Fibocom: Query RNDIS network connection status"
+msgstr "广和通：查询 RNDIS 网络连接状态"
+
+msgid "Fibocom: Query carrier aggregation info"
+msgstr "广和通：查询载波聚合信息"
+
+msgid "Fibocom: Query current cell info and radio metrics"
+msgstr "广和通：查询当前小区信息与射频指标"
+
+msgid "Incorrect PIN entered"
+msgstr "PIN 码输入错误"
+
+msgid "Invalid characters in dial string"
+msgstr "拨号字符串包含非法字符"
+
+msgid "Invalid characters in text string"
+msgstr "文本字符串包含非法字符"
+
+msgid "Invalid index or memory entry not found"
+msgstr "无效索引或存储条目不存在"
+
+msgid "Manage vendor preset command profiles, private AT mappings, band lock masks, and driver switching templates."
+msgstr "管理厂商预设命令配置、私有 AT 映射、频段锁定掩码及驱动切换模板。"
+
+msgid "Memory storage full"
+msgstr "存储空间已满"
+
+msgid "Network not allowed emergency calls only"
+msgstr "网络受限仅允许紧急呼叫"
+
+msgid "Network timeout"
+msgstr "网络连接超时"
+
+msgid "No Net"
+msgstr "无网络接口"
+
+msgid "No Port"
+msgstr "无串口端口"
+
+msgid "No cellular network service available"
+msgstr "无可用的蜂窝网络服务"
+
+msgid "No connection to phone"
+msgstr "未连接至通讯终端"
+
+msgid "No templates installed."
+msgstr "未安装任何配置模板。"
+
+msgid "None"
+msgstr "无"
+
+msgid "Not Defined"
+msgstr "未定义"
+
+msgid "Not found"
+msgstr "未找到"
+
+msgid "Operation not allowed"
+msgstr "操作不允许"
+
+msgid "Operation not supported"
+msgstr "操作不支持"
+
+msgid "PH-SIM PIN required"
+msgstr "需要输入手机 SIM 卡 PIN 码"
+
+msgid "PIN2 required"
+msgstr "需要输入 PIN2 码"
+
+msgid "PUK2 required"
+msgstr "需要输入 PUK2 码"
+
+msgid "Phone failure"
+msgstr "终端设备硬件故障"
+
+msgid "Phone-adaptor link reserved"
+msgstr "终端适配器链路保留"
+
+msgid "Please select a communication port first."
+msgstr "请先选择串口通讯端口。"
+
+msgid "Please select a valid modem port first."
+msgstr "请先选择有效的蜂窝模组串口。"
+
+msgid "Quectel: Query CPU and RF chip temperatures"
+msgstr "移远：查询 CPU 与射频芯片温度"
+
+msgid "Quectel: Query carrier aggregation (CA) state and secondary cells"
+msgstr "移远：查询载波聚合状态与辅小区信息"
+
+msgid "Quectel: Query current network band and channel info"
+msgstr "移远：查询当前工作频段与信道信息"
+
+msgid "Quectel: Query current serving cell details (5G SA/LTE, PCI, TAC, Band, RSRP, SINR)"
+msgstr "移远：查询主服务小区详细指标"
+
+msgid "Query 2G/3G network registration status"
+msgstr "查询 2G 与 3G 网络注册状态"
+
+msgid "Query 4G LTE network registration status"
+msgstr "查询 4G LTE 网络注册状态"
+
+msgid "Query 5G NR network registration status"
+msgstr "查询 5G NR 网络注册状态"
+
+msgid "Query SIM card ICCID number"
+msgstr "查询 SIM 卡 ICCID 卡号"
+
+msgid "Query SIM card lock and ready status"
+msgstr "查询 SIM 卡锁定与就绪状态"
+
+msgid "Query configured PDP contexts and APN profiles"
+msgstr "查询已配置的 PDP 上下文与 APN 配置文件"
+
+msgid "Query current RF radio state (0:Min, 1:Full, 4:Airplane)"
+msgstr "查询当前射频状态"
+
+msgid "Query module manufacturer, model, and firmware version"
+msgstr "查询模组厂商、硬件型号与固件版本"
+
+msgid "Query received signal strength and bit error rate"
+msgstr "查询接收信号强度与误码率"
+
+msgid "Query registered cellular operator and RAT"
+msgstr "查询已注册的蜂窝运营商与接入制式"
+
+msgid "Real-time overview of cellular modem hardware, network registration, signal metrics, and data connection."
+msgstr "实时展示蜂窝模组硬件信息、网络驻网状态、信号射频指标与数据连接概况。"
+
+msgid "Reboot module processor and RF reset"
+msgstr "重启模组基带处理器并复位射频"
+
+msgid "SIM PIN required (Please enter PIN to unlock)"
+msgstr "需要输入 SIM 卡 PIN 码解锁"
+
+msgid "SIM PUK required (Please enter PUK to unlock)"
+msgstr "需要输入 SIM 卡 PUK 码解锁"
+
+msgid "SIM card busy, please retry later"
+msgstr "SIM 卡正忙，请稍后重试"
+
+msgid "SIM card failure or communication defect"
+msgstr "SIM 卡故障或通讯接触不良"
+
+msgid "SIM card not inserted or not detected"
+msgstr "未检测到 SIM 卡或卡槽未插入"
+
+msgid "SIM wrong password"
+msgstr "SIM 卡密码错误"
+
+msgid "Scan all available cellular networks in air (Long timeout)"
+msgstr "全频段搜索空中可用蜂窝网络"
+
+msgid "Text string too long"
+msgstr "文本字符串过长"
+
+msgid "Turn on airplane mode"
+msgstr "开启飞行模式"
+
+msgid "Unknown"
+msgstr "未知"
+
+msgid "Unknown error or unsupported extended command"
+msgstr "未知错误或不支持的扩展指令"
+
+msgid "Uplink: "
+msgstr "上行："
+
+msgid "View background AT command traces, hardware detection events, and auto-reconnect activities."
+msgstr "查看后台 AT 指令追踪轨迹、硬件热插拔探测事件与自动重连记录。"
+
+msgid "Signal CSQ"
+msgstr "CSQ 信号强度"

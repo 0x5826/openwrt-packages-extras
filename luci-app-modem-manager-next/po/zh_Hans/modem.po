@@ -667,3 +667,195 @@ msgstr "参考信号接收功率 RSRP"
 msgid "Signal Quality SINR"
 msgstr "信噪比 SINR"
 
+
+msgid "Configure PDP context 1 with APN"
+msgstr "配置 PDP 上下文 1 与 APN"
+
+msgid "Configure driver protocols, lock preferred access technologies, customize APN credentials, and manage cellular network interfaces."
+msgstr "配置驱动工作协议、锁定首选网络制式、自定义 APN 接入点及管理蜂窝网络接口。"
+
+msgid "Dial string too long"
+msgstr "拨号字符串过长"
+
+msgid "Direct interactive terminal for sending AT commands with intelligent auto-punctuation correction, fuzzy suggestions, error translation, and custom favorites."
+msgstr "交互式 AT 命令终端，支持标点符号自动纠正、模糊语法建议、错误码中文解析与自定义常用命令收藏。"
+
+msgid "Enable full RF function (Turn off airplane mode)"
+msgstr "开启完整射频功能并退出飞行模式"
+
+msgid "Execution failed: "
+msgstr "执行失败："
+
+msgid "Fibocom: Query RNDIS network connection status"
+msgstr "广和通：查询 RNDIS 网络连接状态"
+
+msgid "Fibocom: Query carrier aggregation info"
+msgstr "广和通：查询载波聚合信息"
+
+msgid "Fibocom: Query current cell info and radio metrics"
+msgstr "广和通：查询当前小区信息与射频指标"
+
+msgid "Incorrect PIN entered"
+msgstr "PIN 码输入错误"
+
+msgid "Invalid characters in dial string"
+msgstr "拨号字符串包含非法字符"
+
+msgid "Invalid characters in text string"
+msgstr "文本字符串包含非法字符"
+
+msgid "Invalid index or memory entry not found"
+msgstr "无效索引或存储条目不存在"
+
+msgid "Manage vendor preset command profiles, private AT mappings, band lock masks, and driver switching templates."
+msgstr "管理厂商预设命令配置、私有 AT 映射、频段锁定掩码及驱动切换模板。"
+
+msgid "Memory storage full"
+msgstr "存储空间已满"
+
+msgid "Network not allowed emergency calls only"
+msgstr "网络受限仅允许紧急呼叫"
+
+msgid "Network timeout"
+msgstr "网络连接超时"
+
+msgid "No Net"
+msgstr "无网络接口"
+
+msgid "No Port"
+msgstr "无串口端口"
+
+msgid "No cellular network service available"
+msgstr "无可用的蜂窝网络服务"
+
+msgid "No connection to phone"
+msgstr "未连接至通讯终端"
+
+msgid "No templates installed."
+msgstr "未安装任何配置模板。"
+
+msgid "None"
+msgstr "无"
+
+msgid "Not Defined"
+msgstr "未定义"
+
+msgid "Not found"
+msgstr "未找到"
+
+msgid "Operation not allowed"
+msgstr "操作不允许"
+
+msgid "Operation not supported"
+msgstr "操作不支持"
+
+msgid "PH-SIM PIN required"
+msgstr "需要输入手机 SIM 卡 PIN 码"
+
+msgid "PIN2 required"
+msgstr "需要输入 PIN2 码"
+
+msgid "PUK2 required"
+msgstr "需要输入 PUK2 码"
+
+msgid "Phone failure"
+msgstr "终端设备硬件故障"
+
+msgid "Phone-adaptor link reserved"
+msgstr "终端适配器链路保留"
+
+msgid "Please select a communication port first."
+msgstr "请先选择串口通讯端口。"
+
+msgid "Please select a valid modem port first."
+msgstr "请先选择有效的蜂窝模组串口。"
+
+msgid "Quectel: Query CPU and RF chip temperatures"
+msgstr "移远：查询 CPU 与射频芯片温度"
+
+msgid "Quectel: Query carrier aggregation (CA) state and secondary cells"
+msgstr "移远：查询载波聚合状态与辅小区信息"
+
+msgid "Quectel: Query current network band and channel info"
+msgstr "移远：查询当前工作频段与信道信息"
+
+msgid "Quectel: Query current serving cell details (5G SA/LTE, PCI, TAC, Band, RSRP, SINR)"
+msgstr "移远：查询主服务小区详细指标"
+
+msgid "Query 2G/3G network registration status"
+msgstr "查询 2G 与 3G 网络注册状态"
+
+msgid "Query 4G LTE network registration status"
+msgstr "查询 4G LTE 网络注册状态"
+
+msgid "Query 5G NR network registration status"
+msgstr "查询 5G NR 网络注册状态"
+
+msgid "Query SIM card ICCID number"
+msgstr "查询 SIM 卡 ICCID 卡号"
+
+msgid "Query SIM card lock and ready status"
+msgstr "查询 SIM 卡锁定与就绪状态"
+
+msgid "Query configured PDP contexts and APN profiles"
+msgstr "查询已配置的 PDP 上下文与 APN 配置文件"
+
+msgid "Query current RF radio state (0:Min, 1:Full, 4:Airplane)"
+msgstr "查询当前射频状态"
+
+msgid "Query module manufacturer, model, and firmware version"
+msgstr "查询模组厂商、硬件型号与固件版本"
+
+msgid "Query received signal strength and bit error rate"
+msgstr "查询接收信号强度与误码率"
+
+msgid "Query registered cellular operator and RAT"
+msgstr "查询已注册的蜂窝运营商与接入制式"
+
+msgid "Real-time overview of cellular modem hardware, network registration, signal metrics, and data connection."
+msgstr "实时展示蜂窝模组硬件信息、网络驻网状态、信号射频指标与数据连接概况。"
+
+msgid "Reboot module processor and RF reset"
+msgstr "重启模组基带处理器并复位射频"
+
+msgid "SIM PIN required (Please enter PIN to unlock)"
+msgstr "需要输入 SIM 卡 PIN 码解锁"
+
+msgid "SIM PUK required (Please enter PUK to unlock)"
+msgstr "需要输入 SIM 卡 PUK 码解锁"
+
+msgid "SIM card busy, please retry later"
+msgstr "SIM 卡正忙，请稍后重试"
+
+msgid "SIM card failure or communication defect"
+msgstr "SIM 卡故障或通讯接触不良"
+
+msgid "SIM card not inserted or not detected"
+msgstr "未检测到 SIM 卡或卡槽未插入"
+
+msgid "SIM wrong password"
+msgstr "SIM 卡密码错误"
+
+msgid "Scan all available cellular networks in air (Long timeout)"
+msgstr "全频段搜索空中可用蜂窝网络"
+
+msgid "Text string too long"
+msgstr "文本字符串过长"
+
+msgid "Turn on airplane mode"
+msgstr "开启飞行模式"
+
+msgid "Unknown"
+msgstr "未知"
+
+msgid "Unknown error or unsupported extended command"
+msgstr "未知错误或不支持的扩展指令"
+
+msgid "Uplink: "
+msgstr "上行："
+
+msgid "View background AT command traces, hardware detection events, and auto-reconnect activities."
+msgstr "查看后台 AT 指令追踪轨迹、硬件热插拔探测事件与自动重连记录。"
+
+msgid "Signal CSQ"
+msgstr "CSQ 信号强度"

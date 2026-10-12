@@ -51,8 +51,8 @@ return view.extend({
 
 	load: function() {
 		return Promise.all([
-			callGetDevices(),
-			callGetConfig()
+			L.resolveDefault(callGetDevices(), []),
+			L.resolveDefault(callGetConfig(), {})
 		]);
 	},
 
@@ -107,7 +107,7 @@ return view.extend({
 		const devicesData = loadData ? loadData[0] : null;
 		self.configData = loadData ? loadData[1] : {};
 
-		self.devicesList = (devicesData && devicesData.devices) ? devicesData.devices : [];
+		self.devicesList = Array.isArray(devicesData) ? devicesData : ((devicesData && Array.isArray(devicesData.devices)) ? devicesData.devices : []);
 
 		if (self.devicesList.length > 0) {
 			self.selectedPort = self.configData.port || self.devicesList[0].primary_port;

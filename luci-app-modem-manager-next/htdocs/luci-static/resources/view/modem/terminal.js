@@ -152,7 +152,7 @@ return view.extend({
 	favorites: [],
 
 	load: function() {
-		return callGetDevices();
+		return L.resolveDefault(callGetDevices(), []);
 	},
 
 	loadFavorites: function() {
@@ -163,7 +163,7 @@ return view.extend({
 		if (!Array.isArray(this.favorites) || this.favorites.length === 0) {
 			this.favorites = [
 				{ cmd: 'ATI', label: _('Module Info') },
-				{ cmd: 'AT+CSQ', label: _('Signal (CSQ)') },
+				{ cmd: 'AT+CSQ', label: _('Signal CSQ') },
 				{ cmd: 'AT+CPIN?', label: _('SIM Status') },
 				{ cmd: 'AT+COPS?', label: _('Operator') },
 				{ cmd: 'AT+QENG="servingcell"', label: _('Serving Cell') }
@@ -456,7 +456,7 @@ return view.extend({
 
 	render: function(devicesData) {
 		const self = this;
-		self.devicesList = (devicesData && devicesData.devices) ? devicesData.devices : [];
+		self.devicesList = Array.isArray(devicesData) ? devicesData : ((devicesData && Array.isArray(devicesData.devices)) ? devicesData.devices : []);
 		self.loadFavorites();
 
 		const portOptions = [];

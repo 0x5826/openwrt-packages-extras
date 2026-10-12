@@ -15,7 +15,7 @@ return view.extend({
 	handleReset: null,
 
 	load: function() {
-		return callGetTemplates();
+		return L.resolveDefault(callGetTemplates(), []);
 	},
 
 	showTemplateDetail: function(tpl) {
@@ -57,7 +57,7 @@ return view.extend({
 
 	render: function(tplData) {
 		const self = this;
-		const templates = (tplData && tplData.templates) ? tplData.templates : [];
+		const templates = Array.isArray(tplData) ? tplData : ((tplData && Array.isArray(tplData.templates)) ? tplData.templates : []);
 
 		const container = E('div', { 'class': 'cbi-map' }, [
 			E('h2', {}, _('Cellular Modem Manager') + ' - ' + _('Configuration Templates')),
