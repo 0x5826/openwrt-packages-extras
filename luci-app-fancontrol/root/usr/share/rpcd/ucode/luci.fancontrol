@@ -87,6 +87,13 @@ const methods = {
 			let mode = uci_c.get(UCI_CONFIG, 'global', 'mode') || 'auto';
 			let interval = int(uci_c.get(UCI_CONFIG, 'global', 'interval') || '5');
 
+			let start_spin = int(uci_c.get(UCI_CONFIG, 'global', 'start_spin') || '1');
+			let temp_low = int(uci_c.get(UCI_CONFIG, 'global', 'temp_low') || '45');
+			let temp_med = int(uci_c.get(UCI_CONFIG, 'global', 'temp_med') || '60');
+			let temp_high = int(uci_c.get(UCI_CONFIG, 'global', 'temp_high') || '75');
+			let hysteresis = int(uci_c.get(UCI_CONFIG, 'global', 'hysteresis') || '3');
+			let manual_level = int(uci_c.get(UCI_CONFIG, 'global', 'manual_level') || '2');
+
 			return {
 				running: proc.running,
 				state: proc.state,
@@ -94,6 +101,12 @@ const methods = {
 				enabled: enabled,
 				mode: mode,
 				interval: interval,
+				start_spin: start_spin,
+				temp_low: temp_low,
+				temp_med: temp_med,
+				temp_high: temp_high,
+				hysteresis: hysteresis,
+				manual_level: manual_level,
 				temp: hw.temp,
 				level: hw.level,
 				pwm: hw.pwm

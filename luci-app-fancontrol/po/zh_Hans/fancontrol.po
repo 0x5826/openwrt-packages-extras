@@ -207,3 +207,55 @@ msgstr "日志已成功清空。"
 
 msgid "清空日志失败。"
 msgstr "清空日志失败。"
+
+msgid "当前策略配置"
+msgstr "当前策略配置"
+
+msgid "检测轮询周期"
+msgstr "检测轮询周期"
+
+msgid "启动除尘自检"
+msgstr "启动除尘自检"
+
+msgid "低速触发阈值"
+msgstr "低速触发阈值"
+
+msgid "中速触发阈值"
+msgstr "中速触发阈值"
+
+msgid "全速触发阈值"
+msgstr "全速触发阈值"
+
+msgid "换挡回差温差"
+msgstr "换挡回差温差"
+
+msgid "预设运转档位"
+msgstr "预设运转档位"
+
+msgid "控制驱动策略"
+msgstr "控制驱动策略"
+
+msgid "系统内核设备树原生驱动接管"
+msgstr "系统内核设备树原生驱动接管"
+
+msgid "秒"
+msgstr "秒"
+
+msgid "已开启 (开机全速 2 秒)"
+msgstr "已开启 (开机全速 2 秒)"
+
+msgid "未开启"
+msgstr "未开启"
+
+msgid "低于 %d °C 停转"
+msgstr "低于 %d °C 停转"
+
+msgid "低于 %d °C 降回低速"
+msgstr "低于 %d °C 降回低速"
+
+msgid "低于 %d °C 降回中速"
+msgstr "低于 %d °C 降回中速"
+
+msgid "防临界点振荡"
+msgstr "防临界点振荡"
+

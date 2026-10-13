@@ -74,6 +74,48 @@ return view.extend({
 		]);
 		container.appendChild(statusSection);
 
+		// 当前策略配置卡片
+		var policySection = E('fieldset', { 'class': 'cbi-section' }, [
+			E('legend', {}, _('当前策略配置')),
+			E('div', { 'class': 'cbi-section-node' }, [
+				E('table', { 'class': 'table cbi-section-table' }, [
+					E('tr', { 'class': 'tr', id: 'policy-row-interval' }, [
+						E('td', { 'class': 'td left', 'width': '33%' }, _('检测轮询周期')),
+						E('td', { 'class': 'td left', 'id': 'policy-interval' }, '-')
+					]),
+					E('tr', { 'class': 'tr', id: 'policy-row-spin' }, [
+						E('td', { 'class': 'td left' }, _('启动除尘自检')),
+						E('td', { 'class': 'td left', 'id': 'policy-start-spin' }, '-')
+					]),
+					E('tr', { 'class': 'tr', id: 'policy-row-low' }, [
+						E('td', { 'class': 'td left' }, _('低速触发阈值')),
+						E('td', { 'class': 'td left', 'id': 'policy-temp-low' }, '-')
+					]),
+					E('tr', { 'class': 'tr', id: 'policy-row-med' }, [
+						E('td', { 'class': 'td left' }, _('中速触发阈值')),
+						E('td', { 'class': 'td left', 'id': 'policy-temp-med' }, '-')
+					]),
+					E('tr', { 'class': 'tr', id: 'policy-row-high' }, [
+						E('td', { 'class': 'td left' }, _('全速触发阈值')),
+						E('td', { 'class': 'td left', 'id': 'policy-temp-high' }, '-')
+					]),
+					E('tr', { 'class': 'tr', id: 'policy-row-hyst' }, [
+						E('td', { 'class': 'td left' }, _('换挡回差温差')),
+						E('td', { 'class': 'td left', 'id': 'policy-hysteresis' }, '-')
+					]),
+					E('tr', { 'class': 'tr', id: 'policy-row-manual' }, [
+						E('td', { 'class': 'td left' }, _('预设运转档位')),
+						E('td', { 'class': 'td left', 'id': 'policy-manual-level' }, '-')
+					]),
+					E('tr', { 'class': 'tr', id: 'policy-row-kernel' }, [
+						E('td', { 'class': 'td left' }, _('控制驱动策略')),
+						E('td', { 'class': 'td left', 'id': 'policy-kernel-desc' }, _('系统内核设备树原生驱动接管'))
+					])
+				])
+			])
+		]);
+		container.appendChild(policySection);
+
 		// 快速测试面板
 		var testSection = E('fieldset', { 'class': 'cbi-section' }, [
 			E('legend', {}, _('硬件快速测试')),
@@ -181,6 +223,69 @@ return view.extend({
 			var pwmVal = parseInt(status.pwm) || 0;
 			var pct = Math.round((pwmVal / 255) * 100);
 			pwmEl.textContent = pwmVal + ' / 255 (' + pct + '%)';
+		}
+
+		// 策略配置数据更新与模式显隐
+		var curMode = status.mode || 'auto';
+		var isAuto = (curMode === 'auto');
+		var isManual = (curMode === 'manual');
+		var isKernel = (curMode === 'kernel');
+
+		var setRowDisplay = function(id, visible) {
+			var el = document.getElementById(id);
+			if (el) el.style.display = visible ? '' : 'none';
+		};
+
+		setRowDisplay('policy-row-interval', isAuto);
+		setRowDisplay('policy-row-spin', isAuto || isManual);
+		setRowDisplay('policy-row-low', isAuto);
+		setRowDisplay('policy-row-med', isAuto);
+		setRowDisplay('policy-row-high', isAuto);
+		setRowDisplay('policy-row-hyst', isAuto);
+		setRowDisplay('policy-row-manual', isManual);
+		setRowDisplay('policy-row-kernel', isKernel);
+
+		var intervalValEl = document.getElementById('policy-interval');
+		if (intervalValEl && status.interval) {
+			intervalValEl.textContent = status.interval + ' ' + _('秒');
+		}
+
+		var spinValEl = document.getElementById('policy-start-spin');
+		if (spinValEl) {
+			spinValEl.textContent = (status.start_spin == 1) ? _('已开启 (开机全速 2 秒)') : _('未开启');
+		}
+
+		if (isAuto) {
+			var low = parseInt(status.temp_low) || 45;
+			var med = parseInt(status.temp_med) || 60;
+			var high = parseInt(status.temp_high) || 75;
+			var hyst = parseInt(status.hysteresis) || 3;
+
+			var lowEl = document.getElementById('policy-temp-low');
+			if (lowEl) lowEl.textContent = low + ' °C (' + _('低于 %d °C 停转').format(low - hyst) + ')';
+
+			var medEl = document.getElementById('policy-temp-med');
+			if (medEl) medEl.textContent = med + ' °C (' + _('低于 %d °C 降回低速').format(med - hyst) + ')';
+
+			var highEl = document.getElementById('policy-temp-high');
+			if (highEl) highEl.textContent = high + ' °C (' + _('低于 %d °C 降回中速').format(high - hyst) + ')';
+
+			var hystEl = document.getElementById('policy-hysteresis');
+			if (hystEl) hystEl.textContent = hyst + ' °C (' + _('防临界点振荡') + ')';
+		} else if (isManual) {
+			var mLevelEl = document.getElementById('policy-manual-level');
+			if (mLevelEl) {
+				var ml = parseInt(status.manual_level) || 0;
+				var mlName = '';
+				switch (ml) {
+					case 0: mlName = _('0 级 [停转 0%]'); break;
+					case 1: mlName = _('1 级 [低速 31%]'); break;
+					case 2: mlName = _('2 级 [中速 50%]'); break;
+					case 3: mlName = _('3 级 [全速 100%]'); break;
+					default: mlName = ml + ' ' + _('级'); break;
+				}
+				mLevelEl.textContent = mlName;
+			}
 		}
 	},
 
