@@ -14,6 +14,8 @@ start_service() {
 	enabled=$(uci -q get "${CONFIG}.global.enabled" || echo 0)
 	[ "${enabled}" = "1" ] || return 0
 
+	chmod 755 "${PROG}" 2>/dev/null
+
 	# 启动前清理任何可能残留的孤儿进程
 	killall -q fancontrold 2>/dev/null
 
@@ -27,6 +29,9 @@ start_service() {
 
 stop_service() {
 	killall -q fancontrold 2>/dev/null
+	if [ -f "/sys/class/thermal/thermal_zone0/policy" ]; then
+		echo "step_wise" > "/sys/class/thermal/thermal_zone0/policy" 2>/dev/null
+	fi
 }
 
 reload_service() {

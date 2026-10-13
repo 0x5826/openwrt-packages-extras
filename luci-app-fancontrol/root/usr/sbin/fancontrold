@@ -79,7 +79,8 @@ set_fan_level() {
 	local lvl="$1"
 	if [ -n "${COOLING_DEV}" ] && [ -w "${COOLING_DEV}/cur_state" ]; then
 		echo "${lvl}" > "${COOLING_DEV}/cur_state" 2>/dev/null
-	elif [ -n "${HWMON_PWM}" ] && [ -w "${HWMON_PWM}" ]; then
+	fi
+	if [ -n "${HWMON_PWM}" ] && [ -w "${HWMON_PWM}" ]; then
 		local pwm_val=0
 		case "${lvl}" in
 			0) pwm_val=0 ;;
@@ -154,7 +155,10 @@ calc_level() {
 }
 
 cleanup() {
-	log_msg "信息" "风扇控制守护服务已停止"
+	if [ -n "${THERMAL_ZONE}" ] && [ -w "${THERMAL_ZONE}/policy" ]; then
+		echo "step_wise" > "${THERMAL_ZONE}/policy" 2>/dev/null
+	fi
+	log_msg "信息" "风扇控制守护服务已停止，已恢复内核温控策略"
 	exit 0
 }
 
@@ -192,6 +196,11 @@ if [ "${start_spin}" = "1" ] && [ "${mode}" != "kernel" ]; then
 	log_msg "信息" "执行启动自检，全速运转 2 秒以清洁防尘"
 	set_fan_level 3
 	sleep 2
+fi
+
+# 非内核模式下切换为用户空间接管，防止内核 step_wise 依据 40°C 强制拉高转速
+if [ "${mode}" != "kernel" ] && [ -n "${THERMAL_ZONE}" ] && [ -w "${THERMAL_ZONE}/policy" ]; then
+	echo "user_space" > "${THERMAL_ZONE}/policy" 2>/dev/null
 fi
 
 current_level=-1
