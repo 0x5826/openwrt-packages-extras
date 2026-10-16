@@ -8,7 +8,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=tailscale-next
-PKG_VERSION:=1.102.4
+PKG_VERSION:=1.104.1
 PKG_RELEASE:=1
 
 # Architecture mapping for pre-built binaries
