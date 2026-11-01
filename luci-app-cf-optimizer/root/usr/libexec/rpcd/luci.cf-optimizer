@@ -1,0 +1,210 @@
+#!/usr/bin/env lua
+
+local json = require "luci.jsonc"
+local nixio = require "nixio"
+local fs = require "nixio.fs"
+
+local function trim(s)
+	if type(s) ~= 'string' then return '' end
+	return s:gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local function exec_cmd(cmd)
+	local f = io.popen(cmd)
+	if not f then
+		return { code = -1, stdout = {}, raw = "" }
+	end
+	local content = f:read("*a") or ""
+	local success, msg, code = f:close()
+	content = trim(content)
+	local lines = {}
+	for line in string.gmatch(content .. "\n", "(.-)\r?\n") do
+		if line ~= "" then
+			table.insert(lines, line)
+		end
+	end
+	return {
+		code = (type(success) == "number" and success) or (code or 0),
+		stdout = lines,
+		raw = content
+	}
+end
+
+local function get_service_status()
+	local ubus_res = exec_cmd("ubus call service list '{\"name\":\"cf-optimizer\"}' 2>/dev/null")
+	if ubus_res.raw and #ubus_res.raw > 0 then
+		local parsed = json.parse(ubus_res.raw)
+		if parsed and parsed['cf-optimizer'] and parsed['cf-optimizer'].instances then
+			local inst = parsed['cf-optimizer'].instances['main'] or parsed['cf-optimizer'].instances['daemon']
+			if not inst then
+				for _, v in pairs(parsed['cf-optimizer'].instances) do
+					if v and v.running then
+						inst = v
+						break
+					end
+				end
+			end
+			if inst and inst.running then
+				return { running = true, pid = inst.pid }
+			end
+		end
+	end
+
+	local pid_res = exec_cmd("pidof cf-optimizer 2>/dev/null")
+	if pid_res.stdout and #pid_res.stdout > 0 then
+		local pids = trim(pid_res.stdout[1])
+		local pid = tonumber(pids:match("(%d+)"))
+		if pid then
+			return { running = true, pid = pid }
+		end
+	end
+
+	return { running = false, pid = nil }
+end
+
+local methods = {
+	get_status = {
+		args = {},
+		call = function(args)
+			local status_file = "/tmp/run/cf-optimizer/status.json"
+			local data = {
+				running = false,
+				last_update = "",
+				best_ip = "",
+				best_colo = "",
+				best_tcp_lat = 0,
+				best_tls_lat = 0,
+				domains = {},
+				rankings = {}
+			}
+
+			if fs.access(status_file) then
+				local content = fs.readfile(status_file)
+				if content and #content > 0 then
+					local parsed = json.parse(content)
+					if parsed and type(parsed) == "table" then
+						data = parsed
+					end
+				end
+			end
+
+			local svc = get_service_status()
+			data.service_running = svc.running
+			data.service_pid = svc.pid
+
+			return data
+		end
+	},
+
+	get_logs = {
+		args = {},
+		call = function(args)
+			local log_file = "/var/log/cf-optimizer.log"
+			local logs = {}
+			if fs.access(log_file) then
+				local res = exec_cmd("tail -n 120 " .. log_file .. " 2>/dev/null")
+				if res.stdout then logs = res.stdout end
+			end
+			return { logs = logs }
+		end
+	},
+
+	clear_logs = {
+		args = {},
+		call = function(args)
+			local log_file = "/var/log/cf-optimizer.log"
+			fs.writefile(log_file, "")
+			return { success = true }
+		end
+	},
+
+	run_once = {
+		args = {},
+		call = function(args)
+			os.execute("/usr/sbin/cf-optimizer run >/dev/null 2>&1 &")
+			return { success = true }
+		end
+	},
+
+	service_action = {
+		args = { action = "action" },
+		call = function(args)
+			local action = args and args.action
+			if not action then
+				return { success = false, error = "Missing action" }
+			end
+
+			if action == "restart" then
+				os.execute("/etc/init.d/cf-optimizer restart >/dev/null 2>&1")
+			elseif action == "start" then
+				os.execute("/etc/init.d/cf-optimizer start >/dev/null 2>&1")
+			elseif action == "stop" then
+				os.execute("/etc/init.d/cf-optimizer stop >/dev/null 2>&1")
+			end
+
+			return { success = true }
+		end
+	}
+}
+
+local function parseInput()
+	local parse = json.new()
+	local done, err
+
+	while true do
+		local chunk = io.read(4096)
+		if not chunk or #chunk == 0 then
+			break
+		end
+		done, err = parse:parse(chunk)
+		if done then
+			break
+		end
+	end
+
+	if not done then
+		print(json.stringify({ error = err or "Incomplete input" }))
+		os.exit(1)
+	end
+
+	return parse:get()
+end
+
+local function validateArgs(func, uargs)
+	local method = methods[func]
+	if not method then
+		print(json.stringify({ error = "Method not found" }))
+		os.exit(1)
+	end
+
+	if type(uargs) ~= "table" then
+		print(json.stringify({ error = "Invalid arguments" }))
+		os.exit(1)
+	end
+
+	uargs.ubus_rpc_session = nil
+
+	local margs = method.args or {}
+	for k, _ in pairs(uargs) do
+		if margs[k] == nil then
+			print(json.stringify({ error = "Invalid argument: " .. tostring(k) }))
+			os.exit(1)
+		end
+	end
+
+	return method
+end
+
+if arg[1] == "list" then
+	local rv = {}
+	for name, method in pairs(methods) do
+		rv[name] = method.args or {}
+	end
+	print((json.stringify(rv):gsub(":%[%]", ":{}")))
+elseif arg[1] == "call" then
+	local args = parseInput()
+	local method = validateArgs(arg[2], args)
+	local result, code = method.call(args)
+	print((json.stringify(result):gsub("^%[%]$", "{}")))
+	os.exit(code or 0)
+end
