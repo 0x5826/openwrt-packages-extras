@@ -118,8 +118,14 @@ msgstr "初筛后对候选节点进行连续采样的次数，用于计算平均
 msgid "防震荡迟滞阈值"
 msgstr "防震荡迟滞阈值"
 
-msgid "新节点平均延迟相比在用节点必须降低超过此百分比才触发切换，避免网络微小波动导致局域网长连接频繁重连。"
-msgstr "新节点平均延迟相比在用节点必须降低超过此百分比才触发切换，避免网络微小波动导致局域网长连接频繁重连。"
+msgid "新节点平均延迟相比在用节点必须降低超过此绝对时延（毫秒）才触发切换，避免网络微小波动导致局域网长连接频繁重连。"
+msgstr "新节点平均延迟相比在用节点必须降低超过此绝对时延（毫秒）才触发切换，避免网络微小波动导致局域网长连接频繁重连。"
+
+msgid "关闭 (任意优化均切换)"
+msgstr "关闭 (任意优化均切换)"
+
+msgid "正在下发配置并同步 hosts 域名定向，请稍候..."
+msgstr "正在下发配置并同步 hosts 域名定向，请稍候..."
 
 msgid "初筛并发数"
 msgstr "初筛并发数"
@@ -216,3 +222,69 @@ msgstr "3.0 倍"
 
 msgid "禁用"
 msgstr "禁用"
+
+msgid "机房区域过滤"
+msgstr "机房区域过滤"
+
+msgid "区域过滤模式"
+msgstr "区域过滤模式"
+
+msgid "设置对 Cloudflare 数据中心机房的筛选策略。"
+msgstr "设置对 Cloudflare 数据中心机房的筛选策略。"
+
+msgid "不限制"
+msgstr "不限制"
+
+msgid "排除指定机房"
+msgstr "排除指定机房"
+
+msgid "仅限指定机房"
+msgstr "仅限指定机房"
+
+msgid "目标机房列表"
+msgstr "目标机房列表"
+
+msgid "选择需要排除或仅保留的 Cloudflare 常用数据中心机房。"
+msgstr "选择需要排除或仅保留的 Cloudflare 常用数据中心机房。"
+
+msgid "新加坡 SIN"
+msgstr "新加坡 SIN"
+
+msgid "香港 HKG"
+msgstr "香港 HKG"
+
+msgid "台北 TPE"
+msgstr "台北 TPE"
+
+msgid "东京 NRT"
+msgstr "东京 NRT"
+
+msgid "大阪 KIX"
+msgstr "大阪 KIX"
+
+msgid "首尔 ICN"
+msgstr "首尔 ICN"
+
+msgid "吉隆坡 KUL"
+msgstr "吉隆坡 KUL"
+
+msgid "曼谷 BKK"
+msgstr "曼谷 BKK"
+
+msgid "圣何塞 SJC"
+msgstr "圣何塞 SJC"
+
+msgid "洛杉矶 LAX"
+msgstr "洛杉矶 LAX"
+
+msgid "法兰克福 FRA"
+msgstr "法兰克福 FRA"
+
+msgid "伦敦 LHR"
+msgstr "伦敦 LHR"
+
+msgid "自定义机房代码"
+msgstr "自定义机房代码"
+
+msgid "填入其他三位大写机场代码，例如 SFO、SEA 等。"
+msgstr "填入其他三位大写机场代码，例如 SFO、SEA 等。"

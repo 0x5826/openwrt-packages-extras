@@ -1,6 +1,13 @@
 #!/bin/sh
 
 /etc/init.d/cf-optimizer enable >/dev/null 2>&1 || true
+
+uci -q get ucitrack.@cf-optimizer[0] >/dev/null || {
+	uci add ucitrack cf-optimizer >/dev/null
+	uci set ucitrack.@cf-optimizer[-1].init='cf-optimizer'
+	uci commit ucitrack
+}
+
 rm -f /tmp/luci-indexcache* 2>/dev/null
 rm -f /tmp/luci-modulecache/* 2>/dev/null
 
