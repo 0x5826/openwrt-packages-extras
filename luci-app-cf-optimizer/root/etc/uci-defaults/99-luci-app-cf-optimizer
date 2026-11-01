@@ -1,0 +1,7 @@
+#!/bin/sh
+
+/etc/init.d/cf-optimizer enable >/dev/null 2>&1 || true
+rm -f /tmp/luci-indexcache* 2>/dev/null
+rm -f /tmp/luci-modulecache/* 2>/dev/null
+
+exit 0

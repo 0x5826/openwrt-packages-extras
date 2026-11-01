@@ -17,7 +17,9 @@ endef
 define Package/$(PKG_NAME)/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
+	rm -f /tmp/luci-indexcache.* /tmp/luci-modulecache/* 2>/dev/null
 	chmod 755 /etc/init.d/cf-optimizer /usr/sbin/cf-optimizer 2>/dev/null
+	/etc/init.d/cf-optimizer enable 2>/dev/null || true
 	/etc/init.d/rpcd restart
 }
 exit 0
