@@ -153,3 +153,66 @@ msgstr "清空日志"
 
 msgid "日志已清空"
 msgstr "日志已清空"
+
+msgid "次优备选 IP"
+msgstr ""
+
+msgid "暂无备选"
+msgstr ""
+
+msgid "健康看门狗"
+msgstr ""
+
+msgid "未运行"
+msgstr ""
+
+msgid "故障快速倒换"
+msgstr ""
+
+msgid "启用快速故障倒换"
+msgstr ""
+
+msgid "开启后短周期看门狗将持续监控在用节点健康度，发生严重丢包或阻断时自动秒级倒换至次优备选节点。"
+msgstr ""
+
+msgid "健康巡检间隔"
+msgstr ""
+
+msgid "看门狗对在用节点执行极轻量 HTTP 探活的间隔时间。"
+msgstr ""
+
+msgid "30 秒"
+msgstr ""
+
+msgid "60 秒"
+msgstr ""
+
+msgid "120 秒"
+msgstr ""
+
+msgid "连续故障判定阈值"
+msgstr ""
+
+msgid "探活连续失败达到指定次数后触发次优节点核验与自动倒换，推荐设置为 2 次以避免偶发网络抖动误切换。"
+msgstr ""
+
+msgid "已倒换"
+msgstr ""
+
+msgid "延迟劣化容忍倍数"
+msgstr ""
+
+msgid "当在用节点实测延迟超过基线延迟指定倍数且绝对恶化超过 50ms 时判定为信道拥塞，连续触发将倒换至次优节点。"
+msgstr ""
+
+msgid "1.5 倍"
+msgstr ""
+
+msgid "2.0 倍"
+msgstr ""
+
+msgid "3.0 倍"
+msgstr ""
+
+msgid "禁用"
+msgstr ""

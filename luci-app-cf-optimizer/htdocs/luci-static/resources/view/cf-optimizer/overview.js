@@ -101,6 +101,14 @@ return view.extend({
 						E('td', { 'class': 'td left', 'id': 'cf-best-ip', 'style': 'font-weight:bold;' }, data.best_ip || '-')
 					]),
 					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left' }, _('次优备选 IP')),
+						E('td', { 'class': 'td left', 'id': 'cf-standby-ip' }, data.standby_ip ? (data.standby_ip + ' (' + (data.standby_colo || '-') + ')') : _('暂无备选'))
+					]),
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left' }, _('健康看门狗')),
+						E('td', { 'class': 'td left', 'id': 'cf-watchdog-status', 'style': 'font-weight:bold; color:' + ((data.watchdog_status && data.watchdog_status.indexOf('倒换') !== -1) ? '#d97706' : '#059669') }, data.watchdog_status || _('未运行'))
+					]),
+					E('tr', { 'class': 'tr' }, [
 						E('td', { 'class': 'td left' }, _('数据中心')),
 						E('td', { 'class': 'td left', 'id': 'cf-best-colo' }, data.best_colo || '-')
 					]),
@@ -207,6 +215,15 @@ return view.extend({
 
 				var ipEl = document.getElementById('cf-best-ip');
 				if (ipEl) ipEl.textContent = res.best_ip || '-';
+
+				var sbEl = document.getElementById('cf-standby-ip');
+				if (sbEl) sbEl.textContent = res.standby_ip ? (res.standby_ip + ' (' + (res.standby_colo || '-') + ')') : _('暂无备选');
+
+				var wdEl = document.getElementById('cf-watchdog-status');
+				if (wdEl) {
+					wdEl.textContent = res.watchdog_status || _('未运行');
+					wdEl.style.color = (res.watchdog_status && res.watchdog_status.indexOf('倒换') !== -1) ? '#d97706' : '#059669';
+				}
 
 				var coloEl = document.getElementById('cf-best-colo');
 				if (coloEl) coloEl.textContent = res.best_colo || '-';

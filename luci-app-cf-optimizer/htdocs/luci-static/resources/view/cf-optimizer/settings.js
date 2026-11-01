@@ -64,6 +64,37 @@ return view.extend({
 		o.depends('ip_source', 'custom');
 		o.depends('ip_source', 'mixed');
 
+		s = m.section(form.NamedSection, 'settings', 'cf-optimizer', _('故障快速倒换'));
+		s.anonymous = true;
+
+		o = s.option(form.Flag, 'failover_enabled', _('启用快速故障倒换'),
+			_('开启后短周期看门狗将持续监控在用节点健康度，发生严重丢包或阻断时自动秒级倒换至次优备选节点。'));
+		o.rmempty = false;
+		o.default = '1';
+
+		o = s.option(form.ListValue, 'health_interval', _('健康巡检间隔'),
+			_('看门狗对在用节点执行极轻量 HTTP 探活的间隔时间。'));
+		o.value('30', _('30 秒'));
+		o.value('60', _('60 秒'));
+		o.value('120', _('120 秒'));
+		o.default = '60';
+		o.depends('failover_enabled', '1');
+
+		o = s.option(form.Value, 'fail_threshold', _('连续故障判定阈值'),
+			_('探活连续失败达到指定次数后触发次优节点核验与自动倒换，推荐设置为 2 次以避免偶发网络抖动误切换。'));
+		o.datatype = 'range(1, 10)';
+		o.default = '2';
+		o.depends('failover_enabled', '1');
+
+		o = s.option(form.ListValue, 'latency_multiplier', _('延迟劣化容忍倍数'),
+			_('当在用节点实测延迟超过基线延迟指定倍数且绝对恶化超过 50ms 时判定为信道拥塞，连续触发将倒换至次优节点。'));
+		o.value('1.5', _('1.5 倍'));
+		o.value('2.0', _('2.0 倍'));
+		o.value('3.0', _('3.0 倍'));
+		o.value('0', _('禁用'));
+		o.default = '2.0';
+		o.depends('failover_enabled', '1');
+
 		return m.render();
 	}
 });
