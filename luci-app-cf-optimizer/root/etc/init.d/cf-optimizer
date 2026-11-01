@@ -11,12 +11,11 @@ start_service() {
 	config_load "$CONF"
 	local enabled
 	config_get_bool enabled settings enabled 0
-	[ "$enabled" -eq 1 ] || {
-		"$PROG" clean
-		return 0
-	}
+	[ "$enabled" -eq 1 ] || return 0
 
 	mkdir -p /var/run/cf-optimizer
+	"$PROG" sync-hosts >/dev/null 2>&1
+
 	procd_open_instance
 	procd_set_param command "$PROG" daemon
 	procd_set_param respawn 3600 5 0
@@ -27,12 +26,23 @@ start_service() {
 }
 
 stop_service() {
-	"$PROG" clean
+	rm -f /var/run/cf-optimizer/cf-optimizer.pid
+}
+
+service_stopped() {
+	config_load "$CONF"
+	local enabled
+	config_get_bool enabled settings enabled 0
+	if [ "$enabled" != "1" ]; then
+		"$PROG" clean
+	fi
 }
 
 reload_service() {
+	"$PROG" sync-hosts >/dev/null 2>&1
 	stop
 	start
+	"$PROG" run >/dev/null 2>&1 &
 }
 
 service_triggers() {

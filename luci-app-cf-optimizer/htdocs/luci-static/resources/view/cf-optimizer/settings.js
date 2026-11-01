@@ -2,8 +2,24 @@
 'require view';
 'require form';
 'require uci';
+'require fs';
+'require ui';
 
 return view.extend({
+	handleSaveApply: function(ev, mode) {
+		return this.handleSave(ev).then(function() {
+			ui.showModal(_('应用配置'), [
+				E('p', { 'class': 'spinning' }, _('正在下发配置并同步 hosts 域名定向，请稍候...'))
+			]);
+			return fs.exec_direct('/etc/init.d/cf-optimizer', ['reload']).catch(function() {}).then(function() {
+				setTimeout(function() {
+					ui.hideModal();
+					window.location.reload();
+				}, 1500);
+			});
+		});
+	},
+
 	render: function() {
 		var m, s, o;
 
@@ -41,10 +57,15 @@ return view.extend({
 		o.datatype = 'range(2, 20)';
 		o.default = '4';
 
-		o = s.option(form.Value, 'hysteresis_pct', _('防震荡迟滞阈值'),
-			_('新节点平均延迟相比在用节点必须降低超过此百分比才触发切换，避免网络微小波动导致局域网长连接频繁重连。'));
-		o.datatype = 'range(0, 50)';
-		o.default = '15';
+		o = s.option(form.ListValue, 'hysteresis_ms', _('防震荡迟滞阈值'),
+			_('新节点平均延迟相比在用节点必须降低超过此绝对时延（毫秒）才触发切换，避免网络微小波动导致局域网长连接频繁重连。'));
+		o.value('0', _('关闭 (任意优化均切换)'));
+		o.value('10', '10 ms');
+		o.value('20', '20 ms');
+		o.value('30', '30 ms');
+		o.value('50', '50 ms');
+		o.value('80', '80 ms');
+		o.default = '30';
 
 		o = s.option(form.Value, 'concurrency', _('初筛并发数'),
 			_('初筛阶段并发探测的进程数量，推荐范围 5-20。'));
@@ -94,6 +115,38 @@ return view.extend({
 		o.value('0', _('禁用'));
 		o.default = '2.0';
 		o.depends('failover_enabled', '1');
+
+		s = m.section(form.NamedSection, 'settings', 'cf-optimizer', _('机房区域过滤'));
+		s.anonymous = true;
+
+		o = s.option(form.ListValue, 'colo_filter_mode', _('区域过滤模式'),
+			_('设置对 Cloudflare 数据中心机房的筛选策略。'));
+		o.value('none', _('不限制'));
+		o.value('exclude', _('排除指定机房'));
+		o.value('include', _('仅限指定机房'));
+		o.default = 'none';
+
+		o = s.option(form.MultiValue, 'colo_list', _('目标机房列表'),
+			_('选择需要排除或仅保留的 Cloudflare 常用数据中心机房。'));
+		o.value('SIN', _('新加坡 SIN'));
+		o.value('HKG', _('香港 HKG'));
+		o.value('TPE', _('台北 TPE'));
+		o.value('NRT', _('东京 NRT'));
+		o.value('KIX', _('大阪 KIX'));
+		o.value('ICN', _('首尔 ICN'));
+		o.value('KUL', _('吉隆坡 KUL'));
+		o.value('BKK', _('曼谷 BKK'));
+		o.value('SJC', _('圣何塞 SJC'));
+		o.value('LAX', _('洛杉矶 LAX'));
+		o.value('FRA', _('法兰克福 FRA'));
+		o.value('LHR', _('伦敦 LHR'));
+		o.depends('colo_filter_mode', 'exclude');
+		o.depends('colo_filter_mode', 'include');
+
+		o = s.option(form.DynamicList, 'custom_colos', _('自定义机房代码'),
+			_('填入其他三位大写机场代码，例如 SFO、SEA 等。'));
+		o.depends('colo_filter_mode', 'exclude');
+		o.depends('colo_filter_mode', 'include');
 
 		return m.render();
 	}
