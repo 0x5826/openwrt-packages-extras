@@ -10,6 +10,10 @@ COLO_MAP_FILE="/usr/share/cf-optimizer/colo_map.json"
 PID_FILE="$RUN_DIR/cf-optimizer.pid"
 STATUS_JSON="$RUN_DIR/status.json"
 CURRENT_IP_FILE="$RUN_DIR/current_ip.txt"
+PRIMARY_IP_FILE="$RUN_DIR/primary_ip.txt"
+STANDBY_IP_FILE="$RUN_DIR/standby_ip.txt"
+BASELINE_TCP_FILE="$RUN_DIR/baseline_tcp.txt"
+FAIL_STREAK_FILE="$RUN_DIR/fail_streak.txt"
 
 log() {
 	local msg="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
@@ -26,7 +30,7 @@ get_colo_name() {
 	local code="$1"
 	if [ -f "$COLO_MAP_FILE" ] && [ -n "$code" ]; then
 		local name
-		name=$(grep -E "\"$code\"\s*:" "$COLO_MAP_FILE" 2>/dev/null | head -n 1 | sed -E 's/.*:\s*"([^"]+)".*/\1/')
+		name=$(grep -E "\"$code\"[[:space:]]*:" "$COLO_MAP_FILE" 2>/dev/null | head -n 1 | sed -E 's/.*:[[:space:]]*"([^"]+)".*/\1/')
 		if [ -n "$name" ]; then
 			echo "$name"
 			return
@@ -36,13 +40,14 @@ get_colo_name() {
 }
 
 clean_hosts() {
+	mkdir -p "$RUN_DIR"
 	if [ -f "$HOSTS_FILE" ]; then
 		rm -f "$HOSTS_FILE"
 		killall -HUP dnsmasq 2>/dev/null
 		log "已清空优选 hosts 映射并重载 dnsmasq"
 	fi
-	rm -f "$CURRENT_IP_FILE"
-	rmdir "$RUN_DIR/task.lock" 2>/dev/null
+	rm -f "$CURRENT_IP_FILE" "$PRIMARY_IP_FILE" "$STANDBY_IP_FILE" "$BASELINE_TCP_FILE" "$FAIL_STREAK_FILE"
+	rm -rf "$RUN_DIR/task.lock"
 	cat <<EOF > "$STATUS_JSON"
 {
   "running": false,
@@ -51,6 +56,10 @@ clean_hosts() {
   "best_colo": "",
   "best_tcp_lat": 0,
   "best_tls_lat": 0,
+  "standby_ip": "",
+  "standby_colo": "",
+  "standby_tcp_lat": 0,
+  "watchdog_status": "未运行",
   "domains": [],
   "rankings": []
 }
@@ -71,9 +80,9 @@ load_candidate_ips() {
 	fi
 
 	if [ "$ip_source" = "custom" ] || [ "$ip_source" = "mixed" ]; then
-		local custom_ips
-		config_get custom_ips settings custom_ips ""
-		for item in $custom_ips; do
+		append_custom_ip() {
+			local item="$1"
+			[ -z "$item" ] && return
 			# 若为 CIDR 简单网段 (如 /24)，取前 3 个 IP
 			case "$item" in
 				*/*)
@@ -86,7 +95,8 @@ load_candidate_ips() {
 					echo "$item" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' >> "$out_file"
 					;;
 			esac
-		done
+		}
+		config_list_foreach settings custom_ips append_custom_ip
 	fi
 
 	# 兜底：若文件为空，填入稳定官方公共 IP
@@ -111,7 +121,7 @@ probe_fast() {
 		--resolve "speed.cloudflare.com:443:$ip" "https://speed.cloudflare.com/__down?bytes=0" 2>/dev/null)
 	
 	if [ $? -eq 0 ] && [ -n "$connect_time" ] && [ "$connect_time" != "0.000000" ]; then
-		local ms=$(awk "BEGIN {printf \"%.2f\", $connect_time * 1000}")
+		local ms=$(awk "BEGIN {printf \"%08.2f\", $connect_time * 1000}")
 		echo "$ms $ip" > "$res_dir/$ip"
 	fi
 }
@@ -149,9 +159,18 @@ run_optimization() {
 
 	local lock_dir="$RUN_DIR/task.lock"
 	if ! mkdir "$lock_dir" 2>/dev/null; then
-		log "已有优选任务正在运行中，跳过本次执行"
-		return 0
+		local lock_pid=""
+		[ -f "$lock_dir/pid" ] && lock_pid=$(cat "$lock_dir/pid" 2>/dev/null)
+		if [ -n "$lock_pid" ] && ! kill -0 "$lock_pid" 2>/dev/null; then
+			log "检测到残留任务锁 (PID: $lock_pid 已退出)，自动释放死锁"
+			rm -rf "$lock_dir"
+			mkdir "$lock_dir" 2>/dev/null || return 0
+		else
+			log "已有优选任务正在运行中，跳过本次执行"
+			return 0
+		fi
 	fi
+	echo $$ > "$lock_dir/pid"
 
 	mkdir -p "$TMP_DIR/fast" "$TMP_DIR/deep" "$RUN_DIR"
 	rm -rf "$TMP_DIR/fast"/* "$TMP_DIR/deep"/*
@@ -181,27 +200,24 @@ run_optimization() {
 	if [ "$top_count" -eq 0 ]; then
 		log "阶段一初筛无可用节点，请检查外网连接"
 		rm -rf "$TMP_DIR"
-		rmdir "$lock_dir" 2>/dev/null
+		rm -rf "$lock_dir"
 		return 1
 	fi
 
 	local probe_domain=$(echo "$domains" | awk '{print $1}')
 	[ -z "$probe_domain" ] && probe_domain="speed.cloudflare.com"
 
-	log "阶段一初筛完成，选出 $top_count 个候选节点进入精测采样，探活域名: $probe_domain（每节点采样 $sample_count 次）"
+	log "阶段一初筛完成，选出 $top_count 个候选节点进入精测采样，探活域名: $probe_domain（每节点轮询交叉采样 $sample_count 轮）"
 
-	# 阶段二：精测采样
-	while read -r fast_ms ip; do
-		[ -z "$ip" ] && continue
-		local success_count=0
-		local total_tcp=0
-		local total_tls=0
-		local min_tcp=99999
-		local max_tcp=0
-		local last_colo=""
-		local is_blocked=0
+	# 阶段二：轮询交叉时序采样（跨越完整测试时段，精准捕获阶段性丢包与网络毛刺）
+	awk '{print $2}' "$top10_file" > "$TMP_DIR/top10_ips.txt"
+	mkdir -p "$TMP_DIR/samples"
 
-		for seq in $(seq 1 "$sample_count"); do
+	for seq in $(seq 1 "$sample_count"); do
+		while read -r ip; do
+			[ -z "$ip" ] && continue
+			[ -f "$TMP_DIR/blocked_${ip}" ] && continue
+
 			local raw_header="$TMP_DIR/header_${ip}_${seq}.txt"
 			local metrics
 			metrics=$(curl -s -k -I -o /dev/null --connect-timeout 2 -m 3 \
@@ -214,66 +230,82 @@ run_optimization() {
 			local tls_sec=$(echo "$metrics" | awk '{print $2}')
 			local http_code=$(echo "$metrics" | awk '{print $3}')
 
-			# 遇到 403 权限拦截，标记为受限节点并中断该节点采样
 			if [ "$http_code" = "403" ]; then
-				is_blocked=1
+				touch "$TMP_DIR/blocked_${ip}"
 				rm -f "$raw_header"
-				break
+				continue
+			fi
+
+			local last_colo=""
+			if [ -f "$raw_header" ]; then
+				local cf_ray=$(grep -i '^cf-ray:' "$raw_header" 2>/dev/null | tr -d '\r\n')
+				if [ -n "$cf_ray" ]; then
+					last_colo=$(echo "$cf_ray" | sed -E 's/.*-([A-Za-z0-9]+).*/\1/' | tr 'a-z' 'A-Z')
+				fi
+				rm -f "$raw_header"
 			fi
 
 			if [ -n "$http_code" ] && [ "$http_code" != "000" ] && [ -n "$tcp_sec" ] && [ "$tcp_sec" != "0.000000" ]; then
 				local tcp_ms=$(awk "BEGIN {printf \"%.2f\", $tcp_sec * 1000}")
 				local tls_ms=$(awk "BEGIN {printf \"%.2f\", $tls_sec * 1000}")
-				
-				# 累加
-				total_tcp=$(awk "BEGIN {printf \"%.2f\", $total_tcp + $tcp_ms}")
-				total_tls=$(awk "BEGIN {printf \"%.2f\", $total_tls + $tls_ms}")
-				success_count=$((success_count + 1))
-
-				# 最值计算
-				min_tcp=$(awk "BEGIN {if ($tcp_ms < $min_tcp) print $tcp_ms; else print $min_tcp}")
-				max_tcp=$(awk "BEGIN {if ($tcp_ms > $max_tcp) print $tcp_ms; else print $max_tcp}")
-
-				if [ -f "$raw_header" ]; then
-					local cf_ray=$(grep -i '^cf-ray:' "$raw_header" 2>/dev/null | tr -d '\r\n')
-					if [ -n "$cf_ray" ]; then
-						last_colo=$(echo "$cf_ray" | sed -E 's/.*-([A-Za-z0-9]+).*/\1/' | tr 'a-z' 'A-Z')
-					fi
-					rm -f "$raw_header"
-				fi
+				echo "1|$tcp_ms|$tls_ms|$last_colo" >> "$TMP_DIR/samples/$ip"
+			else
+				echo "0|0|0|$last_colo" >> "$TMP_DIR/samples/$ip"
 			fi
-		done
+		done < "$TMP_DIR/top10_ips.txt"
+	done
 
-		# 过滤受限节点
-		if [ "$is_blocked" -eq 1 ]; then
+	# 汇总统计各节点采样指标
+	while read -r ip; do
+		[ -z "$ip" ] && continue
+		if [ -f "$TMP_DIR/blocked_${ip}" ]; then
 			log "节点 $ip 触发权限阻断 (HTTP 403/企业限制)，已自动排除"
 			continue
 		fi
 
-		# 计算丢包率与均值
+		local sample_file="$TMP_DIR/samples/$ip"
+		[ ! -f "$sample_file" ] && continue
+
+		local success_count=0
+		local total_tcp=0
+		local total_tls=0
+		local min_tcp=99999
+		local max_tcp=0
+		local last_colo=""
+
+		while IFS='|' read -r ok tcp_ms tls_ms colo; do
+			[ -n "$colo" ] && last_colo="$colo"
+			if [ "$ok" = "1" ]; then
+				success_count=$((success_count + 1))
+				total_tcp=$(awk "BEGIN {printf \"%.2f\", $total_tcp + $tcp_ms}")
+				total_tls=$(awk "BEGIN {printf \"%.2f\", $total_tls + $tls_ms}")
+				min_tcp=$(awk "BEGIN {if ($tcp_ms < $min_tcp) print $tcp_ms; else print $min_tcp}")
+				max_tcp=$(awk "BEGIN {if ($tcp_ms > $max_tcp) print $tcp_ms; else print $max_tcp}")
+			fi
+		done < "$sample_file"
+
 		local loss_rate=$(awk "BEGIN {printf \"%.1f\", (1 - $success_count / $sample_count) * 100}")
 		if [ "$success_count" -gt 0 ]; then
 			local avg_tcp=$(awk "BEGIN {printf \"%.2f\", $total_tcp / $success_count}")
 			local avg_tls=$(awk "BEGIN {printf \"%.2f\", $total_tls / $success_count}")
 			local jitter=$(awk "BEGIN {printf \"%.2f\", $max_tcp - $min_tcp}")
-			# 综合评分：平均时延 + 抖动*0.5 + 丢包率*10
-			local score=$(awk "BEGIN {printf \"%.2f\", $avg_tcp + $jitter * 0.5 + $loss_rate * 10}")
+			# 综合评分：平均时延 + 抖动*0.5 + 丢包率*10（采用固定宽度 0 填充）
+			local score=$(awk "BEGIN {printf \"%08.2f\", $avg_tcp + $jitter * 0.5 + $loss_rate * 10}")
 
 			local colo_disp=$(get_colo_name "$last_colo")
-			# 格式: score ip avg_tcp min_tcp max_tcp avg_tls loss_rate colo_disp colo_raw
 			echo "$score|$ip|$avg_tcp|$min_tcp|$max_tcp|$avg_tls|$loss_rate%|$colo_disp|$last_colo" >> "$TMP_DIR/deep_results.txt"
 		fi
-	done < "$top10_file"
+	done < "$TMP_DIR/top10_ips.txt"
 
 	if [ ! -s "$TMP_DIR/deep_results.txt" ]; then
 		log "精测采样后无可用健康节点"
 		rm -rf "$TMP_DIR"
-		rmdir "$lock_dir" 2>/dev/null
+		rm -rf "$lock_dir"
 		return 1
 	fi
 
-	# 排序：按 score 从低到高
-	sort -t'|' -k1,1n "$TMP_DIR/deep_results.txt" > "$TMP_DIR/deep_sorted.txt"
+	# 排序：按 score 从低到高数值排序
+	sort -n "$TMP_DIR/deep_results.txt" > "$TMP_DIR/deep_sorted.txt"
 
 	local best_line=$(head -n 1 "$TMP_DIR/deep_sorted.txt")
 	local best_score=$(echo "$best_line" | cut -d'|' -f1)
@@ -333,10 +365,27 @@ run_optimization() {
 	done
 	mv -f "$hosts_tmp" "$HOSTS_FILE"
 	echo "$final_ip" > "$CURRENT_IP_FILE"
+	echo "$final_ip" > "$PRIMARY_IP_FILE"
+	echo "0" > "$FAIL_STREAK_FILE"
+
+	# 选拔次优备选节点（排名紧随其后且 IP 不同的健康节点）
+	local standby_ip=""
+	local standby_colo="无备选"
+	local standby_tcp="-"
+	while IFS='|' read -r _sc _ip _atip _minip _maxip _attls _lrate _cdisp _craw; do
+		if [ -n "$_ip" ] && [ "$_ip" != "$final_ip" ]; then
+			standby_ip="$_ip"
+			standby_colo="$_cdisp"
+			standby_tcp="$_atip"
+			break
+		fi
+	done < "$TMP_DIR/deep_sorted.txt"
+	echo "$standby_ip|$standby_colo|$standby_tcp" > "$STANDBY_IP_FILE"
+	echo "$final_tcp" > "$BASELINE_TCP_FILE"
 
 	# 发送 HUP 信号通知 dnsmasq 毫秒级重载
 	killall -HUP dnsmasq 2>/dev/null
-	log "已更新 $HOSTS_FILE 并热重载 dnsmasq，定向域名数: $(echo $domains | wc -w)"
+	log "已更新 $HOSTS_FILE 并热重载 dnsmasq，在用主选: $final_ip ($final_colo)，次优备选: ${standby_ip:-无} ($standby_colo)"
 
 	# 组装状态 JSON 给 LuCI 前端消费
 	local now_str=$(date '+%Y-%m-%d %H:%M:%S')
@@ -370,14 +419,184 @@ run_optimization() {
   "best_colo": "$final_colo",
   "best_tcp_lat": "$final_tcp ms",
   "best_tls_lat": "$final_tls ms",
+  "standby_ip": "$standby_ip",
+  "standby_colo": "$standby_colo",
+  "standby_tcp_lat": "$standby_tcp ms",
+  "watchdog_status": "正常监控中",
   "domains": $domain_json,
   "rankings": $rankings_json
 }
 EOF
 	mv -f "$STATUS_JSON.tmp" "$STATUS_JSON"
 	rm -rf "$TMP_DIR"
-	rmdir "$lock_dir" 2>/dev/null
+	rm -rf "$lock_dir"
 	return 0
+}
+
+apply_fast_failover() {
+	local target_ip="$1"
+	local target_colo="$2"
+	local target_tcp="${3:--}"
+
+	. /lib/functions.sh
+	config_load "$CONF"
+	local domains=""
+	append_failover_domain() {
+		local d="$1"
+		[ -n "$d" ] && domains="$domains $d"
+	}
+	config_list_foreach settings domains append_failover_domain
+
+	local hosts_tmp="$HOSTS_FILE.tmp"
+	mkdir -p "$(dirname "$HOSTS_FILE")"
+	> "$hosts_tmp"
+	echo "# Auto-generated by cf-optimizer failover on $(date '+%Y-%m-%d %H:%M:%S')" >> "$hosts_tmp"
+	for d in $domains; do
+		echo "$target_ip $d" >> "$hosts_tmp"
+	done
+	mv -f "$hosts_tmp" "$HOSTS_FILE"
+	echo "$target_ip" > "$CURRENT_IP_FILE"
+	echo "" > "$STANDBY_IP_FILE"
+	if [ -n "$target_tcp" ] && [ "$target_tcp" != "-" ]; then
+		echo "$target_tcp" > "$BASELINE_TCP_FILE"
+	else
+		rm -f "$BASELINE_TCP_FILE"
+	fi
+
+	killall -HUP dnsmasq 2>/dev/null
+	log "已将 hosts 紧急倒换至次优节点: $target_ip ($target_colo) 并重载 dnsmasq"
+
+	if [ -f "$STATUS_JSON" ]; then
+		local now_str=$(date '+%Y-%m-%d %H:%M:%S')
+		local domain_json="["
+		local first_d=1
+		for d in $domains; do
+			[ "$first_d" -eq 0 ] && domain_json="$domain_json,"
+			domain_json="$domain_json{\"domain\":\"$d\",\"ip\":\"$target_ip\",\"colo\":\"$target_colo\",\"tcp_lat\":\"$target_tcp ms\",\"tls_lat\":\"-\",\"status\":\"已倒换\"}"
+			first_d=0
+		done
+		domain_json="$domain_json]"
+
+		local tmp_status="$STATUS_JSON.tmp"
+		sed -E "s/\"best_ip\":[[:space:]]*\"[^\"]*\"/\"best_ip\": \"$target_ip\"/" "$STATUS_JSON" | \
+		sed -E "s/\"best_colo\":[[:space:]]*\"[^\"]*\"/\"best_colo\": \"$target_colo\"/" | \
+		sed -E "s/\"standby_ip\":[[:space:]]*\"[^\"]*\"/\"standby_ip\": \"\"/" | \
+		sed -E "s/\"standby_colo\":[[:space:]]*\"[^\"]*\"/\"standby_colo\": \"已倒换转正\"/" | \
+		sed -E "s/\"last_update\":[[:space:]]*\"[^\"]*\"/\"last_update\": \"$now_str (已触发倒换)\"/" | \
+		sed -E "s/\"watchdog_status\":[[:space:]]*\"[^\"]*\"/\"watchdog_status\": \"已触发故障倒换\"/" | \
+		sed -E "s/\"domains\":[[:space:]]*\[[^]]*\]/\"domains\": $domain_json/" > "$tmp_status" 2>/dev/null
+		[ -s "$tmp_status" ] && mv -f "$tmp_status" "$STATUS_JSON"
+	fi
+}
+
+check_health_and_failover() {
+	[ ! -f "$CURRENT_IP_FILE" ] && return 0
+	local current_ip=$(cat "$CURRENT_IP_FILE" 2>/dev/null)
+	[ -z "$current_ip" ] && return 0
+
+	. /lib/functions.sh
+	config_load "$CONF"
+
+	local failover_enabled fail_threshold latency_multiplier
+	config_get_bool failover_enabled settings failover_enabled 1
+	[ "$failover_enabled" != "1" ] && return 0
+	config_get fail_threshold settings fail_threshold 2
+	config_get latency_multiplier settings latency_multiplier "2.0"
+
+	local domains=""
+	append_check_domain() {
+		local d="$1"
+		[ -n "$d" ] && domains="$domains $d"
+	}
+	config_list_foreach settings domains append_check_domain
+	local probe_domain=$(echo "$domains" | awk '{print $1}')
+	[ -z "$probe_domain" ] && probe_domain="speed.cloudflare.com"
+
+	local metrics
+	metrics=$(curl -s -k -I -o /dev/null --connect-timeout 2 -m 3 \
+		-A "Mozilla/5.0 (compatible; Cloudflare-Optimizer/1.0)" \
+		--resolve "$probe_domain:443:$current_ip" "https://$probe_domain/" \
+		-w "%{time_connect} %{http_code}\n" 2>/dev/null)
+
+	local tcp_sec=$(echo "$metrics" | awk '{print $1}')
+	local http_code=$(echo "$metrics" | awk '{print $2}')
+	local cur_tcp_ms=0
+	if [ -n "$tcp_sec" ] && [ "$tcp_sec" != "0.000000" ]; then
+		cur_tcp_ms=$(awk "BEGIN {printf \"%.2f\", $tcp_sec * 1000}")
+	fi
+
+	local baseline_tcp=0
+	[ -f "$BASELINE_TCP_FILE" ] && baseline_tcp=$(cat "$BASELINE_TCP_FILE" 2>/dev/null)
+	baseline_tcp=${baseline_tcp:-0}
+
+	local streak=0
+	[ -f "$FAIL_STREAK_FILE" ] && streak=$(cat "$FAIL_STREAK_FILE" 2>/dev/null)
+	streak=${streak:-0}
+
+	local is_abnormal=0
+	local abnormal_reason=""
+
+	if [ -z "$http_code" ] || [ "$http_code" = "000" ] || [ "$http_code" = "403" ]; then
+		is_abnormal=1
+		abnormal_reason="HTTP ${http_code:-000} 阻断或超时"
+	elif [ "$latency_multiplier" != "0" ] && [ "$latency_multiplier" != "0.0" ]; then
+		local is_degraded
+		is_degraded=$(awk "BEGIN {
+			if ($baseline_tcp > 0 && $cur_tcp_ms >= ($baseline_tcp * $latency_multiplier) && ($cur_tcp_ms - $baseline_tcp) >= 50)
+				print 1;
+			else
+				print 0;
+		}")
+		if [ "$is_degraded" -eq 1 ]; then
+			is_abnormal=1
+			abnormal_reason="延迟严重劣化 (${cur_tcp_ms}ms >= 基线 ${baseline_tcp}ms x ${latency_multiplier})"
+		fi
+	fi
+
+	if [ "$is_abnormal" -eq 0 ]; then
+		if [ "$streak" -gt 0 ]; then
+			log "主用优选节点 $current_ip 探活恢复正常 (HTTP $http_code, TCP ${cur_tcp_ms}ms)"
+			echo "0" > "$FAIL_STREAK_FILE"
+		fi
+		return 0
+	fi
+
+	streak=$((streak + 1))
+	echo "$streak" > "$FAIL_STREAK_FILE"
+	log "在用优选节点 $current_ip 探活异常 [$abnormal_reason]，连续异常: $streak/$fail_threshold"
+
+	if [ "$streak" -ge "$fail_threshold" ]; then
+		echo "0" > "$FAIL_STREAK_FILE"
+		local standby_info=""
+		[ -f "$STANDBY_IP_FILE" ] && standby_info=$(cat "$STANDBY_IP_FILE" 2>/dev/null)
+		local standby_ip=$(echo "$standby_info" | cut -d'|' -f1)
+		local standby_colo=$(echo "$standby_info" | cut -d'|' -f2)
+
+		if [ -n "$standby_ip" ] && [ "$standby_ip" != "$current_ip" ]; then
+			log "正在核验次优备选节点健康度: $standby_ip ($standby_colo)"
+			local s_metrics
+			s_metrics=$(curl -s -k -I -o /dev/null --connect-timeout 2 -m 3 \
+				-A "Mozilla/5.0 (compatible; Cloudflare-Optimizer/1.0)" \
+				--resolve "$probe_domain:443:$standby_ip" "https://$probe_domain/" \
+				-w "%{time_connect} %{http_code}\n" 2>/dev/null)
+			local s_tcp_sec=$(echo "$s_metrics" | awk '{print $1}')
+			local s_code=$(echo "$s_metrics" | awk '{print $2}')
+			local s_tcp_ms="-"
+			[ -n "$s_tcp_sec" ] && [ "$s_tcp_sec" != "0.000000" ] && s_tcp_ms=$(awk "BEGIN {printf \"%.2f\", $s_tcp_sec * 1000}")
+
+			if [ -n "$s_code" ] && [ "$s_code" != "000" ] && [ "$s_code" != "403" ]; then
+				log "主用节点异常，次优备选节点验证健康 (HTTP $s_code, TCP ${s_tcp_ms}ms)，秒级倒换至次优节点"
+				apply_fast_failover "$standby_ip" "$standby_colo" "$s_tcp_ms"
+				return 0
+			else
+				log "次优备选节点同样不可用 (HTTP ${s_code:-000})，提前拉起全网节点紧急重测"
+			fi
+		else
+			log "未配置次优备选节点，提前拉起全网节点紧急重测"
+		fi
+
+		run_optimization
+	fi
 }
 
 daemon_loop() {
@@ -385,6 +604,8 @@ daemon_loop() {
 	trap 'clean_hosts; rm -f "$PID_FILE"; exit 0' INT TERM EXIT
 
 	log "守护进程启动 [PID: $$]"
+
+	local last_full_run=0
 
 	while true; do
 		. /lib/functions.sh
@@ -398,21 +619,33 @@ daemon_loop() {
 			break
 		fi
 
-		local interval
+		local interval failover_enabled health_interval
 		config_get interval settings interval 120
 		[ "$interval" -lt 10 ] && interval=10
+		local full_interval_sec=$((interval * 60))
 
-		run_optimization
+		config_get_bool failover_enabled settings failover_enabled 1
+		config_get health_interval settings health_interval 60
+		[ "$health_interval" -lt 15 ] && health_interval=15
 
-		local sleep_sec=$((interval * 60))
-		log "本次周期执行完毕，休眠 $interval 分钟后执行下次优选..."
-		
-		# 使用循环 sleep 保证随时可被信号中断
+		local now=$(date +%s)
+		if [ "$last_full_run" -eq 0 ] || [ $((now - last_full_run)) -ge "$full_interval_sec" ]; then
+			run_optimization
+			last_full_run=$(date +%s)
+		elif [ "$failover_enabled" = "1" ]; then
+			check_health_and_failover
+		fi
+
+		local sleep_sec="$health_interval"
+		if [ "$failover_enabled" != "1" ]; then
+			sleep_sec=30
+		fi
+
 		local elapsed=0
 		while [ "$elapsed" -lt "$sleep_sec" ]; do
-			sleep 10 &
+			sleep 5 &
 			wait $!
-			elapsed=$((elapsed + 10))
+			elapsed=$((elapsed + 5))
 		done
 	done
 }
