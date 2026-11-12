@@ -5,7 +5,7 @@ PKG_VERSION:=1.0.3
 PKG_RELEASE:=1
 
 LUCI_TITLE:=LuCI Support for FlowProxy Traffic Diversion
-LUCI_DEPENDS:=+luci-base +nftables +ip-full
+LUCI_DEPENDS:=+luci-base +nftables +ip-full +iputils-arping
 LUCI_PKGARCH:=all
 
 define Package/$(PKG_NAME)/conffiles
