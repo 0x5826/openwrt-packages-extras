@@ -9,6 +9,8 @@ STATE_FILE="/var/run/flowproxy.running"
 DEGRADED_FILE="/var/run/flowproxy.degraded"
 GEN_FILE="/var/run/flowproxy.gen"
 MARK_FILE="/var/run/flowproxy.mark"
+TARGET_FILE="/var/run/flowproxy.target"
+WD_CFG_FILE="/var/run/flowproxy.wd_cfg"
 LOCK_FILE="/var/lock/flowproxy.lock"
 
 get_level_weight() {
@@ -49,11 +51,20 @@ log_msg() {
 }
 
 acquire_lock() {
+	local max_wait="${1:-30}"
 	[ "${FLOWPROXY_LOCKED:-0}" = "1" ] && return 0
 	mkdir -p "$(dirname "$LOCK_FILE")"
 	if command -v flock >/dev/null 2>&1; then
 		exec 9>"$LOCK_FILE"
-		flock -x 9 || { exec 9>&- 2>/dev/null; return 1; }
+		local wait_cnt=0
+		while ! flock -x -n 9 2>/dev/null; do
+			if [ "$wait_cnt" -ge "$max_wait" ]; then
+				exec 9>&- 2>/dev/null
+				return 1
+			fi
+			wait_cnt=$((wait_cnt + 1))
+			sleep 1
+		done
 		FLOWPROXY_LOCK_METHOD="flock"
 		FLOWPROXY_LOCKED=1
 		return 0
@@ -66,11 +77,11 @@ acquire_lock() {
 				rm -rf "${LOCK_FILE}.d"
 				continue
 			fi
-			wait_cnt=$((wait_cnt + 1))
-			if [ "$wait_cnt" -ge 50 ]; then
+			if [ "$wait_cnt" -ge "$max_wait" ]; then
 				log_msg error "Timed out waiting for lock ${LOCK_FILE}.d"
 				return 1
 			fi
+			wait_cnt=$((wait_cnt + 1))
 			sleep 1
 		done
 		echo "$$" > "${LOCK_FILE}.d/pid"
@@ -106,10 +117,16 @@ check_env() {
 check_config() {
 	local proxy_server_ip_addr=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
 	[ -z "$proxy_server_ip_addr" ] && { log_msg error "proxy_server_ip_addr not configured"; return 1; }
+	local tcp_enabled=$(uci -q get "$UCI_CONFIG.global.tcp_enabled"); tcp_enabled="${tcp_enabled:-1}"
+	local udp_enabled=$(uci -q get "$UCI_CONFIG.global.udp_enabled"); udp_enabled="${udp_enabled:-1}"
+	if [ "$tcp_enabled" != "1" ] && [ "$udp_enabled" != "1" ]; then
+		log_msg error "Both TCP and UDP diversion are disabled"
+		return 1
+	fi
 	return 0
 }
 
-apply_nft_rules() {
+generate_nft_cache() {
 	log_msg info "Generating nftables configuration..."
 	local conf_level=$(uci -q get "$UCI_CONFIG.global.log_level" || echo "info")
 
@@ -128,22 +145,28 @@ apply_nft_rules() {
 		fi
 		rm -f "$err_file"
 
-		if [ $ret -eq 0 ]; then
-			log_msg info "Applying nftables rules from $NFT_CONF"
-			# 确保内核支持 inet 表
-			nft delete table inet flowproxy 2>/dev/null
-			if nft -f "$NFT_CONF"; then
-				return 0
-			else
-				log_msg error "nftables rules application failed (syntax error)"
-				return 1
-			fi
+		if [ $ret -eq 0 ] && [ -s "$NFT_CONF" ]; then
+			return 0
 		else
+			rm -f "$NFT_CONF"
 			log_msg error "Failed to generate nftables config"
 			return 1
 		fi
 	else
 		log_msg error "Generator script $GENERATE_SCRIPT not found or not executable"
+		return 1
+	fi
+}
+
+apply_nft_rules() {
+	generate_nft_cache || return 1
+	log_msg info "Applying nftables rules from $NFT_CONF"
+	# 确保内核支持 inet 表
+	nft delete table inet flowproxy 2>/dev/null
+	if nft -f "$NFT_CONF"; then
+		return 0
+	else
+		log_msg error "nftables rules application failed (syntax error)"
 		return 1
 	fi
 }
@@ -168,6 +191,51 @@ resolve_master_iface() {
 		[ -n "$master_name" ] && { echo "$master_name"; return; }
 	fi
 	echo "$iface"
+}
+
+iface_supports_arp() {
+	local iface="$1"
+	[ -d "/sys/class/net/$iface" ] || return 1
+	local flags=$(cat "/sys/class/net/$iface/flags" 2>/dev/null)
+	[ -z "$flags" ] && return 0
+	# IFF_NOARP(0x80) | IFF_POINTOPOINT(0x10) | IFF_LOOPBACK(0x8) = 0x98
+	if [ $((flags & 0x98)) -ne 0 ]; then
+		return 1
+	fi
+	return 0
+}
+
+check_proxy_alive() {
+	local ip="$1"
+	local iface="$2"
+
+	# 1. 支持 ARP 的二层接口优先使用 arping：同网段旁路由正常及禁 Ping 场景均在毫秒级返回
+	# 若二层 ARP 明确超时无应答，不再执行冗余 ping（避免额外阻塞及污染邻居表）
+	if iface_supports_arp "$iface"; then
+		if command -v arping >/dev/null 2>&1; then
+			if arping -f -q -c 2 -w 2 -I "$iface" "$ip" >/dev/null 2>&1; then
+				return 0
+			fi
+			return 1
+		fi
+
+		# 无 arping 二进制时的内核邻居表探测兜底
+		if ping -c 1 -W 1 -I "$iface" "$ip" >/dev/null 2>&1; then
+			return 0
+		fi
+		ip neigh flush to "$ip" dev "$iface" >/dev/null 2>&1
+		ping -c 1 -W 1 -I "$iface" "$ip" >/dev/null 2>&1
+		if ip neigh show to "$ip" dev "$iface" 2>/dev/null | grep -qE "REACHABLE|DELAY|PROBE"; then
+			return 0
+		fi
+		return 1
+	fi
+
+	# 2. 非 ARP / 三层点对点虚拟接口使用 ICMP Ping 探测
+	if ping -c 1 -W 1 -I "$iface" "$ip" >/dev/null 2>&1; then
+		return 0
+	fi
+	return 1
 }
 
 add_route() {
