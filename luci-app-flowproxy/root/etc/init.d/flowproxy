@@ -11,7 +11,7 @@ _stop_unlocked() {
 	local mode="$1"
 	log_msg info "Stopping FlowProxy..."
 	# 强制先移除标记，防止状态误报及旧守护进程继续动作
-	rm -f "$STATE_FILE" "$DEGRADED_FILE" "$GEN_FILE"
+	rm -f "$STATE_FILE" "$DEGRADED_FILE" "$GEN_FILE" "$TARGET_FILE" "$WD_CFG_FILE"
 	delete_route
 	delete_rules
 	if [ "$mode" != "preserve_dns" ]; then
@@ -21,13 +21,37 @@ _stop_unlocked() {
 	log_msg info "FlowProxy service stopped"
 }
 
+_get_watchdog_gen() {
+	local force_new="$1"
+	local proxy_ip=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
+	local conf_iface=$(uci -q get "$UCI_CONFIG.global.interface"); conf_iface="${conf_iface:-br-lan}"
+	local probe_iface=$(resolve_master_iface "$conf_iface")
+	local interval=$(uci -q get "$UCI_CONFIG.global.monitor_interval" || echo 5)
+	local fail_th=$(uci -q get "$UCI_CONFIG.global.monitor_fail_threshold" || echo 3)
+	local rec_th=$(uci -q get "$UCI_CONFIG.global.monitor_recover_threshold" || echo 2)
+
+	local cur_cfg="${proxy_ip}|${probe_iface}|${interval}|${fail_th}|${rec_th}"
+	local old_cfg=$(cat "$WD_CFG_FILE" 2>/dev/null)
+	local old_gen=$(cat "$GEN_FILE" 2>/dev/null)
+
+	if [ "$force_new" != "1" ] && [ -n "$old_gen" ] && [ "$cur_cfg" = "$old_cfg" ]; then
+		echo "$old_gen"
+		return
+	fi
+
+	local new_gen="$(date +%s)-$$"
+	echo "$cur_cfg" > "$WD_CFG_FILE"
+	echo "$new_gen" > "$GEN_FILE"
+	echo "$new_gen"
+}
+
 _register_watchdog_instance() {
 	local gen="$1"
 	local monitor_enabled=$(uci -q get "$UCI_CONFIG.global.monitor_enabled" || echo 0)
 	if [ "$monitor_enabled" = "1" ]; then
 		procd_open_instance "watchdog"
 		procd_set_param command /usr/share/flowproxy/watchdog.sh "$gen"
-		procd_set_param respawn 3600 5 3
+		procd_set_param respawn 3600 5 0
 		procd_close_instance
 	fi
 }
@@ -41,20 +65,77 @@ _start_unlocked() {
 		return 0
 	fi
 
+	check_env || { _stop_unlocked; return 1; }
+	check_config || { _stop_unlocked; return 1; }
+
+	local proxy_ip=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
+	local conf_iface=$(uci -q get "$UCI_CONFIG.global.interface"); conf_iface="${conf_iface:-br-lan}"
+	local probe_iface=$(resolve_master_iface "$conf_iface")
+	local monitor_enabled=$(uci -q get "$UCI_CONFIG.global.monitor_enabled" || echo 0)
+	local dns_proxy_enabled=$(uci -q get "$UCI_CONFIG.global.dns_proxy_enabled" || echo 0)
+
+	local cur_target="${proxy_ip}|${probe_iface}"
+	local old_target=$(cat "$TARGET_FILE" 2>/dev/null)
+	local is_reload="${FLOWPROXY_RELOAD:-0}"
+	local force_gen="1"
+	[ "$is_reload" = "1" ] && force_gen="0"
+
+	# 1. 热降级状态下的 reload（且目标旁路由 IP 与接口未变更）：保持直连回退，仅刷新缓存与同步 DNS 开关
+	if [ "$is_reload" = "1" ] && [ "$monitor_enabled" = "1" ] && [ -f "$DEGRADED_FILE" ] && [ -f "$STATE_FILE" ] && [ "$cur_target" = "$old_target" ]; then
+		log_msg info "Reload triggered while in hot-degraded mode; preserving direct fallback and refreshing rule cache"
+		generate_iptables_cache || rm -f "$IPTABLES_RULES"
+		delete_route "quiet"
+		delete_rules
+		if [ "$dns_proxy_enabled" = "1" ]; then
+			_backup_dns_if_needed
+		else
+			cleanup_dns
+		fi
+
+		local gen=$(_get_watchdog_gen "0")
+		_register_watchdog_instance "$gen"
+		return 0
+	fi
+
+	# 2. 开启监控时的启动/重启/目标变更预探测：若旁路由当前不可达，直接进入热降级直连待命，避免启动制造断网黑洞
+	local need_initial_probe=1
+	if [ "$is_reload" = "1" ] && [ -f "$STATE_FILE" ] && [ ! -f "$DEGRADED_FILE" ] && [ "$cur_target" = "$old_target" ]; then
+		need_initial_probe=0
+	fi
+
+	if [ "$monitor_enabled" = "1" ] && [ "$need_initial_probe" = "1" ]; then
+		if ! check_proxy_alive "$proxy_ip" "$probe_iface"; then
+			log_msg warn "Proxy server $proxy_ip unreachable via $probe_iface; entering hot-degraded mode (direct fallback)"
+			generate_iptables_cache || { _stop_unlocked; return 1; }
+			delete_route "quiet"
+			delete_rules
+			if [ "$dns_proxy_enabled" = "1" ]; then
+				_backup_dns_if_needed || { _stop_unlocked; return 1; }
+				restore_dnsmasq_from_backup || { _stop_unlocked; return 1; }
+			else
+				cleanup_dns
+			fi
+
+			echo "$cur_target" > "$TARGET_FILE"
+			touch "$DEGRADED_FILE" "$STATE_FILE"
+			local gen=$(_get_watchdog_gen "$force_gen")
+			_register_watchdog_instance "$gen"
+			return 0
+		fi
+	fi
+
+	# 3. 常规激活启动或在线重载
 	log_msg info "Starting FlowProxy..."
 
-	check_env || { cleanup_dns; return 1; }
-	check_config || { cleanup_dns; return 1; }
-	apply_rules || { cleanup_dns; return 1; }
-	add_route || { delete_rules; cleanup_dns; return 1; }
-	setup_dns || { delete_route "quiet"; delete_rules; cleanup_dns; return 1; }
+	apply_rules || { _stop_unlocked; return 1; }
+	add_route || { _stop_unlocked; return 1; }
+	setup_dns || { _stop_unlocked; return 1; }
 
 	rm -f "$DEGRADED_FILE"
+	echo "$cur_target" > "$TARGET_FILE"
 	touch "$STATE_FILE"
 
-	local gen="$(date +%s)-$$"
-	echo "$gen" > "$GEN_FILE"
-
+	local gen=$(_get_watchdog_gen "$force_gen")
 	_register_watchdog_instance "$gen"
 
 	log_msg info "FlowProxy service started successfully"
@@ -62,9 +143,10 @@ _start_unlocked() {
 }
 
 start_service() {
-	acquire_lock || return 1
+	acquire_lock || { FLOWPROXY_START_RET=1; return 1; }
 	_start_unlocked
 	local ret=$?
+	FLOWPROXY_START_RET=$ret
 	release_lock
 	return $ret
 }
@@ -87,42 +169,18 @@ restart() {
 	export FLOWPROXY_PRESERVE_DNS
 	stop "$@"
 	FLOWPROXY_PRESERVE_DNS=0
+	FLOWPROXY_START_RET=0
 	start "$@"
+	return ${FLOWPROXY_START_RET:-0}
 }
 
 reload_service() {
-	acquire_lock || return 1
-	local enabled=$(uci -q get "$UCI_CONFIG.global.enabled")
-	local monitor_enabled=$(uci -q get "$UCI_CONFIG.global.monitor_enabled" || echo 0)
-
-	if [ "${enabled:-0}" = "1" ] && [ "$monitor_enabled" = "1" ] && [ -f "$DEGRADED_FILE" ] && [ -f "$STATE_FILE" ]; then
-		if check_env && check_config; then
-			log_msg info "Reload triggered while in hot-degraded mode; preserving direct fallback and refreshing rule cache"
-			local conf_level=$(uci -q get "$UCI_CONFIG.global.log_level"); conf_level="${conf_level:-info}"
-			local rules_dir="$(dirname "$IPTABLES_RULES")"
-			mkdir -p "$rules_dir"
-			chmod 700 "$rules_dir"
-			if [ -x "$GENERATE_SCRIPT" ]; then
-				FLOWPROXY_LOG_LEVEL="$conf_level" "$GENERATE_SCRIPT" >/dev/null 2>&1 || rm -f "$IPTABLES_RULES"
-			else
-				rm -f "$IPTABLES_RULES"
-			fi
-			delete_route "quiet"
-			delete_rules
-			restore_dnsmasq_from_backup
-
-			local gen="$(date +%s)-$$"
-			echo "$gen" > "$GEN_FILE"
-			_register_watchdog_instance "$gen"
-			release_lock
-			return 0
-		fi
-	fi
-
-	_stop_unlocked "preserve_dns"
-	_start_unlocked
-	local ret=$?
-	release_lock
+	FLOWPROXY_RELOAD=1
+	export FLOWPROXY_RELOAD
+	FLOWPROXY_START_RET=0
+	start "$@"
+	local ret=${FLOWPROXY_START_RET:-$?}
+	FLOWPROXY_RELOAD=0
 	return $ret
 }
 

@@ -46,35 +46,9 @@ is_context_valid() {
 	return 0
 }
 
-check_proxy_alive() {
-	local ip="$1"
-	local iface="$2"
-
-	# 1. ARP 优先探测：同网段旁路由正常及禁 Ping 场景均在毫秒级返回，-c 2 -w 2 保证第 2 帧回包窗口完整
-	if command -v arping >/dev/null 2>&1; then
-		if arping -f -q -c 2 -w 2 -I "$iface" "$ip" >/dev/null 2>&1; then
-			return 0
-		fi
-		[ "$STOP_REQUESTED" -eq 1 ] && return 1
-	fi
-
-	# 2. ICMP Ping 回退探测（兼容非 ARP / 虚拟接口）
-	if ping -c 1 -W 1 -I "$iface" "$ip" >/dev/null 2>&1; then
-		return 0
-	fi
-	[ "$STOP_REQUESTED" -eq 1 ] && return 1
-
-	# 3. 无 arping 时的内核邻居表兜底
-	if ! command -v arping >/dev/null 2>&1; then
-		ip neigh flush to "$ip" dev "$iface" >/dev/null 2>&1
-		ping -c 1 -W 1 -I "$iface" "$ip" >/dev/null 2>&1
-		[ "$STOP_REQUESTED" -eq 1 ] && return 1
-		if ip neigh show to "$ip" dev "$iface" 2>/dev/null | grep -qE "REACHABLE|DELAY|PROBE"; then
-			return 0
-		fi
-	fi
-
-	return 1
+is_rules_active() {
+	iptables -t mangle -C PREROUTING -p tcp -j FLOWPROXY_TCP >/dev/null 2>&1 || \
+	iptables -t mangle -C PREROUTING -p udp -j FLOWPROXY_UDP >/dev/null 2>&1
 }
 
 proxy_ip=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
@@ -90,7 +64,7 @@ recover_threshold=$(get_uint_or_default "$(uci -q get "$UCI_CONFIG.global.monito
 
 log_msg info "Watchdog started (target=$proxy_ip, iface=$probe_iface, interval=${interval}s, fail=$fail_threshold, recover=$recover_threshold)"
 
-# 启动后先等待一个探测周期，确保主服务完全进入稳定运行态
+# 启动阶段已由 init 完成首次状态建立，进入常规周期轮询
 interruptible_sleep "$interval" || exit 0
 
 [ -f "$DEGRADED_FILE" ] && state="degraded" || state="online"
@@ -98,6 +72,7 @@ fail_count=0
 ok_count=0
 
 while is_context_valid; do
+	[ -f "$DEGRADED_FILE" ] && state="degraded" || state="online"
 	probe_start=$(date +%s)
 	if check_proxy_alive "$proxy_ip" "$probe_iface"; then
 		fail_count=0
@@ -105,7 +80,7 @@ while is_context_valid; do
 			ok_count=$((ok_count + 1))
 			log_msg debug "Watchdog: probe succeeded ($ok_count/$recover_threshold)"
 			if [ "$ok_count" -ge "$recover_threshold" ]; then
-				if acquire_lock; then
+				if acquire_lock 0; then
 					if ! is_context_valid; then
 						release_lock
 						break
@@ -129,6 +104,16 @@ while is_context_valid; do
 			fi
 		else
 			ok_count=0
+			# 在线状态下若内核 iptables 链被外部清空，自动自愈恢复
+			if ! is_rules_active; then
+				if acquire_lock 0; then
+					if is_context_valid && [ ! -f "$DEGRADED_FILE" ] && ! is_rules_active; then
+						log_msg warn "Watchdog: iptables rules missing while online, restoring rules..."
+						restore_iptables_rules && add_route
+					fi
+					release_lock
+				fi
+			fi
 		fi
 	else
 		[ "$STOP_REQUESTED" -eq 1 ] && break
@@ -137,7 +122,7 @@ while is_context_valid; do
 			fail_count=$((fail_count + 1))
 			log_msg warn "Watchdog: probe failed ($fail_count/$fail_threshold) for $proxy_ip via $probe_iface"
 			if [ "$fail_count" -ge "$fail_threshold" ]; then
-				if acquire_lock; then
+				if acquire_lock 0; then
 					if ! is_context_valid; then
 						release_lock
 						break
