@@ -7,7 +7,13 @@
 
 umask 077
 CONFIG="flowproxy"
-OUTPUT_FILE="/tmp/flowproxy/iptables.rules"
+if [ "$FLOWPROXY_PREVIEW" = "1" ]; then
+	OUTPUT_FILE="/tmp/flowproxy/iptables.preview.rules"
+else
+	OUTPUT_FILE="/tmp/flowproxy/iptables.rules"
+fi
+mkdir -p "$(dirname "$OUTPUT_FILE")"
+chmod 700 "$(dirname "$OUTPUT_FILE")"
 
 # 安全防范：若目标规则文件为恶意软链，直接删除它，避免删掉被父进程以 700 锁定的父目录
 rm -rf "$OUTPUT_FILE"
@@ -119,16 +125,14 @@ if [ "$1" = "runtime" ]; then
 	exit 0
 fi
 
-cat > "$OUTPUT_FILE" << EOF
-*mangle
-:FLOWPROXY_TCP - [0:0]
-:FLOWPROXY_UDP - [0:0]
-EOF
-
 TCP_ENABLED=$(uci -q get "$CONFIG.global.tcp_enabled" || echo "1")
 UDP_ENABLED=$(uci -q get "$CONFIG.global.udp_enabled" || echo "1")
 TRAFFIC_MARK=$(uci -q get "$CONFIG.global.traffic_mark" || echo "0x666")
 PROXY_SERVER_IP_ADDR=$(uci -q get "$CONFIG.global.proxy_server_ip_addr")
+
+echo "*mangle" > "$OUTPUT_FILE"
+[ "$TCP_ENABLED" = "1" ] && echo ":FLOWPROXY_TCP - [0:0]" >> "$OUTPUT_FILE"
+[ "$UDP_ENABLED" = "1" ] && echo ":FLOWPROXY_UDP - [0:0]" >> "$OUTPUT_FILE"
 
 if [ "$TCP_ENABLED" = "1" ]; then
 	cat >> "$OUTPUT_FILE" << EOF

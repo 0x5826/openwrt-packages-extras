@@ -5,6 +5,8 @@ local UCI = require "luci.model.uci"
 local fs = require "nixio.fs"
 
 local STATE_FILE = '/var/run/flowproxy.running'
+local DEGRADED_FILE = '/var/run/flowproxy.degraded'
+local GEN_FILE = '/var/run/flowproxy.gen'
 local IP_CACHE = '/tmp/flowproxy/lan_ip.cache'
 local LOG_FILE = '/var/log/flowproxy.log'
 local UCI_CONFIG = 'flowproxy'
@@ -22,17 +24,24 @@ end
 local methods = {
 	get_status = {
 		call = function()
-			local is_running = fs.access(STATE_FILE)
+			local uci = UCI.cursor()
+			local monitor_enabled = tonumber(uci:get(UCI_CONFIG, "global", "monitor_enabled") or "0") or 0
+
+			local is_running = fs.access(STATE_FILE) and true or false
+			local is_degraded = fs.access(DEGRADED_FILE) and true or false
+			local has_gen = fs.access(GEN_FILE) and true or false
 			
-			local tcp_active = exec("iptables -t mangle -L FLOWPROXY_TCP >/dev/null 2>&1")
-			local udp_active = exec("iptables -t mangle -L FLOWPROXY_UDP >/dev/null 2>&1")
+			local tcp_active = exec("iptables -t mangle -C PREROUTING -p tcp -j FLOWPROXY_TCP >/dev/null 2>&1")
+			local udp_active = exec("iptables -t mangle -C PREROUTING -p udp -j FLOWPROXY_UDP >/dev/null 2>&1")
 
 			local real_running = (tcp_active or udp_active)
 
-			if real_running and not is_running then
+			if real_running and not is_running and has_gen then
 				fs.writefile(STATE_FILE, "")
-			elseif not real_running and is_running then
-				os.execute("rm -f " .. STATE_FILE)
+				is_running = true
+			elseif not real_running and is_running and not is_degraded and monitor_enabled == 0 then
+				os.remove(STATE_FILE)
+				is_running = false
 			end
 
 			local lan_ip = fs.readfile(IP_CACHE) or ""
@@ -58,16 +67,15 @@ local methods = {
 					end
 				end
 				if lan_ip ~= "" then
-					os.execute("rm -rf /tmp/flowproxy")
 					os.execute("mkdir -p /tmp/flowproxy && chmod 700 /tmp/flowproxy")
 					fs.writefile(IP_CACHE, lan_ip)
 					os.execute("chmod 600 " .. IP_CACHE)
 				end
 			end
 
-			local uci = UCI.cursor()
 			local proxy_server_ip_addr = uci:get(UCI_CONFIG, "global", "proxy_server_ip_addr") or ""
-			local dns_running = uci:get(UCI_CONFIG, "dns_backup") and 1 or 0
+			local degraded_active = (is_degraded and is_running and not real_running) and 1 or 0
+			local dns_running = (uci:get(UCI_CONFIG, "dns_backup") and degraded_active == 0) and 1 or 0
 			local enabled_val = uci:get(UCI_CONFIG, "global", "enabled") or "0"
 			local enabled = tonumber(enabled_val) or 0
 			local proxy_server_dns_port = uci:get(UCI_CONFIG, "global", "proxy_server_dns_port") or "5353"
@@ -75,7 +83,9 @@ local methods = {
 			local traffic_mark = uci:get(UCI_CONFIG, "global", "traffic_mark") or "0x666"
 
 			return {
-				running = real_running and 1 or 0,
+				running = (real_running or degraded_active == 1) and 1 or 0,
+				degraded = degraded_active,
+				monitor_enabled = monitor_enabled,
 				dns_running = dns_running,
 				enabled = enabled,
 				proxy_server_ip_addr = proxy_server_ip_addr,
@@ -123,10 +133,11 @@ local methods = {
 
 	generate_iptables_config = {
 		call = function()
-			os.execute("rm -rf /tmp/flowproxy")
 			os.execute("mkdir -p /tmp/flowproxy && chmod 700 /tmp/flowproxy")
 			os.execute("FLOWPROXY_PREVIEW=1 /usr/share/flowproxy/generate_iptables.sh >/dev/null 2>&1")
-			return { config = safe_trim(fs.readfile("/tmp/flowproxy/iptables.rules") or "") }
+			local preview = safe_trim(fs.readfile("/tmp/flowproxy/iptables.preview.rules") or "")
+			os.remove("/tmp/flowproxy/iptables.preview.rules")
+			return { config = preview }
 		end
 	},
 
@@ -135,16 +146,15 @@ local methods = {
 			local res_file = '/tmp/flowproxy/runtime.tmp'
 			local dns_file = '/tmp/flowproxy/dns_runtime.tmp'
 			
-			os.execute("rm -rf /tmp/flowproxy")
 			os.execute("mkdir -p /tmp/flowproxy && chmod 700 /tmp/flowproxy")
 			
 			os.execute("/usr/share/flowproxy/generate_iptables.sh runtime > " .. res_file .. " 2>&1")
 			local iptables_runtime = fs.readfile(res_file) or "(failed)"
-			os.execute("rm -f " .. res_file)
+			os.remove(res_file)
 			
 			os.execute("uci show dhcp.@dnsmasq[0] | grep -E \"noresolv|dns_redirect|server\" | sed -E \"s/^dhcp\\.[^.]*\\.([^=]*)=(.*)/\\1: \\2/; s/\\x27//g; s/#/:/g\" > " .. dns_file .. " 2>&1")
 			local dns_out = fs.readfile(dns_file) or ""
-			os.execute("rm -f " .. dns_file)
+			os.remove(dns_file)
 			
 			local dns_runtime = "\n--- [ DNSmasq Runtime Configuration ] ---\n"
 			dns_runtime = dns_runtime .. (dns_out ~= "" and dns_out or "(no active dnsmasq overrides)")
