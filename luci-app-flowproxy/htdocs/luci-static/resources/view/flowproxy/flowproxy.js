@@ -200,6 +200,24 @@ return L.view.extend({
         o.default = '0';
         o.rmempty = false;
 
+        o = s.taboption('settings', form.Value, 'monitor_interval', _('Probe interval (seconds)'));
+        o.datatype = 'and(uinteger,min(2))';
+        o.default = '5';
+        o.rmempty = false;
+        o.depends('monitor_enabled', '1');
+
+        o = s.taboption('settings', form.Value, 'monitor_fail_threshold', _('Failure threshold'));
+        o.datatype = 'and(uinteger,min(1))';
+        o.default = '3';
+        o.rmempty = false;
+        o.depends('monitor_enabled', '1');
+
+        o = s.taboption('settings', form.Value, 'monitor_recover_threshold', _('Recovery threshold'));
+        o.datatype = 'and(uinteger,min(1))';
+        o.default = '2';
+        o.rmempty = false;
+        o.depends('monitor_enabled', '1');
+
         o = s.taboption('settings', form.Value, 'proxy_server_ip_addr', _('Proxy server IP address'));
         o.datatype = 'ip4addr'; o.rmempty = true;
         o.placeholder = '192.168.1.254';

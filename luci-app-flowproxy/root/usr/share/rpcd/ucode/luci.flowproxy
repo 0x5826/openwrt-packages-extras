@@ -7,6 +7,7 @@ import { connect } from 'ubus';
 const UCI_CONFIG = 'flowproxy';
 const STATE_FILE = '/var/run/flowproxy.running';
 const DEGRADED_FILE = '/var/run/flowproxy.degraded';
+const GEN_FILE = '/var/run/flowproxy.gen';
 const IP_CACHE = '/tmp/flowproxy/lan_ip.cache';
 const LOG_FILE = '/var/log/flowproxy.log';
 const NFT_TABLE = 'flowproxy';
@@ -19,19 +20,25 @@ function safe_trim(str) {
 const methods = {
     get_status: {
         call: function() {
+            let uci_cursor = cursor();
+            let monitor_enabled = int(uci_cursor.get(UCI_CONFIG, 'global', 'monitor_enabled') || '0');
+
             // 1. 快速探测
             let is_running = access(STATE_FILE, 'f');
             let is_degraded = access(DEGRADED_FILE, 'f');
+            let has_gen = access(GEN_FILE, 'f');
             
-            // 2. 自愈：检查内核状态并同步标记文件
+            // 2. 自愈：检查内核状态并同步标记文件（启用看门狗时由守护进程维护 STATE_FILE）
             let tcp_active = (system('nft list chain inet ' + NFT_TABLE + ' LAN_MARKFLOW_TCP >/dev/null 2>&1') === 0);
             let udp_active = (system('nft list chain inet ' + NFT_TABLE + ' LAN_MARKFLOW_UDP >/dev/null 2>&1') === 0);
             let real_running = (tcp_active || udp_active);
 
-            if (real_running && !is_running) {
+            if (real_running && !is_running && has_gen) {
                 try { writefile(STATE_FILE, ''); } catch(e) {}
-            } else if (!real_running && is_running && !is_degraded) {
+                is_running = true;
+            } else if (!real_running && is_running && !is_degraded && !monitor_enabled) {
                 try { system('rm -f ' + STATE_FILE); } catch(e) {}
+                is_running = false;
             }
 
             // 3. IP 获取 (带缓存)
@@ -65,12 +72,9 @@ const methods = {
                 } catch (e) {}
             }
 
-            let uci_cursor = cursor();
-
             let proxy_server_ip_addr = uci_cursor.get(UCI_CONFIG, 'global', 'proxy_server_ip_addr') || '';
-            let dns_running = (uci_cursor.get(UCI_CONFIG, 'dns_backup') ? 1 : 0);
-            let monitor_enabled = int(uci_cursor.get(UCI_CONFIG, 'global', 'monitor_enabled') || '0');
             let degraded_active = (is_degraded && is_running && !real_running) ? 1 : 0;
+            let dns_running = (uci_cursor.get(UCI_CONFIG, 'dns_backup') && !degraded_active) ? 1 : 0;
             
             return {
                 running: (real_running || degraded_active) ? 1 : 0,
@@ -124,7 +128,9 @@ const methods = {
         call: function() {
             system('mkdir -p /tmp/flowproxy');
             system('FLOWPROXY_PREVIEW=1 /usr/share/flowproxy/generate_nft.sh 2>&1');
-            return { config: safe_trim(readfile('/tmp/flowproxy/nft.conf') || '') };
+            let preview = safe_trim(readfile('/tmp/flowproxy/nft.preview.conf') || '');
+            system('rm -f /tmp/flowproxy/nft.preview.conf');
+            return { config: preview };
         }
     },
 
