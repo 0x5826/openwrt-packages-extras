@@ -16,6 +16,8 @@ define Package/$(PKG_NAME)/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
 	/etc/init.d/rpcd restart
+	/etc/init.d/flowproxy enable >/dev/null 2>&1
+	/etc/init.d/flowproxy start >/dev/null 2>&1
 }
 exit 0
 endef

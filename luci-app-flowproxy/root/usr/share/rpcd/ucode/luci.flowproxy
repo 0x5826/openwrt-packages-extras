@@ -67,17 +67,26 @@ const methods = {
             let udp_active = (system('nft list chain inet ' + NFT_TABLE + ' LAN_MARKFLOW_UDP >/dev/null 2>&1') === 0);
             let real_running = (tcp_active || udp_active);
 
+            let in_startup_grace = false;
+            if (is_running) {
+                let st = stat(STATE_FILE);
+                let now = time();
+                if (st && st.mtime && (now - st.mtime) >= 0 && (now - st.mtime) < 5) {
+                    in_startup_grace = true;
+                }
+            }
+
             if (real_running && !is_running && has_gen) {
                 try { writefile(STATE_FILE, ''); } catch(e) {}
                 is_running = true;
-            } else if (!real_running && !watchdog_running && (is_running || is_degraded)) {
+            } else if (!real_running && !watchdog_running && !in_startup_grace && (is_running || is_degraded)) {
                 try { system('rm -f ' + STATE_FILE + ' ' + DEGRADED_FILE); } catch(e) {}
                 is_running = false;
                 is_degraded = false;
             }
 
             let proxy_server_ip_addr = uci_cursor.get(UCI_CONFIG, 'global', 'proxy_server_ip_addr') || '';
-            let degraded_active = (!real_running && is_degraded && is_running && monitor_enabled && watchdog_running) ? 1 : 0;
+            let degraded_active = (!real_running && is_degraded && is_running && monitor_enabled && (watchdog_running || in_startup_grace)) ? 1 : 0;
             let dns_running = (real_running && uci_cursor.get(UCI_CONFIG, 'dns_backup')) ? 1 : 0;
             
             return {
@@ -89,7 +98,7 @@ const methods = {
                 proxy_server_ip_addr: proxy_server_ip_addr,
                 proxy_server_dns_port: uci_cursor.get(UCI_CONFIG, 'global', 'proxy_server_dns_port') || '5353',
                 lan_ip: safe_trim(lan_ip),
-                interface: uci_cursor.get(UCI_CONFIG, 'global', 'interface') || 'br-lan',
+                interface: uci_cursor.get(UCI_CONFIG, 'global', 'interface') || 'auto',
                 traffic_mark: uci_cursor.get(UCI_CONFIG, 'global', 'traffic_mark') || '0x666',
                 nft: { tcp: tcp_active ? 1 : 0, udp: udp_active ? 1 : 0 }
             };

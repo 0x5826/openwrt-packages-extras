@@ -51,9 +51,7 @@ is_nft_active() {
 }
 
 proxy_ip=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
-conf_iface=$(uci -q get "$UCI_CONFIG.global.interface")
-conf_iface="${conf_iface:-br-lan}"
-probe_iface=$(resolve_master_iface "$conf_iface")
+probe_iface=$(resolve_proxy_iface "" "$proxy_ip")
 
 interval=$(get_uint_or_default "$(uci -q get "$UCI_CONFIG.global.monitor_interval")" 5 2)
 fail_threshold=$(get_uint_or_default "$(uci -q get "$UCI_CONFIG.global.monitor_fail_threshold")" 3 1)
@@ -61,6 +59,7 @@ recover_threshold=$(get_uint_or_default "$(uci -q get "$UCI_CONFIG.global.monito
 
 [ -z "$proxy_ip" ] && exit 0
 
+echo "$$" > "$WD_PID_FILE"
 log_msg info "Watchdog started (target=$proxy_ip, iface=$probe_iface, interval=${interval}s, fail=$fail_threshold, recover=$recover_threshold)"
 
 # 启动阶段已由 init 完成首次状态建立，进入常规周期轮询
@@ -153,5 +152,6 @@ while is_context_valid; do
 	interruptible_sleep "$sleep_secs" || break
 done
 
+[ "$(cat "$WD_PID_FILE" 2>/dev/null)" = "$$" ] && rm -f "$WD_PID_FILE"
 log_msg info "Watchdog stopped"
 exit 0
