@@ -10,8 +10,12 @@ USE_PROCD=1
 _stop_unlocked() {
 	local mode="$1"
 	log_msg info "Stopping FlowProxy..."
+	local wd_pid=$(cat "$WD_PID_FILE" 2>/dev/null)
 	# 强制先移除标记，防止状态误报及旧守护进程继续动作
-	rm -f "$STATE_FILE" "$DEGRADED_FILE" "$GEN_FILE" "$TARGET_FILE" "$WD_CFG_FILE"
+	rm -f "$STATE_FILE" "$DEGRADED_FILE" "$GEN_FILE" "$TARGET_FILE" "$WD_CFG_FILE" "$WD_PID_FILE"
+	if [ -n "$wd_pid" ] && kill -0 "$wd_pid" 2>/dev/null; then
+		kill -TERM "$wd_pid" 2>/dev/null
+	fi
 	delete_route
 	delete_rules
 	if [ "$mode" != "preserve_dns" ]; then
@@ -24,8 +28,7 @@ _stop_unlocked() {
 _get_watchdog_gen() {
 	local force_new="$1"
 	local proxy_ip=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
-	local conf_iface=$(uci -q get "$UCI_CONFIG.global.interface"); conf_iface="${conf_iface:-br-lan}"
-	local probe_iface=$(resolve_master_iface "$conf_iface")
+	local probe_iface=$(resolve_proxy_iface "" "$proxy_ip")
 	local interval=$(uci -q get "$UCI_CONFIG.global.monitor_interval" || echo 5)
 	local fail_th=$(uci -q get "$UCI_CONFIG.global.monitor_fail_threshold" || echo 3)
 	local rec_th=$(uci -q get "$UCI_CONFIG.global.monitor_recover_threshold" || echo 2)
@@ -69,8 +72,7 @@ _start_unlocked() {
 	check_config || { _stop_unlocked; return 1; }
 
 	local proxy_ip=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
-	local conf_iface=$(uci -q get "$UCI_CONFIG.global.interface"); conf_iface="${conf_iface:-br-lan}"
-	local probe_iface=$(resolve_master_iface "$conf_iface")
+	local probe_iface=$(resolve_proxy_iface "" "$proxy_ip")
 	local monitor_enabled=$(uci -q get "$UCI_CONFIG.global.monitor_enabled" || echo 0)
 	local dns_proxy_enabled=$(uci -q get "$UCI_CONFIG.global.dns_proxy_enabled" || echo 0)
 
@@ -107,6 +109,8 @@ _start_unlocked() {
 		if ! check_proxy_alive "$proxy_ip" "$probe_iface"; then
 			log_msg warn "Proxy server $proxy_ip unreachable via $probe_iface; entering hot-degraded mode (direct fallback)"
 			generate_iptables_cache || { _stop_unlocked; return 1; }
+			echo "$cur_target" > "$TARGET_FILE"
+			touch "$DEGRADED_FILE" "$STATE_FILE"
 			delete_route "quiet"
 			delete_rules
 			if [ "$dns_proxy_enabled" = "1" ]; then
@@ -116,8 +120,6 @@ _start_unlocked() {
 				cleanup_dns
 			fi
 
-			echo "$cur_target" > "$TARGET_FILE"
-			touch "$DEGRADED_FILE" "$STATE_FILE"
 			local gen=$(_get_watchdog_gen "$force_gen")
 			_register_watchdog_instance "$gen"
 			return 0
@@ -182,6 +184,20 @@ reload_service() {
 	local ret=${FLOWPROXY_START_RET:-$?}
 	FLOWPROXY_RELOAD=0
 	return $ret
+}
+
+service_stopped() {
+	# 正常停止服务后重新注册空 procd 服务对象，确保 LuCI 保存配置时的 config.change 触发器不丢失
+	if [ "${FLOWPROXY_PRESERVE_DNS:-0}" != "1" ]; then
+		local i=0
+		while [ "$i" -lt 20 ]; do
+			ubus call service list '{"name":"flowproxy"}' 2>/dev/null | grep -q '"running":[[:space:]]*true' || break
+			usleep 50000 2>/dev/null || sleep 1
+			i=$((i + 1))
+		done
+		procd_open_service "$(basename ${basescript:-$initscript})" "$initscript"
+		procd_close_service
+	fi
 }
 
 service_triggers() {

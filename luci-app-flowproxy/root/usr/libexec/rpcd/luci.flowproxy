@@ -47,10 +47,19 @@ local methods = {
 
 			local real_running = (tcp_active or udp_active)
 
+			local in_startup_grace = false
+			if is_running then
+				local st = fs.stat(STATE_FILE)
+				local now = os.time()
+				if st and st.mtime and (now - st.mtime) >= 0 and (now - st.mtime) < 5 then
+					in_startup_grace = true
+				end
+			end
+
 			if real_running and not is_running and has_gen then
 				fs.writefile(STATE_FILE, "")
 				is_running = true
-			elseif not real_running and not watchdog_running and (is_running or is_degraded) then
+			elseif not real_running and not watchdog_running and not in_startup_grace and (is_running or is_degraded) then
 				os.remove(STATE_FILE)
 				os.remove(DEGRADED_FILE)
 				is_running = false
@@ -87,12 +96,12 @@ local methods = {
 			end
 
 			local proxy_server_ip_addr = uci:get(UCI_CONFIG, "global", "proxy_server_ip_addr") or ""
-			local degraded_active = (not real_running and is_degraded and is_running and monitor_enabled == 1 and watchdog_running) and 1 or 0
+			local degraded_active = (not real_running and is_degraded and is_running and monitor_enabled == 1 and (watchdog_running or in_startup_grace)) and 1 or 0
 			local dns_running = (real_running and uci:get(UCI_CONFIG, "dns_backup")) and 1 or 0
 			local enabled_val = uci:get(UCI_CONFIG, "global", "enabled") or "0"
 			local enabled = tonumber(enabled_val) or 0
 			local proxy_server_dns_port = uci:get(UCI_CONFIG, "global", "proxy_server_dns_port") or "5353"
-			local interface = uci:get(UCI_CONFIG, "global", "interface") or "br-lan"
+			local interface = uci:get(UCI_CONFIG, "global", "interface") or "auto"
 			local traffic_mark = uci:get(UCI_CONFIG, "global", "traffic_mark") or "0x666"
 
 			return {

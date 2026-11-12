@@ -17,6 +17,7 @@ GEN_FILE="/var/run/flowproxy.gen"
 MARK_FILE="/var/run/flowproxy.mark"
 TARGET_FILE="/var/run/flowproxy.target"
 WD_CFG_FILE="/var/run/flowproxy.wd_cfg"
+WD_PID_FILE="/var/run/flowproxy.wd_pid"
 LOCK_FILE="/var/lock/flowproxy.lock"
 
 get_level_weight() {
@@ -292,6 +293,112 @@ resolve_master_iface() {
 	echo "$iface"
 }
 
+detect_iface_by_ip() {
+	local target_ip="$1"
+	[ -z "$target_ip" ] && return 1
+
+	# 1. 优先通过本地接口 IPv4 子网掩码最长前缀匹配（不受策略路由 ip rule 干扰）
+	local matched_dev
+	matched_dev=$(ip -o -4 addr show 2>/dev/null | awk -v tip="$target_ip" '
+		function ip2int(ip,   a, n) {
+			n = split(ip, a, ".")
+			if (n != 4) return -1
+			return ((a[1] * 256 + a[2]) * 256 + a[3]) * 256 + a[4]
+		}
+		BEGIN {
+			t = ip2int(tip)
+			best_plen = -1
+			best_dev = ""
+		}
+		t >= 0 {
+			dev = $2
+			sub(/@.*/, "", dev)
+			if (dev == "lo") next
+			for (i = 3; i <= NF; i++) {
+				if ($i == "inet" && (i + 1) <= NF) {
+					split($(i + 1), cidr, "/")
+					addr = ip2int(cidr[1])
+					plen = (cidr[2] != "") ? int(cidr[2]) : 32
+					if (addr < 0 || plen < 0 || plen > 32) continue
+					if (plen == 0) {
+						if (plen > best_plen) {
+							best_plen = plen
+							best_dev = dev
+						}
+					} else {
+						factor = 2 ^ (32 - plen)
+						if (int(t / factor) == int(addr / factor)) {
+							if (plen > best_plen) {
+								best_plen = plen
+								best_dev = dev
+							}
+						}
+					}
+				}
+			}
+		}
+		END {
+			if (best_dev != "") print best_dev
+		}
+	')
+	if [ -n "$matched_dev" ]; then
+		echo "$matched_dev"
+		return 0
+	fi
+
+	# 2. 兜底：通过内核路由查询直连出接口
+	local route_line route_dev
+	route_line=$(ip -4 route get "$target_ip" 2>/dev/null | head -n 1)
+	case "$route_line" in
+		*" via "*) ;;
+		*)
+			route_dev=$(echo "$route_line" | awk '{for(i=1;i<=NF;i++) if($i=="dev") {print $(i+1); exit}}')
+			if [ -n "$route_dev" ] && [ "$route_dev" != "lo" ]; then
+				echo "$route_dev"
+				return 0
+			fi
+			;;
+	esac
+	return 1
+}
+
+resolve_proxy_iface() {
+	local conf_iface="$1"
+	local proxy_ip="$2"
+	[ -z "$conf_iface" ] && conf_iface=$(uci -q get "$UCI_CONFIG.global.interface")
+	[ -z "$proxy_ip" ] && proxy_ip=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
+	conf_iface="${conf_iface:-auto}"
+
+	local resolved=""
+	if [ "$conf_iface" = "auto" ]; then
+		resolved=$(detect_iface_by_ip "$proxy_ip")
+		if [ -z "$resolved" ]; then
+			log_msg warn "Unable to auto-detect interface for ${proxy_ip:-empty}, falling back to br-lan"
+			resolved="br-lan"
+		fi
+	else
+		resolved="$conf_iface"
+	fi
+
+	resolve_master_iface "$resolved"
+}
+
+_run_probe_cmd() {
+	if [ -n "${MY_GEN:-}" ]; then
+		[ "${STOP_REQUESTED:-0}" -eq 1 ] && return 1
+		"$@" >/dev/null 2>&1 &
+		SLEEP_PID=$!
+		wait "$SLEEP_PID" 2>/dev/null
+		local ret=$?
+		SLEEP_PID=""
+		[ "${STOP_REQUESTED:-0}" -eq 1 ] && return 1
+		return $ret
+	else
+		"$@" >/dev/null 2>&1
+		return $?
+	fi
+}
+
 iface_supports_arp() {
 	local iface="$1"
 	[ -d "/sys/class/net/$iface" ] || return 1
@@ -312,18 +419,18 @@ check_proxy_alive() {
 	# 若二层 ARP 明确超时无应答，不再执行冗余 ping（避免额外阻塞及污染邻居表）
 	if iface_supports_arp "$iface"; then
 		if command -v arping >/dev/null 2>&1; then
-			if arping -f -q -c 2 -w 2 -I "$iface" "$ip" >/dev/null 2>&1; then
+			if _run_probe_cmd arping -f -q -c 2 -w 2 -I "$iface" "$ip"; then
 				return 0
 			fi
 			return 1
 		fi
 
 		# 无 arping 二进制时的内核邻居表探测兜底
-		if ping -c 1 -W 1 -I "$iface" "$ip" >/dev/null 2>&1; then
+		if _run_probe_cmd ping -c 1 -W 1 -I "$iface" "$ip"; then
 			return 0
 		fi
 		ip neigh flush to "$ip" dev "$iface" >/dev/null 2>&1
-		ping -c 1 -W 1 -I "$iface" "$ip" >/dev/null 2>&1
+		_run_probe_cmd ping -c 1 -W 1 -I "$iface" "$ip"
 		if ip neigh show to "$ip" dev "$iface" 2>/dev/null | grep -qE "REACHABLE|DELAY|PROBE"; then
 			return 0
 		fi
@@ -331,7 +438,7 @@ check_proxy_alive() {
 	fi
 
 	# 2. 非 ARP / 三层点对点虚拟接口使用 ICMP Ping 探测
-	if ping -c 1 -W 1 -I "$iface" "$ip" >/dev/null 2>&1; then
+	if _run_probe_cmd ping -c 1 -W 1 -I "$iface" "$ip"; then
 		return 0
 	fi
 	return 1
@@ -339,11 +446,10 @@ check_proxy_alive() {
 
 add_route() {
 	local proxy_server_ip_addr=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
-	local conf_iface=$(uci -q get "$UCI_CONFIG.global.interface"); conf_iface="${conf_iface:-br-lan}"
-	local interface=$(resolve_master_iface "$conf_iface")
+	local interface=$(resolve_proxy_iface "" "$proxy_server_ip_addr")
 	local traffic_mark=$(uci -q get "$UCI_CONFIG.global.traffic_mark"); traffic_mark="${traffic_mark:-0x666}"
 	local routing_table=$(uci -q get "$UCI_CONFIG.global.routing_table"); routing_table="${routing_table:-888}"
-	local rule_priority=$(uci -q get "$UCI_CONFIG.global.rule_priority"); rule_priority="${rule_priority:-1000}"
+	local rule_priority=$(uci -q get "$UCI_CONFIG.global.rule_priority"); rule_priority="${rule_priority:-10000}"
 
 	# 1. 先尝试用旧记录清理一次，防止由于配置变更导致的残留
 	delete_route "quiet"
@@ -388,7 +494,7 @@ delete_route() {
 
 	local curr_mark=$(uci -q get "$UCI_CONFIG.global.traffic_mark"); curr_mark="${curr_mark:-0x666}"
 	local curr_table=$(uci -q get "$UCI_CONFIG.global.routing_table"); curr_table="${curr_table:-888}"
-	local curr_prio=$(uci -q get "$UCI_CONFIG.global.rule_priority"); curr_prio="${curr_prio:-1000}"
+	local curr_prio=$(uci -q get "$UCI_CONFIG.global.rule_priority"); curr_prio="${curr_prio:-10000}"
 
 	[ "$quiet" != "quiet" ] && log_msg info "Cleaning up FlowProxy routes (Atomic Mode)..."
 
@@ -412,7 +518,7 @@ delete_route() {
 
 	# 执行清理：先清旧值，再清当前值 (防止残留)
 	safe_del_rule "$old_mark" "$old_table" "$old_prio"
-	[ "$old_mark" != "$curr_mark" ] || [ "$old_table" != "$curr_table" ] && \
+	[ "$old_mark" != "$curr_mark" ] || [ "$old_table" != "$curr_table" ] || [ "$old_prio" != "$curr_prio" ] && \
 		safe_del_rule "$curr_mark" "$curr_table" "$curr_prio"
 }
 

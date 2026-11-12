@@ -265,4 +265,10 @@ msgstr ""
 msgid "The proxy server IP address must be within the subnet of the selected interface (%s)."
 msgstr ""
 
+msgid "The proxy server IP address must be within a local interface subnet (%s)."
+msgstr ""
+
+msgid "Auto detect"
+msgstr ""
+
 
