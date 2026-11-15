@@ -17,10 +17,10 @@ endef
 define Package/$(PKG_NAME)/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
-	chmod 755 /etc/init.d/fancontrol /usr/sbin/fancontrold 2>/dev/null
-	/etc/init.d/rpcd restart
-	/etc/init.d/fancontrol enable
-	/etc/init.d/fancontrol restart
+	chmod 755 /etc/init.d/fancontrol /usr/sbin/fancontrold 2>/dev/null || true
+	/etc/init.d/rpcd restart >/dev/null 2>&1 || true
+	/etc/init.d/fancontrol enable >/dev/null 2>&1 || true
+	/etc/init.d/fancontrol restart >/dev/null 2>&1 || true
 }
 exit 0
 endef
