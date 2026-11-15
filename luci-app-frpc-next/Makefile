@@ -10,7 +10,6 @@ PKG_MAINTAINER:=Dante <dante@seckv.com>
 LUCI_TITLE:=LuCI support for frp client (v0.68.x/v0.69.x+)
 LUCI_DEPENDS:=+frpc-next +curl
 LUCI_PKGARCH:=all
-PKG_PROVIDES:=luci-app-frpc
 
 define Package/$(PKG_NAME)/postinst
 #!/bin/sh

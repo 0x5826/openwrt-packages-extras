@@ -14,7 +14,6 @@ LUCI_DEPENDS:=+ucode +ucode-mod-fs +ucode-mod-ubus +ucode-mod-uci \
 	+kmod-usb-net +kmod-usb-serial +kmod-usb-serial-option \
 	+kmod-usb-net-cdc-ncm +kmod-usb-net-cdc-ether +sms-tool
 LUCI_PKGARCH:=all
-PKG_PROVIDES:=luci-app-modem-manager
 
 define Package/$(PKG_NAME)/conffiles
 /etc/config/modem-manager
