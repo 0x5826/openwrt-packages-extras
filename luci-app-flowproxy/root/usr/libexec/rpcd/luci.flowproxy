@@ -100,14 +100,17 @@ local methods = {
 			local dns_running = (real_running and uci:get(UCI_CONFIG, "dns_backup")) and 1 or 0
 			local enabled_val = uci:get(UCI_CONFIG, "global", "enabled") or "0"
 			local enabled = tonumber(enabled_val) or 0
-			local proxy_server_dns_port = uci:get(UCI_CONFIG, "global", "proxy_server_dns_port") or "5353"
+			local monitor_interval = tonumber(uci:get(UCI_CONFIG, "global", "monitor_interval") or "5") or 5
+			local proxy_server_dns_port = uci:get(UCI_CONFIG, "global", "proxy_server_dns_port") or "53"
 			local interface = uci:get(UCI_CONFIG, "global", "interface") or "auto"
 			local traffic_mark = uci:get(UCI_CONFIG, "global", "traffic_mark") or "0x666"
 
 			return {
 				running = (real_running or degraded_active == 1) and 1 or 0,
 				degraded = degraded_active,
+				watchdog_running = watchdog_running and 1 or 0,
 				monitor_enabled = monitor_enabled,
+				monitor_interval = monitor_interval,
 				dns_running = dns_running,
 				enabled = enabled,
 				proxy_server_ip_addr = proxy_server_ip_addr,
