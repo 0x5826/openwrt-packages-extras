@@ -18,7 +18,7 @@
 
 | 软件包名称 | 版本 | 上游项目 | 功能说明 |
 | :--- | :--- | :--- | :--- |
-| `cloudflared-next` | `2026.11.0` | `cloudflare/cloudflared` | Cloudflare Tunnel 官方预编译客户端 |
+| `cloudflared-next` | `2026.11.1` | `cloudflare/cloudflared` | Cloudflare Tunnel 官方预编译客户端 |
 | `easytier-next` | `2.6.4` | `EasyTier/EasyTier` | 去中心化 Mesh VPN 客户端（支持 WireGuard 与 Web 控制台） |
 | `frpc-next` | `0.72.0` | `fatedier/frp` | 高性能反向代理内网穿透客户端 |
 | `lucky` | `3.5.0` | `gdy666/lucky` | 集成端口转发、DDNS、反向代理、WOL 等功能的综合网络工具 |
